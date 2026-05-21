@@ -1,8 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure the pdfjs worker using CDN to avoid bundler issues in Vite
-// We dynamically match the installed version or fallback to a standard stable version (e.g., 3.4.120)
-const PDFJS_VERSION = '3.4.120';
+// We dynamically match the installed version or fallback to a standard stable version (e.g., 5.7.284)
+const PDFJS_VERSION = '5.7.284';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
 
 /**
