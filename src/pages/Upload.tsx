@@ -143,6 +143,10 @@ export const Upload: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user || user.uid === 'guest-user-noteweb') {
+      error("You must be logged in as a registered student to upload notes.");
+      return;
+    }
     if (!file) {
       error("Please choose or drag a PDF notes file");
       return;
@@ -172,10 +176,36 @@ export const Upload: React.FC = () => {
     }, 150);
 
     try {
+      // Self-heal: Ensure user profile row exists in DB before note insertion to prevent foreign key violation
+      try {
+        const { data: profileData, error: profileErr } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', user.uid);
+        
+        if (profileErr || !profileData || profileData.length === 0) {
+          console.warn("User profile missing from public.profiles. Self-healing by creating profile row...");
+          const newProfile = {
+            id: user.uid,
+            email: user.email || `${user.uid}@noteweb.local`,
+            display_name: userProfile?.displayName || user.displayName || 'Student',
+            photo_url: userProfile?.photoURL || user.photoURL || '',
+            role: 'student',
+            setup_complete: false,
+            bookmarks: []
+          };
+          const { error: insErr } = await supabase.from('profiles').insert([newProfile]);
+          if (insErr) {
+            console.error("Auto-sync profile failed during self-healing:", insErr);
+          }
+        }
+      } catch (profileCheckErr) {
+        console.error("Error verifying profile existence:", profileCheckErr);
+      }
+
       // 1. Upload PDF to Supabase Storage
       const uniqueFileName = `${Date.now()}_${file.name}`;
-      const uid = user ? user.uid : 'anonymous';
-      const storagePath = `notes/${uid}/${uniqueFileName}`;
+      const storagePath = `notes/${user.uid}/${uniqueFileName}`;
 
       const { error: storageErr } = await supabase.storage
         .from('notes')
@@ -184,7 +214,13 @@ export const Upload: React.FC = () => {
       clearInterval(progressInterval);
 
       if (storageErr) {
-        throw new Error(storageErr.message || "Failed to upload file to storage");
+        let storageErrMsg = storageErr.message || "Failed to upload file to storage";
+        if (storageErrMsg.toLowerCase().includes("bucket") || storageErrMsg.toLowerCase().includes("not found")) {
+          storageErrMsg = "The 'notes' storage bucket is missing in your Supabase project. Please log into your Supabase Dashboard -> Storage, click 'New Bucket', name it exactly 'notes' (and check 'Public'), and then try again.";
+        } else if (storageErrMsg.toLowerCase().includes("policy") || storageErrMsg.toLowerCase().includes("rls") || storageErrMsg.toLowerCase().includes("row-level security")) {
+          storageErrMsg = "Storage upload was blocked by RLS policies. Please ensure you have added Storage policies to allow INSERT/upload for authenticated users on the 'notes' bucket in your Supabase dashboard.";
+        }
+        throw new Error(storageErrMsg);
       }
 
       setUploadProgress(100);
@@ -247,9 +283,9 @@ export const Upload: React.FC = () => {
       // 2. Save metadata to Supabase DB
       const initialStatus = isAdmin ? 'approved' : 'pending';
       
-      const uploadedBy = user ? user.uid : 'anonymous-uploader';
-      const uploaderName = user ? (userProfile?.displayName || user.displayName || 'Student') : 'Anonymous Student';
-      const uploaderEmail = user ? (user.email || '') : 'anonymous@noteweb.local';
+      const uploadedBy = user.uid;
+      const uploaderName = userProfile?.displayName || user.displayName || 'Student';
+      const uploaderEmail = user.email || '';
 
       const noteDoc = {
         subject: subject.trim(),
@@ -274,7 +310,13 @@ export const Upload: React.FC = () => {
       };
 
       const { error: insertErr } = await supabase.from('notes').insert([noteDoc]);
-      if (insertErr) throw insertErr;
+      if (insertErr) {
+        let dbErrMsg = insertErr.message || "Failed to insert record into database";
+        if (dbErrMsg.toLowerCase().includes("relation") && dbErrMsg.toLowerCase().includes("does not exist")) {
+          dbErrMsg = "The 'notes' database table does not exist in your Supabase backend. Please ensure you run the SQL migration query provided in your implementation plan inside the Supabase SQL Editor.";
+        }
+        throw new Error(dbErrMsg);
+      }
 
       if (autoCorrected) {
         success(`AI Auto-Sorted! We detected this note fits best under "${detectedCategoryName}" subject and auto-sorted it.`);

@@ -28,7 +28,6 @@ interface AuthContextType {
   isGuest: boolean;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   signInWithPhone: (phoneNumber: string, appVerifier?: any) => Promise<any>;
   confirmPhoneOtp: (confirmationResult: any, code: string) => Promise<void>;
   loginAsGuest: () => void;
@@ -235,8 +234,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       const sessionUser = data.user;
-      if (!sessionUser) throw new Error('Signup succeeded but no user was returned');
+      if (!sessionUser) {
+        throw new Error("This email is already registered. If you already have an account, please log in.");
+      }
 
+      // If identities is returned but empty, the user already exists (user enumeration prevention)
+      if (sessionUser.identities && sessionUser.identities.length === 0) {
+        throw new Error("This email is already registered. If you already have an account, please log in.");
+      }
+
+      const hasSession = !!data.session;
       const isFirst = await checkIsFirstUser();
       const role = isFirst ? 'admin' : 'student';
 
@@ -252,13 +259,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       await saveUserProfile(userProfileData);
-      setUser({
-        uid: sessionUser.id,
-        email: email,
-        displayName: displayName,
-        photoURL: ''
-      });
-      setUserProfile(userProfileData);
+
+      if (hasSession) {
+        setUser({
+          uid: sessionUser.id,
+          email: email,
+          displayName: displayName,
+          photoURL: ''
+        });
+        setUserProfile(userProfileData);
+      } else {
+        // No session means they must confirm email first
+        setUser(null);
+        setUserProfile(null);
+        throw {
+          code: 'auth/email-confirmation-required',
+          message: "Confirmation email sent! Please check your inbox and verify your email address before logging in."
+        };
+      }
       setLoading(false);
     } catch (error) {
       setLoading(false);
@@ -313,23 +331,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserProfile(profile);
       }
       setLoading(false);
-    } catch (error) {
-      setLoading(false);
-      throw error;
-    }
-  };
-
-  const signInWithGoogle = async () => {
-    setLoading(true);
-    setIsGuest(false);
-    localStorage.removeItem('noteweb-is-guest');
-
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-      });
-
-      if (error) throw error;
     } catch (error) {
       setLoading(false);
       throw error;
@@ -524,7 +525,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isGuest,
       signup,
       login,
-      signInWithGoogle,
       signInWithPhone,
       confirmPhoneOtp,
       loginAsGuest,

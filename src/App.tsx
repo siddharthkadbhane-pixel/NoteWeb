@@ -71,7 +71,14 @@ function App() {
                     />
 
                     {/* Protected Student Features */}
-                    <Route path="/upload" element={<Upload />} />
+                    <Route 
+                      path="/upload" 
+                      element={
+                        <ProtectedRoute>
+                          <Upload />
+                        </ProtectedRoute>
+                      } 
+                    />
                     <Route 
                       path="/profile" 
                       element={

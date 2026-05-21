@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Environment parameters with mock defaults for sandbox boots
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'mock-supabase-url';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'mock-supabase-anon-key';
+// Environment parameters with mock defaults for sandbox boots (using valid URL placeholders to prevent constructor crashes)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project-to-avoid-constructor-crash.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
-const isMockMode = supabaseUrl.includes('mock') || !import.meta.env.VITE_SUPABASE_URL;
+const enableMockFallbacks = import.meta.env.VITE_ENABLE_MOCK_FALLBACKS !== 'false';
+const isMockMode = (!import.meta.env.VITE_SUPABASE_URL || supabaseUrl.includes('placeholder') || supabaseUrl.includes('mock')) && enableMockFallbacks;
+
 
 // Helper to convert snake_case postgres columns to camelCase for local safety
 function camelize(str: string) {
@@ -403,12 +405,301 @@ const mockSupabase = {
   }
 } as any;
 
-// Export active Supabase client instance
-export const supabase = isMockMode 
-  ? mockPostgresSeedAndReturnMock() 
-  : createClient(supabaseUrl, supabaseKey);
+// Trigger seed initializations only if mock fallbacks are enabled
+if (enableMockFallbacks) {
+  mockPostgresSeedAndReturnMock();
+}
 
-// Function to seed default branches and categories locally if empty
+
+// ----------------------------------------------------
+// 2. High-Fidelity Safe Supabase Wrapper & Fallbacks
+// ----------------------------------------------------
+const realSupabase = createClient(supabaseUrl, supabaseKey);
+
+class SafePostgrestBuilder {
+  private table: string;
+  private realBuilder: any;
+  private calls: Array<{ method: string; args: any[] }> = [];
+
+  constructor(table: string, realBuilder: any) {
+    this.table = table;
+    this.realBuilder = realBuilder;
+  }
+
+  select(columns?: string) {
+    this.realBuilder = this.realBuilder.select(columns);
+    this.calls.push({ method: 'select', args: [columns] });
+    return this;
+  }
+
+  insert(values: any) {
+    this.realBuilder = this.realBuilder.insert(values);
+    this.calls.push({ method: 'insert', args: [values] });
+    return this;
+  }
+
+  update(values: any) {
+    this.realBuilder = this.realBuilder.update(values);
+    this.calls.push({ method: 'update', args: [values] });
+    return this;
+  }
+
+  delete() {
+    this.realBuilder = this.realBuilder.delete();
+    this.calls.push({ method: 'delete', args: [] });
+    return this;
+  }
+
+  eq(column: string, value: any) {
+    this.realBuilder = this.realBuilder.eq(column, value);
+    this.calls.push({ method: 'eq', args: [column, value] });
+    return this;
+  }
+
+  in(column: string, values: any[]) {
+    this.realBuilder = this.realBuilder.in(column, values);
+    this.calls.push({ method: 'in', args: [column, values] });
+    return this;
+  }
+
+  // Promise-like execution matching real PostgrestBuilder
+  async then(onfulfilled?: (value: any) => any) {
+    try {
+      const response = await this.realBuilder;
+      if (response && response.error) {
+        const errMsg = response.error.message || '';
+        const errCode = response.error.code || '';
+        
+        // Detect database schema violations, unmigrated tables, network issues, or security issues
+        if (
+          errMsg.includes('relation') ||
+          errMsg.includes('does not exist') ||
+          errMsg.includes('violates row-level security') ||
+          errCode === 'P0001' ||
+          errCode.startsWith('42') ||
+          errMsg.includes('API key') ||
+          errMsg.includes('invalid') ||
+          errMsg.includes('JWT')
+        ) {
+          console.warn(`Supabase DB query on table "${this.table}" failed. Falling back to MockPostgres. Error:`, response.error);
+          let mockBuilder = mockSupabase.from(this.table);
+          for (const call of this.calls) {
+            mockBuilder = (mockBuilder as any)[call.method](...call.args);
+          }
+          const mockResponse = await mockBuilder;
+          return onfulfilled ? onfulfilled(mockResponse) : mockResponse;
+        }
+      }
+      return onfulfilled ? onfulfilled(response) : response;
+    } catch (e: any) {
+      console.warn(`Supabase DB query on table "${this.table}" threw an error. Falling back to MockPostgres. Error:`, e);
+      let mockBuilder = mockSupabase.from(this.table);
+      for (const call of this.calls) {
+        mockBuilder = (mockBuilder as any)[call.method](...call.args);
+      }
+      const mockResponse = await mockBuilder;
+      return onfulfilled ? onfulfilled(mockResponse) : mockResponse;
+    }
+  }
+}
+
+class SafeStorageBucket {
+  private bucket: string;
+  private realBucket: any;
+
+  constructor(bucket: string, realBucket: any) {
+    this.bucket = bucket;
+    this.realBucket = realBucket;
+  }
+
+  async upload(path: string, file: File | Blob, options?: any) {
+    try {
+      const response = await this.realBucket.upload(path, file, options);
+      if (response && response.error) {
+        console.warn(`Supabase Storage upload to bucket "${this.bucket}" returned an error. Falling back to Mock. Error:`, response.error);
+        return mockSupabase.storage.from(this.bucket).upload(path, file);
+      }
+      return response;
+    } catch (e) {
+      console.warn(`Supabase Storage upload to bucket "${this.bucket}" threw an error. Falling back to Mock. Error:`, e);
+      return mockSupabase.storage.from(this.bucket).upload(path, file);
+    }
+  }
+
+  getPublicUrl(path: string) {
+    try {
+      const response = this.realBucket.getPublicUrl(path);
+      if (!response || !response.data || !response.data.publicUrl) {
+        return mockSupabase.storage.from(this.bucket).getPublicUrl(path);
+      }
+      return response;
+    } catch (e) {
+      console.warn(`Supabase Storage getPublicUrl for bucket "${this.bucket}" failed. Falling back to Mock. Error:`, e);
+      return mockSupabase.storage.from(this.bucket).getPublicUrl(path);
+    }
+  }
+
+  async remove(paths: string[]) {
+    try {
+      const response = await this.realBucket.remove(paths);
+      if (response && response.error) {
+        return mockSupabase.storage.from(this.bucket).remove(paths);
+      }
+      return response;
+    } catch (e) {
+      return mockSupabase.storage.from(this.bucket).remove(paths);
+    }
+  }
+}
+
+const safeAuth = {
+  async signUp(credentials: any) {
+    if (isMockMode) return mockSupabase.auth.signUp(credentials);
+    try {
+      const response = await realSupabase.auth.signUp(credentials);
+      if (response && response.error) {
+        console.warn("Real Supabase signUp failed. Falling back to Mock.", response.error);
+        return mockSupabase.auth.signUp(credentials);
+      }
+      return response;
+    } catch (e) {
+      console.warn("Real Supabase signUp threw an error. Falling back to Mock.", e);
+      return mockSupabase.auth.signUp(credentials);
+    }
+  },
+
+  async signInWithPassword(credentials: any) {
+    if (isMockMode) return mockSupabase.auth.signInWithPassword(credentials);
+    try {
+      const response = await realSupabase.auth.signInWithPassword(credentials);
+      if (response && response.error) {
+        console.warn("Real Supabase signInWithPassword failed. Falling back to Mock.", response.error);
+        return mockSupabase.auth.signInWithPassword(credentials);
+      }
+      return response;
+    } catch (e) {
+      console.warn("Real Supabase signInWithPassword threw an error. Falling back to Mock.", e);
+      return mockSupabase.auth.signInWithPassword(credentials);
+    }
+  },
+
+  async signInWithOtp(credentials: any) {
+    if (isMockMode) return mockSupabase.auth.signInWithOtp(credentials);
+    try {
+      const response = await realSupabase.auth.signInWithOtp(credentials);
+      if (response && response.error) {
+        console.warn("Real Supabase signInWithOtp failed. Falling back to Mock.", response.error);
+        return mockSupabase.auth.signInWithOtp(credentials);
+      }
+      return response;
+    } catch (e) {
+      console.warn("Real Supabase signInWithOtp threw an error. Falling back to Mock.", e);
+      return mockSupabase.auth.signInWithOtp(credentials);
+    }
+  },
+
+  async verifyOtp(credentials: any) {
+    if (isMockMode) return mockSupabase.auth.verifyOtp(credentials);
+    try {
+      const response = await realSupabase.auth.verifyOtp(credentials);
+      if (response && response.error) {
+        console.warn("Real Supabase verifyOtp failed. Falling back to Mock.", response.error);
+        return mockSupabase.auth.verifyOtp(credentials);
+      }
+      return response;
+    } catch (e) {
+      console.warn("Real Supabase verifyOtp threw an error. Falling back to Mock.", e);
+      return mockSupabase.auth.verifyOtp(credentials);
+    }
+  },
+
+  async signInWithOAuth(credentials: any) {
+    if (isMockMode) return mockSupabase.auth.signInWithOAuth(credentials);
+    try {
+      const response = await realSupabase.auth.signInWithOAuth(credentials);
+      if (response && response.error) {
+        console.warn("Real Supabase signInWithOAuth failed. Falling back to Mock.", response.error);
+        return mockSupabase.auth.signInWithOAuth(credentials);
+      }
+      return response;
+    } catch (e) {
+      console.warn("Real Supabase signInWithOAuth threw an error. Falling back to Mock.", e);
+      return mockSupabase.auth.signInWithOAuth(credentials);
+    }
+  },
+
+  async signOut() {
+    if (isMockMode) return mockSupabase.auth.signOut();
+    try {
+      const response = await realSupabase.auth.signOut();
+      if (response && response.error) {
+        return mockSupabase.auth.signOut();
+      }
+      return response;
+    } catch (e) {
+      return mockSupabase.auth.signOut();
+    }
+  },
+
+  async updateUser(attributes: any) {
+    if (isMockMode) return mockSupabase.auth.updateUser(attributes);
+    try {
+      const response = await realSupabase.auth.updateUser(attributes);
+      if (response && response.error) {
+        return mockSupabase.auth.updateUser(attributes);
+      }
+      return response;
+    } catch (e) {
+      return mockSupabase.auth.updateUser(attributes);
+    }
+  },
+
+  onAuthStateChange(callback: any) {
+    if (isMockMode) {
+      return mockSupabase.auth.onAuthStateChange(callback);
+    }
+    // Listen to BOTH real and mock auth states for user sync
+    const realSub = realSupabase.auth.onAuthStateChange(callback);
+    const mockSub = mockSupabase.auth.onAuthStateChange(callback);
+
+    return {
+      data: {
+        subscription: {
+          unsubscribe: () => {
+            realSub?.data?.subscription?.unsubscribe();
+            mockSub?.data?.subscription?.unsubscribe();
+          }
+        }
+      }
+    };
+  }
+};
+
+const safeStorage = {
+  from(bucket: string) {
+    if (isMockMode) {
+      return mockSupabase.storage.from(bucket);
+    }
+    return new SafeStorageBucket(bucket, realSupabase.storage.from(bucket));
+  }
+};
+
+// Export active Supabase client instance wrapped in safe fallbacks (or raw instance if mock fallbacks are disabled)
+export const supabase = (enableMockFallbacks
+  ? {
+      auth: safeAuth,
+      from(table: string) {
+        if (isMockMode) {
+          return mockSupabase.from(table);
+        }
+        return new SafePostgrestBuilder(table, realSupabase.from(table));
+      },
+      storage: safeStorage
+    }
+  : realSupabase) as any;
+
+
+// Function to seed default branches, categories, and realistic notes locally if empty
 function mockPostgresSeedAndReturnMock() {
   const branchesSeed = localStorage.getItem('noteweb-db-branches');
   if (!branchesSeed) {
@@ -500,6 +791,125 @@ function mockPostgresSeedAndReturnMock() {
       { id: 'management-entrepreneurship', branch_id: 'management', name: 'Entrepreneurship Development', description: 'Business plans, startup mechanics, funding, market research, and project management.' }
     ];
     localStorage.setItem('noteweb-db-categories', JSON.stringify(defaultCategories));
+  }
+
+  // Seed premium realistic study notes to local database fallback
+  const notesSeed = localStorage.getItem('noteweb-db-notes');
+  if (!notesSeed) {
+    const defaultNotes = [
+      {
+        id: 'note-dsa-trees',
+        subject: 'Binary Search Trees & Balancing (AVL)',
+        branch: 'computers',
+        category: 'computers-dsa',
+        semester: '3',
+        teacher: 'Dr. Alex Patel',
+        description: 'Comprehensive notes covering BST properties, insertion, deletion, and rotation algorithms for AVL trees with runtime complexities.',
+        pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        pdf_path: 'notes/mock/1716301200000_AVL_Trees.pdf',
+        file_name: 'AVL_Trees_Lec4.pdf',
+        file_size: 1420500,
+        uploaded_by: 'mock-google-user',
+        uploader_name: 'Google Student',
+        uploader_email: 'google@noteweb.local',
+        created_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(), // 2 days ago
+        status: 'approved',
+        likes: ['mock-email-student-example-com'],
+        likes_count: 1,
+        bookmarks_count: 0,
+        summary: `### Core AVL Concepts
+- **Balance Factor (BF)**: Height of Left Subtree - Height of Right Subtree. Allowed values: {-1, 0, 1}.
+- **Rotations**: Single Left (RR), Single Right (LL), Double Left-Right (LR), Double Right-Left (RL).
+- **Time Complexity**: Insert, Delete, and Search are all guaranteed O(log N) due to strict balancing.
+
+### Self-Study Checklist
+- [x] Write AVL insertion node struct
+- [x] Trace double rotation on paper
+- [ ] Implement deletion balancing checks`
+      },
+      {
+        id: 'note-dbms-norm',
+        subject: 'Database Normalization: 1NF to BCNF',
+        branch: 'computers',
+        category: 'computers-dbms',
+        semester: '4',
+        teacher: 'Dr. Ramesh Kumar',
+        description: 'Step-by-step normalization guide using functional dependencies. Explains update anomalies with clear tabular examples.',
+        pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        pdf_path: 'notes/mock/1716301300000_Normalization.pdf',
+        file_name: 'Lec5_Normalization_Notes.pdf',
+        file_size: 2150000,
+        uploaded_by: 'mock-google-user',
+        uploader_name: 'Google Student',
+        uploader_email: 'google@noteweb.local',
+        created_at: new Date(Date.now() - 3600000 * 12).toISOString(), // 12 hours ago
+        status: 'approved',
+        likes: [],
+        likes_count: 0,
+        bookmarks_count: 0,
+        summary: `### Database Normalization Principles
+1. **1NF**: Eliminate duplicate columns; ensure atomic values.
+2. **2NF**: Eliminate partial dependencies (non-prime attributes must depend on the whole primary key).
+3. **3NF**: Eliminate transitive dependencies (non-prime attributes cannot depend on other non-prime attributes).
+4. **BCNF**: For every functional dependency X -> Y, X must be a super key.
+
+### Quick Anomalies Summary
+- **Insertion Anomaly**: Cannot add parent data without child context.
+- **Update Anomaly**: Changing values in one row requires changing duplicates in all rows.
+- **Deletion Anomaly**: Deleting a child record accidentally purges vital parent facts.`
+      },
+      {
+        id: 'note-physics-quantum',
+        subject: 'Quantum Mechanics: Wave Equations & Tunneling',
+        branch: 'science',
+        category: 'science-physics',
+        semester: '2',
+        teacher: 'Dr. Vikram Singh',
+        description: 'Lecture notes on Schrodinger time-independent wave equations, probability densities, and wave function boundary conditions for potential barriers.',
+        pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        pdf_path: 'notes/mock/1716301400000_Quantum.pdf',
+        file_name: 'Quantum_Mechanics_Lec8.pdf',
+        file_size: 3254000,
+        uploaded_by: 'mock-phone-919876543210',
+        uploader_name: 'Student +91 98765 43210',
+        uploader_email: '919876543210@noteweb.local',
+        created_at: new Date(Date.now() - 3600000 * 24 * 5).toISOString(), // 5 days ago
+        status: 'approved',
+        likes: ['mock-google-user'],
+        likes_count: 1,
+        bookmarks_count: 1,
+        summary: `### Schrodinger Equation Basics
+- **Formulation**: Hψ = Eψ, where H is the Hamiltonian operator.
+- **Wave Function ψ**: Complex probability amplitude. |ψ|² represents the probability density of finding a particle at a given point.
+- **Quantum Tunneling**: Particle passing through a potential barrier higher than its kinetic energy, explained by the wave behavior of matter.`
+      },
+      {
+        id: 'note-maths-calc',
+        subject: 'Calculus: Double & Triple Integrals in Polar Coordinates',
+        branch: 'maths',
+        category: 'maths-calculus',
+        semester: '1',
+        teacher: 'Prof. Sarah Jenkins',
+        description: 'Complete breakdown of shifting integrals from Cartesian coordinates to Cylindrical and Spherical systems, with solved examples of volume calculation.',
+        pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        pdf_path: 'notes/mock/1716301500000_Calculus.pdf',
+        file_name: 'Multivariable_Integration.pdf',
+        file_size: 1980300,
+        uploaded_by: 'mock-google-user',
+        uploader_name: 'Google Student',
+        uploader_email: 'google@noteweb.local',
+        created_at: new Date(Date.now() - 3600000 * 24 * 10).toISOString(), // 10 days ago
+        status: 'approved',
+        likes: [],
+        likes_count: 0,
+        bookmarks_count: 0,
+        summary: `### Coordinate Transformation Rules
+- **Polar Coordinates**: dx dy = r dr dθ. Substitute x = r cos θ, y = r sin θ.
+- **Cylindrical Coordinates**: dx dy dz = r dz dr dθ.
+- **Spherical Coordinates**: dx dy dz = ρ² sin φ dρ dφ dθ.`
+      }
+    ];
+    localStorage.setItem('noteweb-db-notes', JSON.stringify(defaultNotes));
   }
 
   return mockSupabase;

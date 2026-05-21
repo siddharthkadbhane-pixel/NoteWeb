@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, User, UserPlus, ArrowRight, Phone, KeyRound, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, UserPlus, ArrowRight, Phone, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Input } from '../components/ui/Input';
@@ -9,7 +9,7 @@ import { GlassPanel } from '../components/ui/GlassPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const Register: React.FC = () => {
-  const { signup, signInWithGoogle, signInWithPhone, confirmPhoneOtp, loginAsGuest, updateProfileDetails } = useAuth();
+  const { signup, signInWithPhone, confirmPhoneOtp, loginAsGuest, updateProfileDetails } = useAuth();
   const { success, error: toastError, info } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -87,28 +87,20 @@ export const Register: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       let errMsg = 'Failed to create account. Please try again.';
-      if (err.code === 'auth/email-already-in-use') {
-        errMsg = 'An account with this email address already exists.';
+      if (err.code === 'auth/email-confirmation-required') {
+        info(err.message || 'Confirmation email sent! Please verify your email before logging in.');
+        navigate('/login');
+        return;
+      } else if (err.code === 'auth/email-already-in-use' || err.message?.toLowerCase().includes('already registered')) {
+        errMsg = 'An account with this email address already exists. Please log in instead.';
       } else if (err.code === 'auth/invalid-email') {
         errMsg = 'The email address is invalid.';
       } else if (err.code === 'auth/weak-password') {
         errMsg = 'The password is too weak. Please choose a stronger password.';
+      } else {
+        errMsg = err.message || errMsg;
       }
       toastError(errMsg);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleSubmit = async () => {
-    setIsLoading(true);
-    try {
-      await signInWithGoogle();
-      success('Signed in successfully with Google account!');
-      navigate(from, { replace: true });
-    } catch (err: any) {
-      console.error(err);
-      toastError(err.message || 'Google authentication failed.');
     } finally {
       setIsLoading(false);
     }
@@ -412,47 +404,6 @@ export const Register: React.FC = () => {
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Social Sign-In Divider */}
-          <div className="relative my-6 text-center">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-white/[0.06] light-mode:border-slate-900/[0.06]" />
-            </div>
-            <span className="relative px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-[#16161D]/5 bg-[#1a1b24] light-mode:bg-[#F8F9FA]">
-              Or continue with
-            </span>
-          </div>
-
-          {/* Google Access Button */}
-          <button
-            onClick={handleGoogleSubmit}
-            disabled={isLoading}
-            className="w-full h-11 rounded-xl border border-white/[0.08] bg-white/[0.02] text-slate-200 flex items-center justify-center font-bold text-xs hover:bg-white/[0.05] hover:border-white/20 hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 light-mode:border-slate-900/10 light-mode:bg-slate-900/[0.02] light-mode:text-slate-700 light-mode:hover:bg-slate-900/[0.04]"
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2 text-indigo-500" />
-            ) : (
-              <svg className="w-4 h-4 mr-2.5" viewBox="0 0 24 24">
-                <path
-                  fill="#EA4335"
-                  d="M12 5.04c1.62 0 3.08.56 4.22 1.65l3.15-3.15C17.45 1.84 14.93 1 12 1 7.37 1 3.4 3.66 1.44 7.55l3.77 2.92C6.18 7.22 8.86 5.04 12 5.04z"
-                />
-                <path
-                  fill="#4285F4"
-                  d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.47h6.44c-.28 1.47-1.11 2.71-2.36 3.55l3.66 2.84c2.14-1.97 3.39-4.87 3.39-8.5z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.21 14.78c-.24-.72-.37-1.49-.37-2.28s.13-1.56.37-2.28L1.44 7.3C.52 9.12 0 11.16 0 13.3c0 2.14.52 4.18 1.44 6L5.21 14.78z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.66-2.84c-1.01.68-2.31 1.09-4.3 1.09-3.14 0-5.82-2.18-6.77-5.43L1.44 16.3C3.4 20.19 7.37 23 12 23z"
-                />
-              </svg>
-            )}
-            Google account sign up
-          </button>
 
           {/* Guest Access Link */}
           <div className="mt-4">
