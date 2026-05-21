@@ -1,0 +1,116 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@variant light-mode (.light-mode &);
+
+@layer base {
+  body {
+    @apply bg-[#0A0A0C] text-[#E4E4E7] font-sans antialiased overflow-x-hidden transition-colors duration-300 selection:bg-indigo-500/30 selection:text-indigo-200;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body.light-mode {
+    @apply bg-[#F8F9FA] text-[#1E293B];
+  }
+}
+
+@layer utilities {
+  /* Premium Frosted Glassmorphism Styles */
+  .glass-panel {
+    @apply backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.37)];
+  }
+  
+  .light-mode .glass-panel {
+    @apply backdrop-blur-xl bg-slate-900/[0.03] border border-slate-900/[0.06] shadow-[0_8px_32px_0_rgba(15,23,42,0.06)];
+  }
+
+  .glass-card {
+    @apply backdrop-blur-lg bg-[#16161D]/[0.4] border border-white/[0.05] rounded-2xl hover:border-indigo-500/30 hover:bg-[#16161D]/[0.6] transition-all duration-300;
+  }
+  
+  .light-mode .glass-card {
+    @apply backdrop-blur-lg bg-white/[0.6] border border-slate-900/[0.04] rounded-2xl hover:border-indigo-600/20 hover:bg-white/[0.8] transition-all duration-300 shadow-sm hover:shadow-md;
+  }
+
+  .glass-input {
+    @apply bg-white/[0.03] border border-white/[0.08] rounded-xl focus:border-indigo-500/50 focus:bg-white/[0.05] focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200 text-white placeholder-white/30;
+  }
+
+  .light-mode .glass-input {
+    @apply bg-slate-900/[0.02] border border-slate-900/[0.08] rounded-xl focus:border-indigo-600/50 focus:bg-white focus:ring-1 focus:ring-indigo-600/20 outline-none transition-all duration-200 text-slate-800 placeholder-slate-400;
+  }
+
+  /* Glowing Radial Gradient Accents */
+  .glow-purple {
+    background: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.15) 0%, transparent 60%);
+  }
+
+  .glow-indigo {
+    background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 60%);
+  }
+
+  .glow-pink {
+    background: radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.1) 0%, transparent 60%);
+  }
+
+  /* Text Gradients */
+  .text-gradient-primary {
+    @apply bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 bg-clip-text text-transparent;
+  }
+  
+  .light-mode .text-gradient-primary {
+    @apply bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent;
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/[0.08] rounded-full border-2 border-transparent bg-clip-padding hover:bg-white/[0.16] transition-colors;
+  }
+
+  .light-mode ::-webkit-scrollbar-thumb {
+    @apply bg-slate-900/[0.08] rounded-full border-2 border-transparent bg-clip-padding hover:bg-slate-900/[0.16] transition-colors;
+  }
+}
+
+/* Custom visual utilities */
+.animated-border-glow {
+  position: relative;
+  border-radius: 1rem;
+}
+
+.animated-border-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 1rem;
+  padding: 1px;
+  background: linear-gradient(to right, #6366f1, #a855f7, #ec4899);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.15;
+  transition: opacity 0.3s ease;
+}
+
+.animated-border-glow:hover::before {
+  opacity: 0.7;
+}
+
+/* PDF Viewer page shadows */
+.pdf-page-shadow {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.light-mode .pdf-page-shadow {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
