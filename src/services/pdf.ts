@@ -1,10 +1,3 @@
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Configure the pdfjs worker using CDN to avoid bundler issues in Vite
-// We dynamically match the installed version or fallback to a standard stable version (e.g., 5.7.284)
-const PDFJS_VERSION = '5.7.284';
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
-
 /**
  * Extracts plain text from the first few pages of a PDF File.
  * Useful for summarizing notes with the Gemini API on the client side.
@@ -14,6 +7,15 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
  * @returns Promise<string> The extracted text content
  */
 export const extractTextFromPdf = async (file: File, maxPages = 5): Promise<string> => {
+  // Dynamically import pdfjs-dist to prevent it from loading/executing on app startup.
+  // This splits pdfjs-dist into its own chunk, reducing the main bundle size by ~1MB
+  // and preventing startup white-screen compatibility issues on mobile/desktop Chrome.
+  const pdfjsLib = await import('pdfjs-dist');
+  
+  // Configure the pdfjs worker using CDN to avoid bundler issues in Vite
+  const PDFJS_VERSION = '5.7.284';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 

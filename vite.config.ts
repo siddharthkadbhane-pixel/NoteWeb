@@ -10,6 +10,6 @@ export default defineConfig({
     tailwindcss(),
   ],
   build: {
-    target: 'esnext',
+    target: 'es2022',
   },
 })
