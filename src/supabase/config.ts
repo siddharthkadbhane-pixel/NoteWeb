@@ -14,7 +14,7 @@ try {
 }
 
 const enableMockFallbacks = import.meta.env.VITE_ENABLE_MOCK_FALLBACKS !== 'false';
-const isMockMode = (!import.meta.env.VITE_SUPABASE_URL || supabaseUrl.includes('placeholder') || supabaseUrl.includes('mock') || !realSupabase) && enableMockFallbacks;
+export const isMockMode = (!import.meta.env.VITE_SUPABASE_URL || supabaseUrl.includes('placeholder') || supabaseUrl.includes('mock') || !realSupabase) && enableMockFallbacks;
 
 
 // Helper to convert snake_case postgres columns to camelCase for local safety

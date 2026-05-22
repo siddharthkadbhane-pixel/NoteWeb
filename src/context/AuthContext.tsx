@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../supabase/config';
+import { supabase, isMockMode } from '../supabase/config';
 
 export interface UserProfile {
   uid: string;
@@ -32,6 +32,7 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isGuest: boolean;
+  isMockMode: boolean;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   signInWithPhone: (phoneNumber: string, appVerifier?: any) => Promise<any>;
@@ -716,6 +717,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading,
       isAdmin,
       isGuest,
+      isMockMode,
       signup,
       login,
       signInWithPhone,
