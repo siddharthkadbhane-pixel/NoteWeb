@@ -22,6 +22,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { Skeleton } from '../components/ui/Skeleton';
+import { openPdfDocument } from '../utils/pdfDb';
 
 interface NoteDocument {
   id: string;
@@ -722,15 +723,13 @@ export const Profile: React.FC = () => {
                       </span>
 
                       <div className="flex items-center gap-2">
-                        <a
-                          href={note.pdfUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer active:scale-95"
+                        <button
+                          onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
+                          className="p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer active:scale-95 flex items-center justify-center"
                           title="View PDF"
                         >
                           <Eye className="w-4 h-4" />
-                        </a>
+                        </button>
                         <button
                           onClick={() => handleDeleteNote(note.id, note.pdfPath)}
                           className="p-2 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all active:scale-95"
@@ -783,15 +782,13 @@ export const Profile: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2 self-start md:self-auto ml-[60px] md:ml-0">
-                      <a
-                        href={note.pdfUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer active:scale-95"
+                      <button
+                        onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
+                        className="p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer active:scale-95 flex items-center justify-center"
                         title="View PDF"
                       >
                         <Eye className="w-4 h-4" />
-                      </a>
+                      </button>
                       <button
                         onClick={() => handleUnbookmark(note.id)}
                         className="p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-95"

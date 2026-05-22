@@ -21,8 +21,13 @@ try {
   console.warn("Failed to initialize real Supabase client:", e);
 }
 
-const enableMockFallbacks = import.meta.env.VITE_ENABLE_MOCK_FALLBACKS === 'true';
-export const isMockMode = (!supabaseUrl || supabaseUrl.includes('placeholder') || supabaseUrl.includes('mock') || !realSupabase) && enableMockFallbacks;
+const isKeyJwt = typeof supabaseKey === 'string' && supabaseKey.split('.').length === 3;
+const isUrlPlaceholder = !supabaseUrl || supabaseUrl.includes('placeholder') || supabaseUrl.includes('mock');
+const isKeyPlaceholder = !supabaseKey || supabaseKey.includes('placeholder') || supabaseKey.includes('mock') || !isKeyJwt;
+
+// Force mock mode if using placeholders/invalid keys to prevent fatal JWT/API key errors and enable seamless emulator testing
+export const isMockMode = isUrlPlaceholder || isKeyPlaceholder || !realSupabase || import.meta.env.VITE_ENABLE_MOCK_FALLBACKS === 'true';
+const enableMockFallbacks = isMockMode || import.meta.env.VITE_ENABLE_MOCK_FALLBACKS === 'true';
 
 
 
@@ -212,8 +217,29 @@ class MockPostgrestBuilder {
 // Subscription callbacks array for mock auth listener
 const authChangeListeners: Array<(event: string, session: any) => void> = [];
 
-// Session-based in-memory store for mock uploaded binary files to serve actual user uploads on download
+// Session-based + persisted in-memory store for mock uploaded binary files
+// Using localStorage to persist blob URLs across page refreshes within the same session
+const MOCK_STORAGE_KEY = 'noteweb-mock-storage-urls';
 const mockStorageFiles = new Map<string, string>();
+
+// Restore any previously saved URLs from localStorage on module load
+try {
+  const saved = localStorage.getItem(MOCK_STORAGE_KEY);
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === 'string') mockStorageFiles.set(k, v);
+    }
+  }
+} catch {}
+
+const persistMockStorageFiles = () => {
+  try {
+    const obj: Record<string, string> = {};
+    mockStorageFiles.forEach((v, k) => { obj[k] = v; });
+    localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(obj));
+  } catch {}
+};
 
 const mockSupabase = {
   auth: {
@@ -456,11 +482,19 @@ const mockSupabase = {
           await new Promise((r) => setTimeout(r, 800));
           try {
             if (file) {
-              const localUrl = URL.createObjectURL(file);
-              mockStorageFiles.set(path, localUrl);
+              // blob: URLs expire when the page reloads, so we also store in IndexedDB via storeOfflinePdf
+              // For the mock URL map, store a data URL for persistence
+              const reader = new FileReader();
+              const dataUrl = await new Promise<string>((res, rej) => {
+                reader.onload = () => res(reader.result as string);
+                reader.onerror = rej;
+                reader.readAsDataURL(file);
+              });
+              mockStorageFiles.set(path, dataUrl);
+              persistMockStorageFiles();
             }
           } catch (e) {
-            console.warn("Failed to create object URL for mock file upload:", e);
+            console.warn("Failed to create data URL for mock file upload:", e);
           }
           return { data: { path }, error: null };
         },
@@ -470,9 +504,14 @@ const mockSupabase = {
           if (storedUrl) {
             return { data: { publicUrl: storedUrl } };
           }
-          // Emulate returning a generic mockup PDF for default seeded notes
-          let publicUrl = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
-          return { data: { publicUrl } };
+          // No URL found for this path — the file was not uploaded in this session/device.
+          // Return dummy.pdf as absolute last resort and log a clear warning for debugging.
+          console.error(
+            `[NoteWeb Debug] getPublicUrl: No stored URL found for path "${path}".`,
+            `This means the PDF was uploaded in a different session/device and the storage URL is not in mock cache.`,
+            `Opening dummy.pdf as fallback. FIX: Ensure your Supabase Storage bucket 'notes' is public, or check RLS policies.`
+          );
+          return { data: { publicUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' } };
         },
 
         remove: async (paths: string[]) => {
@@ -632,10 +671,16 @@ class SafeStorageBucket {
   getPublicUrl(path: string) {
     try {
       const response = this.realBucket.getPublicUrl(path);
-      if (!response || !response.data || !response.data.publicUrl) {
-        return mockSupabase.storage.from(this.bucket).getPublicUrl(path);
+      if (response?.data?.publicUrl) {
+        // Validate: if the real URL is a proper http URL, always use it
+        const url = response.data.publicUrl;
+        if (url.startsWith('http')) {
+          return response;
+        }
       }
-      return response;
+      // Fall back to mock only if real returned nothing or a non-HTTP URL
+      console.warn(`[NoteWeb Debug] SafeStorageBucket.getPublicUrl: Real Supabase returned invalid URL for "${path}". Falling back to mock.`);
+      return mockSupabase.storage.from(this.bucket).getPublicUrl(path);
     } catch (e) {
       console.warn(`Supabase Storage getPublicUrl for bucket "${this.bucket}" failed. Falling back to Mock. Error:`, e);
       return mockSupabase.storage.from(this.bucket).getPublicUrl(path);

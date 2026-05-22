@@ -13,7 +13,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   adminOnly = false 
 }) => {
-  const { user, loading, isAdmin, isGuest } = useAuth();
+  const { user, userProfile, loading, isAdmin, isGuest } = useAuth();
   const { error } = useToast();
   const location = useLocation();
 
@@ -45,6 +45,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (adminOnly && !isAdmin) {
+    console.warn(`[NoteWeb Security Alert] Unauthorized attempt to access admin view!`, {
+      authenticated: !!user,
+      userEmail: user?.email || 'N/A',
+      uid: user?.uid || 'N/A',
+      role: userProfile?.role || 'guest/none',
+      isAdmin,
+      isGuest,
+      timestamp: new Date().toISOString()
+    });
     error('Access Denied: Admin privileges required.');
     return <Navigate to="/" replace />;
   }

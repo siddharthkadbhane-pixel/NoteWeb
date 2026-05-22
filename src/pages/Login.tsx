@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Lock, Shield, Sparkles, ArrowRight, Info, Check } from 'lucide-react';
+import { User, Sparkles, ArrowRight, Info, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Input } from '../components/ui/Input';
@@ -26,10 +26,6 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Selected view states
-  const [role, setRole] = useState<'student' | 'admin'>('student');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
   const [username, setUsername] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,16 +45,6 @@ export const Login: React.FC = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const from = (location.state as any)?.from?.pathname || '/';
-
-  const handleAdminVerify = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (adminPassword === 'Whitephantom') {
-      setIsAdminUnlocked(true);
-      success('Admin authorization unlocked successfully!');
-    } else {
-      toastError('Incorrect admin access password.');
-    }
-  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,7 +112,7 @@ export const Login: React.FC = () => {
         email: regEmail,
         cgpa: regCgpa,
         photoURL: avatarPayload,
-        role: role
+        role: 'student'
       });
       success(`Welcome to NoteWeb, ${regName}!`);
       navigate(from, { replace: true });
@@ -172,73 +158,8 @@ export const Login: React.FC = () => {
 
         {/* Card */}
         <GlassPanel glowBorder className="bg-[#12121A]/50 p-8 shadow-2xl backdrop-blur-xl border-white/[0.08]">
-          {/* Tab Selector - Hide when registering */}
-          {!isRegistering && (
-            <div className="flex items-center gap-1.5 p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl mb-6">
-              <button
-                onClick={() => {
-                  setRole('student');
-                  setFormErrors({});
-                }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-lg transition-all duration-300 ${
-                  role === 'student' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <User className="w-4 h-4" />
-                Student Portal
-              </button>
-              <button
-                onClick={() => {
-                  setRole('admin');
-                  setFormErrors({});
-                }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-lg transition-all duration-300 ${
-                  role === 'admin' ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Shield className="w-4 h-4" />
-                Admin Console
-              </button>
-            </div>
-          )}
-
           <AnimatePresence mode="wait">
-            {role === 'admin' && !isAdminUnlocked && !isRegistering ? (
-              /* ADMIN PASSWORD CHALLENGE */
-              <motion.form
-                key="admin-lock"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.2 }}
-                onSubmit={handleAdminVerify}
-                className="space-y-4 text-left"
-              >
-                <div className="text-center p-4 rounded-2xl bg-purple-500/5 border border-purple-500/10 mb-2">
-                  <Shield className="w-10 h-10 text-purple-400 mx-auto mb-2 animate-bounce-slow" />
-                  <h3 className="text-sm font-bold text-white">Authorized Access Required</h3>
-                  <p className="text-xs text-slate-400 mt-1">Enter administrative authorization password to continue</p>
-                </div>
-
-                <Input
-                  label="Security Password"
-                  type="password"
-                  placeholder="••••••••"
-                  icon={<Lock className="w-4 h-4" />}
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  required
-                />
-
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                >
-                  Verify Authorization
-                </Button>
-              </motion.form>
-            ) : !isRegistering ? (
+            {!isRegistering ? (
               /* USERNAME LOGIN FORM */
               <motion.form
                 key="login-username"
@@ -272,22 +193,18 @@ export const Login: React.FC = () => {
                   Access Dashboard
                 </Button>
 
-                {role === 'student' && (
-                  <div className="relative flex items-center justify-center my-4">
-                    <span className="absolute px-3 bg-[#12121A] text-xs text-slate-500 font-bold">OR</span>
-                    <hr className="w-full border-white/[0.06]" />
-                  </div>
-                )}
+                <div className="relative flex items-center justify-center my-4">
+                  <span className="absolute px-3 bg-[#12121A] text-xs text-slate-500 font-bold">OR</span>
+                  <hr className="w-full border-white/[0.06]" />
+                </div>
 
-                {role === 'student' && (
-                  <button
-                    type="button"
-                    onClick={handleGuestClick}
-                    className="w-full py-2.5 rounded-xl border border-dashed border-indigo-500/20 bg-indigo-500/[0.02] text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/5 hover:border-indigo-500/30 transition-all font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98]"
-                  >
-                    👤 Continue as Guest (Read-Only Mode)
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleGuestClick}
+                  className="w-full py-2.5 rounded-xl border border-dashed border-indigo-500/20 bg-indigo-500/[0.02] text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/5 hover:border-indigo-500/30 transition-all font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                >
+                  👤 Continue as Guest (Read-Only Mode)
+                </button>
               </motion.form>
             ) : (
               /* REGISTRATION AND AVATAR BUILDER */
@@ -302,7 +219,7 @@ export const Login: React.FC = () => {
                 <div className="flex items-center gap-3 p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl mb-4">
                   <Info className="w-4 h-4 text-indigo-400 flex-shrink-0" />
                   <p className="text-xs text-indigo-200">
-                    Setting up a new <strong>{role}</strong> profile for: <code className="text-white bg-indigo-600/30 px-1.5 py-0.5 rounded">{username}</code>
+                    Setting up a new student profile for: <code className="text-white bg-indigo-600/30 px-1.5 py-0.5 rounded">{username}</code>
                   </p>
                 </div>
 

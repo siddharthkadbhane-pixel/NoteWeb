@@ -33,11 +33,44 @@ export const AISummary: React.FC<AISummaryProps> = ({
     try {
       success("Initializing AI Assistant... Downloading PDF text layers.");
       
-      // Fetch the PDF from URL as a Blob
-      const response = await fetch(pdfUrl);
-      if (!response.ok) throw new Error("Could not download note PDF file.");
+      let resolvedUrl = pdfUrl;
+      if ((!resolvedUrl || resolvedUrl === 'db-base64-fetch') && noteId) {
+        console.log(`AISummary: Fetching PDF URL on-demand for note ID: ${noteId}`);
+        const { data, error: fetchErr } = await supabase
+          .from('notes')
+          .select('pdf_url')
+          .eq('id', noteId)
+          .single();
+        
+        if (fetchErr) {
+          throw new Error("Could not retrieve note PDF URL from database: " + fetchErr.message);
+        }
+        if (data && data.pdf_url) {
+          resolvedUrl = data.pdf_url;
+        }
+      }
+
+      if (!resolvedUrl || resolvedUrl === 'db-base64-fetch') {
+        throw new Error("PDF URL is not available.");
+      }
+
+      let blob: Blob;
+      if (resolvedUrl.startsWith('data:application/pdf;base64,')) {
+        const parts = resolvedUrl.split(',');
+        const byteString = atob(parts[1] || parts[0]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+        }
+        blob = new Blob([ab], { type: 'application/pdf' });
+      } else {
+        // Fetch the PDF from URL as a Blob
+        const response = await fetch(resolvedUrl);
+        if (!response.ok) throw new Error("Could not download note PDF file.");
+        blob = await response.blob();
+      }
       
-      const blob = await response.blob();
       const file = new File([blob], "temp_note.pdf", { type: "application/pdf" });
       
       // Extract text

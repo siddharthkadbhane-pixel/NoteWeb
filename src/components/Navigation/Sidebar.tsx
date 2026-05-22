@@ -24,7 +24,7 @@ import { useToast } from '../../context/ToastContext';
 import { renderAvatar } from '../../utils/avatar';
 
 export const Sidebar: React.FC = () => {
-  const { user, userProfile, isAdmin, isGuest, logout } = useAuth();
+  const { user, userProfile, isAdmin, isGuest, logout, isMockMode } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const { success, error } = useToast();
   const navigate = useNavigate();
@@ -180,6 +180,26 @@ export const Sidebar: React.FC = () => {
               </>
             )}
           </button>
+
+          {/* Connection Status Pill */}
+          {(!isCollapsed || isMobileOpen) ? (
+            <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[10px] font-bold tracking-wider uppercase select-none light-mode:bg-slate-900/[0.02] light-mode:border-slate-900/[0.04]">
+              <span className="text-slate-500 light-mode:text-slate-400">Sync Status</span>
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${!isMockMode ? 'bg-[#10B981] shadow-[0_0_8px_#10B981]' : 'bg-[#F59E0B] shadow-[0_0_8px_#F59E0B]'} animate-pulse`} />
+                <span className={!isMockMode ? 'text-[#10B981]' : 'text-[#F59E0B]'}>
+                  {!isMockMode ? 'LIVE SYNCED' : 'LOCAL CACHE'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-center py-1 select-none">
+              <span 
+                className={`w-2.5 h-2.5 rounded-full ${!isMockMode ? 'bg-[#10B981] shadow-[0_0_8px_#10B981]' : 'bg-[#F59E0B] shadow-[0_0_8px_#F59E0B]'} animate-pulse`} 
+                title={!isMockMode ? 'Sync Status: Live Synced' : 'Sync Status: Local Cache'}
+              />
+            </div>
+          )}
 
           {/* User Account / Login State */}
           {user || isGuest ? (

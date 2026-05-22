@@ -25,12 +25,12 @@ function App() {
         <AuthProvider>
           <ScreenshotProtection>
             <Router>
-              <div className="min-h-screen bg-[#0A0A0C] text-[#E4E4E7] light-mode:bg-[#F8F9FA] light-mode:text-[#1E293B] transition-colors duration-300 flex">
+              <div className="min-h-screen min-h-[100dvh] bg-[#0A0A0C] text-[#E4E4E7] light-mode:bg-[#F8F9FA] light-mode:text-[#1E293B] transition-colors duration-300 flex overscroll-y-none">
                 {/* Collapsible, responsive Frosted glass sidebar */}
                 <Sidebar />
                 
                 {/* Main Content Area: Responsive offsets for mobile topbar and desktop sidebar */}
-                <main className="flex-1 min-w-0 pt-16 lg:pt-0 pl-0 lg:pl-64 transition-all duration-300">
+                <main className="flex-1 min-w-0 pt-16 lg:pt-0 pl-0 lg:pl-64 transition-all duration-300 pb-safe">
                   <Routes>
                     {/* Publicly Accessible Routes */}
                     <Route path="/" element={<Home />} />

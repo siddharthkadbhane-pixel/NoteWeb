@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
@@ -23,6 +23,7 @@ import { Input } from '../components/ui/Input';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { Skeleton } from '../components/ui/Skeleton';
 import { motion, AnimatePresence } from 'framer-motion';
+import { openPdfDocument } from '../utils/pdfDb';
 
 interface NoteDocument {
   id: string;
@@ -83,6 +84,9 @@ export const Feed: React.FC = () => {
   const [filteredNotes, setFilteredNotes] = useState<NoteDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Track optimistically-injected note IDs so we can merge them properly on real fetch
+  const optimisticIdsRef = useRef<Set<string>>(new Set());
+
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSemester, setSelectedSemester] = useState<string>('all');
@@ -99,6 +103,20 @@ export const Feed: React.FC = () => {
     }
     if (location.state?.category) {
       setSelectedCategory(location.state.category);
+    }
+
+    // OPTIMISTIC UI: If Upload.tsx passed a freshly-uploaded note via router state,
+    // inject it INSTANTLY into the list — before the DB fetch even starts.
+    // This gives 0ms latency visibility of the uploaded file.
+    if (location.state?.newNote) {
+      const optimisticNote = mapDbNoteToNoteDocument(location.state.newNote);
+      optimisticIdsRef.current.add(optimisticNote.id);
+      setNotes((prev) => {
+        if (prev.some((n) => n.id === optimisticNote.id)) return prev;
+        return [optimisticNote, ...prev];
+      });
+      // Clear the router state so back/forward nav doesn't re-inject
+      window.history.replaceState({ ...window.history.state, usr: { ...location.state, newNote: null } }, '');
     }
   }, [location.state]);
 
@@ -162,11 +180,11 @@ export const Feed: React.FC = () => {
   const fetchNotes = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      // Fetch only approved notes for the feed page. Admins see pending uploads in Admin dashboard!
       const { data, error: notesErr } = await supabase
         .from('notes')
-        .select('*')
-        .eq('status', 'approved');
+        .select('id, subject, branch, category, semester, teacher, description, pdf_url, pdf_path, file_name, file_size, uploaded_by, uploader_name, uploader_email, created_at, status, likes, likes_count, bookmarks_count, summary')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false });
       
       if (notesErr) throw notesErr;
       
@@ -189,9 +207,26 @@ export const Feed: React.FC = () => {
         }
       }
 
-      // Sort in-memory to bypass complex indexing
-      sortNotes(merged, sortBy);
-      setNotes(merged);
+      // Merge optimistic notes: keep any optimistic notes that haven't arrived in DB yet.
+      // Once the DB returns the real row (same real id or matching subject+uploader+time),
+      // the optimistic placeholder is replaced cleanly.
+      setNotes((prev) => {
+        const prevOptimistic = prev.filter(
+          (n) =>
+            optimisticIdsRef.current.has(n.id) &&
+            !merged.some((m) => m.id === n.id)
+        );
+        const combined = [...prevOptimistic, ...merged];
+        // Deduplicate by id
+        const seen = new Set<string>();
+        const deduped = combined.filter((n) => {
+          if (seen.has(n.id)) return false;
+          seen.add(n.id);
+          return true;
+        });
+        sortNotes(deduped, sortBy);
+        return deduped;
+      });
     } catch (e: any) {
       console.error(e);
       if (!silent) {
@@ -258,7 +293,24 @@ export const Feed: React.FC = () => {
       console.warn("Realtime subscription failed on Feed:", err);
     }
 
+    // 2. Listen for upload signal from Upload.tsx via localStorage
+    // This immediately triggers a refetch when any tab/device uploads a new note
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'noteweb-last-upload') {
+        console.log('Upload signal detected, refetching notes immediately...');
+        fetchNotes(true);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // 3. Keep a passive 10-second silent background polling safety net for bulletproof cross-device sync
+    const interval = setInterval(() => {
+      fetchNotes(true);
+    }, 10000);
+
     return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
       if (channel) {
         try {
           channel.unsubscribe();
@@ -729,15 +781,13 @@ export const Feed: React.FC = () => {
                               </Button>
 
                               {/* View PDF download */}
-                              <a
-                                href={note.pdfUrl}
-                                target="_blank"
-                                rel="noreferrer"
+                              <button
+                                onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
                                 className="inline-flex items-center justify-center p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 light-mode:text-slate-600 light-mode:hover:text-slate-900 transition-all duration-200 cursor-pointer active:scale-95"
                                 title="Open PDF Document"
                               >
                                 <Download className="w-3.5 h-3.5" />
-                              </a>
+                              </button>
 
                               {/* Delete note button */}
                               {user && userProfile && (note.uploadedBy === user.uid || userProfile.role === 'admin') && (

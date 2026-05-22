@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { Skeleton } from '../components/ui/Skeleton';
+import { openPdfDocument } from '../utils/pdfDb';
 
 interface NoteDocument {
   id: string;
@@ -85,9 +86,10 @@ export const Admin: React.FC = () => {
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchModerationData = async () => {
-    setIsLoading(true);
+  const fetchModerationData = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
+      console.log(`[NoteWeb Admin Log] Fetching admin dashboard data... (silent mode: ${silent})`);
       // 1. Fetch Pending Notes
       const { data: pendingData, error: pendingErr } = await supabase
         .from('notes')
@@ -121,16 +123,77 @@ export const Admin: React.FC = () => {
       const users = (usersData || []).map(mapDbProfileToUserProfile);
       setUsersList(users);
 
+      console.log(`[NoteWeb Admin Log] Dashboard data loaded successfully. Pending notes: ${pending.length}, Total notes: ${all.length}, Users: ${users.length}`);
     } catch (e: any) {
-      console.error(e);
+      console.error("[NoteWeb Admin Log] Failed to load dashboard data:", e);
       error("Failed to load admin panel data: " + e.message);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchModerationData();
+
+    // 1. Set up Realtime subscriptions for profiles and notes
+    let channelProfiles: any = null;
+    let channelNotes: any = null;
+
+    try {
+      if (typeof supabase.channel === 'function') {
+        console.log('[NoteWeb Admin Realtime] Subscribing to Supabase Realtime changes...');
+        
+        channelProfiles = supabase
+          .channel('public:profiles_admin')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'profiles' },
+            (payload: any) => {
+              console.log('[NoteWeb Admin Realtime] profiles table change detected across session:', payload);
+              fetchModerationData(true);
+            }
+          )
+          .subscribe((status: any) => {
+            console.log('[NoteWeb Admin Realtime] profiles channel status:', status);
+          });
+
+        channelNotes = supabase
+          .channel('public:notes_admin')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'notes' },
+            (payload: any) => {
+              console.log('[NoteWeb Admin Realtime] notes table change detected across session:', payload);
+              fetchModerationData(true);
+            }
+          )
+          .subscribe((status: any) => {
+            console.log('[NoteWeb Admin Realtime] notes channel status:', status);
+          });
+      } else {
+        console.warn('[NoteWeb Admin Realtime] Supabase channel is not a function');
+      }
+    } catch (err) {
+      console.warn("[NoteWeb Admin Realtime] Realtime subscriptions failed on Admin Panel:", err);
+    }
+
+    return () => {
+      console.log('[NoteWeb Admin Realtime] Cleaning up Realtime subscriptions...');
+      if (channelProfiles) {
+        try {
+          channelProfiles.unsubscribe();
+        } catch (e) {
+          console.warn("Failed to unsubscribe profiles admin channel:", e);
+        }
+      }
+      if (channelNotes) {
+        try {
+          channelNotes.unsubscribe();
+        } catch (e) {
+          console.warn("Failed to unsubscribe notes admin channel:", e);
+        }
+      }
+    };
   }, []);
 
   // Moderate Note
@@ -366,14 +429,12 @@ export const Admin: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2 self-start md:self-auto ml-[60px] md:ml-0">
-                      <a
-                        href={note.pdfUrl}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
                         className="px-4 py-2 rounded-lg border border-white/[0.08] text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 light-mode:text-slate-600 light-mode:hover:text-slate-900 cursor-pointer"
                       >
                         Preview PDF
-                      </a>
+                      </button>
                       <button
                         onClick={() => handleModerate(note.id, 'approved')}
                         className="p-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all active:scale-95"
@@ -445,14 +506,12 @@ export const Admin: React.FC = () => {
                       </span>
 
                       <div className="flex items-center gap-2">
-                        <a
-                          href={note.pdfUrl}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
                           className="px-3 py-1.5 rounded-lg border border-white/[0.08] text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 cursor-pointer"
                         >
                           Preview
-                        </a>
+                        </button>
                         <button
                           onClick={() => handleDeleteNote(note.id, note.pdfPath)}
                           className="p-2 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all active:scale-95"

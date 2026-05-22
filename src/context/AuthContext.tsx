@@ -51,6 +51,40 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 
 const dbToProfile = (dbRow: any): UserProfile => {
+  const rawRole = dbRow.role || 'student';
+  let role: 'student' | 'admin' = 'student';
+
+  if (rawRole === 'admin') {
+    const email = (dbRow.email || '').toLowerCase().trim();
+    const username = (dbRow.username || '').toLowerCase().trim();
+    
+    // 1. Read admin whitelists from env
+    const envAdminEmails = import.meta.env.VITE_ADMIN_EMAILS
+      ? import.meta.env.VITE_ADMIN_EMAILS.split(',').map((e: string) => e.trim().toLowerCase())
+      : [];
+      
+    // 2. Predefined legitimate patterns & mock admin account checks
+    const isMockGoogleAdmin = username === 'google' || email === 'google@noteweb.local';
+    const hasAdminEmailPattern = email.startsWith('admin@') || 
+                                 email.includes('admin.noteweb') ||
+                                 username === 'admin' ||
+                                 username === 'siddharth' ||
+                                 username === 'sid_phantom' ||
+                                 email === 'siddharth@noteweb.local';
+                                 
+    const isExplicitAdmin = envAdminEmails.includes(email) || envAdminEmails.includes(username);
+
+    if (isMockGoogleAdmin || hasAdminEmailPattern || isExplicitAdmin) {
+      role = 'admin';
+    } else {
+      console.warn(
+        `[NoteWeb Security Guard] Prevented unauthorized admin access elevation for user: "${username}" (${email}). ` +
+        `Downgrading role to "student". To whitelist this user as admin, add their email/username to VITE_ADMIN_EMAILS in .env.`
+      );
+      role = 'student';
+    }
+  }
+
   return {
     uid: dbRow.id || dbRow.uid,
     username: dbRow.username || '',
@@ -61,7 +95,7 @@ const dbToProfile = (dbRow: any): UserProfile => {
     branch: dbRow.branch || '',
     cgpa: dbRow.cgpa || '',
     photoURL: dbRow.photo_url || dbRow.photoURL || '',
-    role: dbRow.role || 'student',
+    role,
     createdAt: dbRow.created_at || dbRow.createdAt || new Date(),
     bookmarks: dbRow.bookmarks || [],
     setupComplete: dbRow.setup_complete !== undefined ? dbRow.setup_complete : dbRow.setupComplete,
@@ -517,8 +551,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setLoading(true);
     setIsGuest(false);
-    localStorage.removeItem('noteweb-is-guest');
-    localStorage.removeItem('noteweb-mock-uid');
+    
+    // Clear all cached local storage keys for profiles to avoid session/role contamination
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('noteweb-profile-') || key === 'noteweb-mock-uid' || key === 'noteweb-is-guest')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+    } catch (e) {
+      console.warn("Failed to clear profile cache from localStorage:", e);
+    }
+
     try {
       await supabase.auth.signOut();
     } catch (e) {
@@ -652,7 +699,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const uid = `mock-user-${Math.random().toString(36).substr(2, 9)}`;
-      const role = profileData.role || 'student';
+      // SECURITY: Always force 'student' role on self-registration.
+      // Admin accounts must be created directly in the Supabase database by a real admin.
+      const role: 'student' | 'admin' = 'student';
 
       const newProfile: UserProfile = {
         uid,

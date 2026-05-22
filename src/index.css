@@ -3,14 +3,74 @@
 
 @variant light-mode (.light-mode &);
 
+/* ─────────────────────────────────────────────────────────────
+   Mobile Viewport Height Fix (iOS Safari, Chrome Mobile etc.)
+   Use --vh custom property for accurate viewport calculations
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --vh: 1vh;
+  /* Fallback for browsers not supporting dvh */
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --dvh: 1dvh;
+  }
+}
+
 @layer base {
+  html {
+    /* Prevent horizontal scroll on mobile */
+    overflow-x: hidden;
+    /* Use dynamic viewport height where supported */
+    min-height: 100%;
+    min-height: 100dvh;
+  }
+
   body {
     @apply bg-[#0A0A0C] text-[#E4E4E7] font-sans antialiased overflow-x-hidden transition-colors duration-300 selection:bg-indigo-500/30 selection:text-indigo-200;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    /* iOS Safari momentum scroll */
+    -webkit-overflow-scrolling: touch;
+    /* Safe area insets for notched iPhones */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    min-height: 100vh;
+    min-height: 100dvh;
   }
 
-  body.light-mode {
+  body.light-mode,
+  [data-theme="light"] body,
+  html[data-theme="light"] body {
     @apply bg-[#F8F9FA] text-[#1E293B];
+  }
+
+  /* iOS Safari: prevent fixed positioning bugs with overflow:hidden */
+  body.sidebar-open {
+    /* Only on mobile to prevent scroll behind sidebar */
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+
+  select option {
+    background-color: #16161D;
+    color: #E4E4E7;
+  }
+
+  body.light-mode select option {
+    background-color: #FFFFFF;
+    color: #1E293B;
+  }
+
+  /* Fix iOS tap highlight */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Better touch targets on mobile */
+  button, a, [role="button"] {
+    touch-action: manipulation;
   }
 }
 
@@ -38,6 +98,17 @@
 
   .light-mode .glass-input {
     @apply bg-slate-900/[0.02] border border-slate-900/[0.08] rounded-xl focus:border-indigo-600/50 focus:bg-white focus:ring-1 focus:ring-indigo-600/20 outline-none transition-all duration-200 text-slate-800 placeholder-slate-400;
+  }
+
+  /* Mobile-safe min-height utilities using dvh */
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .h-screen-safe {
+    height: 100vh;
+    height: 100dvh;
   }
 
   /* Glowing Radial Gradient Accents */
@@ -114,3 +185,28 @@
 .light-mode .pdf-page-shadow {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
+
+/* Mobile Layout Fixes */
+@media (max-width: 1024px) {
+  /* Fix iOS Safari 100vh including address bar */
+  .min-h-screen {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Prevent bounce overscroll issues on iOS that break fixed elements */
+  #root {
+    overflow-x: hidden;
+    position: relative;
+  }
+}
+
+/* Light mode background override via data-theme (mobile reliable) */
+html[data-theme="light"] {
+  background-color: #F8F9FA;
+}
+html[data-theme="light"] body {
+  background-color: #F8F9FA;
+  color: #1E293B;
+}
+

@@ -15,6 +15,44 @@ import {
   Lock
 } from 'lucide-react';
 
+const compressImage = (base64Str: string, maxWidth = 400, maxHeight = 400, quality = 0.6): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } else {
+        resolve(base64Str);
+      }
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
+  });
+};
+
 
 interface ChatMessage {
   id: string;
@@ -191,7 +229,8 @@ export const Chat: React.FC = () => {
     }
 
     // 2. Keep a passive 15-second polling fallback to save CPU and network bandwidth
-    const interval = setInterval(fetchMessages, 15000);
+    // 8-second polling for better real-time coverage as fallback
+    const interval = setInterval(fetchMessages, 8000);
 
     return () => {
       clearInterval(interval);
@@ -226,117 +265,123 @@ export const Chat: React.FC = () => {
 
     setIsSending(true);
     try {
-      let insertErr: any = null;
+      const tempMsgId = 'broadcast-' + Math.random().toString(36).substr(2, 9);
+      
+      const msgPayload: ChatMessage = {
+        id: tempMsgId,
+        sender_uid: user.uid,
+        sender_name: userProfile.displayName || 'Student',
+        sender_avatar: userProfile.photoURL || '',
+        sender_branch: userProfile.branch || 'computers',
+        content: inputText.trim(),
+        image_url: selectedImage || undefined,
+        created_at: new Date().toISOString(),
+      };
 
-      if (isMockMode) {
-        const newMessageMock = {
-          sender_uid: user.uid,
-          sender_name: userProfile.displayName || 'Student',
-          sender_avatar: userProfile.photoURL || '',
-          sender_branch: userProfile.branch || 'computers',
-          content: inputText.trim(),
-          image_url: selectedImage || undefined,
-          created_at: new Date().toISOString(),
-        };
-        const { error } = await supabase.from('chats').insert([newMessageMock]);
-        insertErr = error;
-      } else {
-        // Try inserting using the new schema format (sender_id, message, photo_url)
-        const newMessageNew = {
-          sender_id: user.uid,
-          sender_name: userProfile.displayName || 'Student',
-          sender_avatar: userProfile.photoURL || '',
-          sender_branch: userProfile.branch || 'computers',
-          message: inputText.trim(),
-          photo_url: selectedImage || null,
-          created_at: new Date().toISOString(),
-        };
+      // 1. Optimistic UI update: show message immediately
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msgPayload.id)) return prev;
+        return [...prev, msgPayload];
+      });
 
-        const { error } = await supabase.from('chats').insert([newMessageNew]);
-        insertErr = error;
-
-        // If the new schema insert fails (likely because 'message' or 'photo_url' column doesn't exist),
-        // self-heal by trying the old schema format (sender_uid, content, image_url)
-        if (insertErr && (
-          insertErr.message?.toLowerCase().includes('column') || 
-          insertErr.message?.toLowerCase().includes('schema cache') || 
-          insertErr.code === '42703'
-        )) {
-          console.warn("New chat schema insert failed. Self-healing by trying old schema...");
-          const newMessageOld = {
-            sender_uid: user.uid,
-            sender_name: userProfile.displayName || 'Student',
-            sender_avatar: userProfile.photoURL || '',
-            sender_branch: userProfile.branch || 'computers',
-            content: inputText.trim(),
-            image_url: selectedImage || undefined,
-            created_at: new Date().toISOString(),
-          };
-
-          const { error: oldError } = await supabase.from('chats').insert([newMessageOld]);
-          insertErr = oldError;
-        }
-      }
-
-      if (insertErr) {
-        const isRlsViolation = insertErr.message?.toLowerCase().includes('row-level security') || 
-                               insertErr.message?.toLowerCase().includes('policy') ||
-                               insertErr.code === '42501';
-
-        if (isRlsViolation) {
-          console.warn("Database insert blocked by Row-Level Security. Using Realtime Broadcast fallback...");
-          
-          const broadcastPayload: ChatMessage = {
-            id: 'broadcast-' + Math.random().toString(36).substr(2, 9),
-            sender_uid: user.uid,
-            sender_name: userProfile.displayName || 'Student',
-            sender_avatar: userProfile.photoURL || '',
-            sender_branch: userProfile.branch || 'computers',
-            content: inputText.trim(),
-            image_url: selectedImage || undefined,
-            created_at: new Date().toISOString(),
-          };
-
-          if (channelRef.current) {
-            try {
-              await channelRef.current.send({
-                type: 'broadcast',
-                event: 'message',
-                payload: broadcastPayload
-              });
-            } catch (broadcastErr) {
-              console.warn("Failed to send broadcast message:", broadcastErr);
-            }
-          }
-
-          // Save to localStorage
-          const storedBroadcastsStr = localStorage.getItem('noteweb-broadcasted-chats');
-          let storedBroadcasts: ChatMessage[] = [];
-          if (storedBroadcastsStr) {
-            try {
-              storedBroadcasts = JSON.parse(storedBroadcastsStr);
-            } catch {}
-          }
-          if (!storedBroadcasts.some((m) => m.id === broadcastPayload.id)) {
-            storedBroadcasts.push(broadcastPayload);
-            localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(storedBroadcasts));
-          }
-
-          setMessages((prev) => [...prev, broadcastPayload]);
-          toastError("NoteWeb Secure Shield: Message synced instantly via P2P Broadcast (DB writes are policy-restricted).");
-          
-          setInputText('');
-          setSelectedImage(null);
-          setIsSending(false);
-          return;
-        }
-
-        throw insertErr;
-      }
-
+      // Clear input fields immediately
       setInputText('');
       setSelectedImage(null);
-      await fetchMessages();
+      if (fileInputRef.current) fileInputRef.current.value = '';
+
+      // 2. P2P Broadcast instantly
+      if (channelRef.current) {
+        try {
+          await channelRef.current.send({
+            type: 'broadcast',
+            event: 'message',
+            payload: msgPayload
+          });
+          console.log("Real-time chat message broadcasted successfully!");
+        } catch (broadcastErr) {
+          console.warn("Failed to send chat broadcast:", broadcastErr);
+        }
+      }
+
+      // 3. Save to localStorage backup
+      const storedBroadcastsStr = localStorage.getItem('noteweb-broadcasted-chats');
+      let storedBroadcasts: ChatMessage[] = [];
+      if (storedBroadcastsStr) {
+        try {
+          storedBroadcasts = JSON.parse(storedBroadcastsStr);
+        } catch {}
+      }
+      if (!storedBroadcasts.some((m) => m.id === msgPayload.id)) {
+        storedBroadcasts.push(msgPayload);
+        localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(storedBroadcasts));
+      }
+
+      // 4. Asynchronously perform background database save to keep it non-blocking
+      // IMPORTANT: Do NOT pass a custom 'id' — let the DB auto-generate the real UUID.
+      // This prevents ID conflicts and duplicate messages when postgres_changes fires.
+      const saveToDatabase = async () => {
+        try {
+          if (isMockMode) {
+            const newMessageMock = {
+              sender_uid: user.uid,
+              sender_name: userProfile.displayName || 'Student',
+              sender_avatar: userProfile.photoURL || '',
+              sender_branch: userProfile.branch || 'computers',
+              content: msgPayload.content,
+              image_url: msgPayload.image_url || undefined,
+              created_at: msgPayload.created_at,
+            };
+            await supabase.from('chats').insert([newMessageMock]);
+          } else {
+            // New schema format — no custom id, let the DB assign a real UUID
+            const newMessageNew = {
+              sender_id: user.uid,
+              sender_name: userProfile.displayName || 'Student',
+              sender_avatar: userProfile.photoURL || '',
+              sender_branch: userProfile.branch || 'computers',
+              message: msgPayload.content,
+              photo_url: msgPayload.image_url || null,
+              created_at: msgPayload.created_at,
+            };
+            const { data: insertedRows, error: newErr } = await supabase.from('chats').insert([newMessageNew]).select();
+            
+            if (newErr && (
+              newErr.message?.toLowerCase().includes('column') || 
+              newErr.message?.toLowerCase().includes('schema cache') || 
+              newErr.code === '42703'
+            )) {
+              console.warn("New chat schema background insert failed. Trying old schema...");
+              const newMessageOld = {
+                sender_uid: user.uid,
+                sender_name: userProfile.displayName || 'Student',
+                sender_avatar: userProfile.photoURL || '',
+                sender_branch: userProfile.branch || 'computers',
+                content: msgPayload.content,
+                image_url: msgPayload.image_url || undefined,
+                created_at: msgPayload.created_at,
+              };
+              const { data: oldRows } = await supabase.from('chats').insert([newMessageOld]).select();
+              // Replace temp broadcast message with the real DB row ID to prevent duplicates
+              if (oldRows && oldRows[0]) {
+                const realId = oldRows[0].id;
+                setMessages((prev) => prev.map((m) =>
+                  m.id === tempMsgId ? { ...m, id: realId } : m
+                ));
+              }
+            } else if (insertedRows && insertedRows[0]) {
+              // Replace temp broadcast message with the real DB-assigned ID
+              const realId = insertedRows[0].id;
+              setMessages((prev) => prev.map((m) =>
+                m.id === tempMsgId ? { ...m, id: realId } : m
+              ));
+            }
+          }
+        } catch (dbErr: any) {
+          console.warn("Background chat save failed (non-blocking):", dbErr);
+        }
+      };
+
+      saveToDatabase();
     } catch (e: any) {
       console.error(e);
       toastError('Failed to send message: ' + e.message);
@@ -363,11 +408,19 @@ export const Chat: React.FC = () => {
       return;
     }
 
-    // Convert image to base64 for mockup in-memory display
+    // Convert image to base64 and compress for mockup in-memory display
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setSelectedImage(reader.result as string);
-      info('Image attachment loaded.');
+    reader.onloadend = async () => {
+      const base64Str = reader.result as string;
+      try {
+        info('Compressing image for instant real-time delivery...');
+        const compressed = await compressImage(base64Str);
+        setSelectedImage(compressed);
+        info('Image compressed successfully.');
+      } catch (err) {
+        setSelectedImage(base64Str);
+        console.error("Compression failed, using raw image:", err);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -398,7 +451,7 @@ export const Chat: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full py-8 px-4 md:px-8 relative overflow-hidden flex flex-col items-center bg-[#0A0A0C]">
+    <div className="min-h-[calc(100dvh-4rem)] w-full py-8 px-4 md:px-8 relative overflow-hidden flex flex-col items-center bg-[#0A0A0C]">
       {/* Visual background accents */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" />
