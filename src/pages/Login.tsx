@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { motion, AnimatePresence } from 'framer-motion';
+import { renderAvatar } from '../utils/avatar';
 
 // Pre-defined Cartoon/Anime Avatars
 const EMOJIS = ['🦊', '🤖', '🥷', '🧑‍💻', '🧙‍♂️', '🦄', '🐱', '🐼', '🦁', '🐯', '🐸', '🐙', '🦖', '🦕', '🐝', '🍕'];
@@ -18,19 +19,6 @@ const GRADIENTS = [
   { name: 'Rose Quartz', class: 'from-rose-400 via-fuchsia-500 to-pink-600' },
   { name: 'Cyber Abyss', class: 'from-gray-800 via-slate-900 to-zinc-950' }
 ];
-
-export const renderAvatar = (photoURL: string, className = "w-12 h-12 text-2xl") => {
-  if (!photoURL) return <div className={`${className} bg-slate-700 flex items-center justify-center rounded-full text-white font-bold select-none`}>👤</div>;
-  if (photoURL.includes('|')) {
-    const [emoji, gradient] = photoURL.split('|');
-    return (
-      <div className={`${className} bg-gradient-to-tr ${gradient} flex items-center justify-center rounded-full shadow-lg border border-white/20 select-none animate-pulse-slow`}>
-        {emoji}
-      </div>
-    );
-  }
-  return <img src={photoURL} alt="Avatar" className={`${className} rounded-full object-cover shadow-lg border border-white/20`} />;
-};
 
 export const Login: React.FC = () => {
   const { loginWithUsername, registerUser, loginAsGuest } = useAuth();

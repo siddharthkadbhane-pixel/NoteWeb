@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
-import { renderAvatar } from './Login';
+import { renderAvatar } from '../utils/avatar';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { Skeleton } from '../components/ui/Skeleton';
 import { motion } from 'framer-motion';

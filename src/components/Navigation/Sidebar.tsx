@@ -21,7 +21,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
-import { renderAvatar } from '../../pages/Login';
+import { renderAvatar } from '../../utils/avatar';
 
 export const Sidebar: React.FC = () => {
   const { user, userProfile, isAdmin, isGuest, logout } = useAuth();

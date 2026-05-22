@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { renderAvatar } from './Login';
+import { renderAvatar } from '../utils/avatar';
 import { GlassPanel } from '../components/ui/GlassPanel';
 
 import { 
