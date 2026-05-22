@@ -562,17 +562,22 @@ class SafePostgrestBuilder {
         if (response && response.error) {
           const errMsg = response.error.message || '';
           const errCode = response.error.code || '';
-          
+          const isColumnMismatch = errCode === '42703' || 
+                                   errMsg.toLowerCase().includes('column') || 
+                                   errMsg.toLowerCase().includes('schema cache');
+
           // Detect database schema violations, unmigrated tables, network issues, or security issues
           if (
-            errMsg.includes('relation') ||
-            errMsg.includes('does not exist') ||
-            errMsg.includes('violates row-level security') ||
-            errCode === 'P0001' ||
-            errCode.startsWith('42') ||
-            errMsg.includes('API key') ||
-            errMsg.includes('invalid') ||
-            errMsg.includes('JWT')
+            !isColumnMismatch && (
+              errMsg.includes('relation') ||
+              errMsg.includes('does not exist') ||
+              errMsg.includes('violates row-level security') ||
+              errCode === 'P0001' ||
+              errCode.startsWith('42') ||
+              errMsg.includes('API key') ||
+              errMsg.includes('invalid') ||
+              errMsg.includes('JWT')
+            )
           ) {
             console.warn(`Supabase DB query on table "${this.table}" failed. Falling back to MockPostgres. Error:`, response.error);
             let mockBuilder = mockSupabase.from(this.table);

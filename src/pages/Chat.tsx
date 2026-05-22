@@ -169,7 +169,11 @@ export const Chat: React.FC = () => {
 
         // If the new schema insert fails (likely because 'message' or 'photo_url' column doesn't exist),
         // self-heal by trying the old schema format (sender_uid, content, image_url)
-        if (insertErr && (insertErr.message?.includes('column') || insertErr.code === '42703')) {
+        if (insertErr && (
+          insertErr.message?.toLowerCase().includes('column') || 
+          insertErr.message?.toLowerCase().includes('schema cache') || 
+          insertErr.code === '42703'
+        )) {
           console.warn("New chat schema insert failed. Self-healing by trying old schema...");
           const newMessageOld = {
             sender_uid: user.uid,
