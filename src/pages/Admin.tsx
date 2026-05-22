@@ -214,6 +214,59 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const handleRemoveUser = async (targetUid: string, displayName: string) => {
+    if (targetUid === currentAuthUser?.uid) {
+      info("Self-removal safeguard: You cannot remove your own administrative account!");
+      return;
+    }
+
+    const isConfirmed = window.confirm(`Are you absolutely sure you want to permanently remove user "${displayName}"? This will also cascade delete all notes uploaded by this user!`);
+    if (!isConfirmed) return;
+
+    try {
+      // 1. Fetch notes uploaded by the user to optionally purge from storage if they have pdfPath
+      const { data: userNotes, error: fetchNotesErr } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('uploaded_by', targetUid);
+
+      if (!fetchNotesErr && userNotes && userNotes.length > 0) {
+        const pathsToPurge = userNotes
+          .map((n: any) => n.pdf_path || n.pdfPath)
+          .filter((p: string) => !!p);
+        if (pathsToPurge.length > 0) {
+          await supabase.storage.from('notes').remove(pathsToPurge);
+        }
+      }
+
+      // 2. Delete notes uploaded by user
+      const { error: deleteNotesErr } = await supabase
+        .from('notes')
+        .delete()
+        .eq('uploaded_by', targetUid);
+
+      if (deleteNotesErr) throw deleteNotesErr;
+
+      // 3. Delete user profile
+      const { error: deleteProfileErr } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', targetUid);
+
+      if (deleteProfileErr) throw deleteProfileErr;
+
+      success(`User "${displayName}" and their uploads have been permanently removed!`);
+
+      // Update local states
+      setUsersList((prev) => prev.filter((u) => u.uid !== targetUid));
+      setAllNotes((prev) => prev.filter((n) => n.uploadedBy !== targetUid));
+      setPendingNotes((prev) => prev.filter((n) => n.uploadedBy !== targetUid));
+    } catch (e: any) {
+      console.error(e);
+      error("Failed to remove user: " + e.message);
+    }
+  };
+
   const getFormatDate = (timestamp: any) => {
     if (!timestamp) return 'Recent';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -469,6 +522,16 @@ export const Admin: React.FC = () => {
                       >
                         {usr.role === 'admin' ? 'Demote to Student' : 'Elevate to Admin'}
                       </button>
+
+                      {usr.uid !== currentAuthUser?.uid && (
+                        <button
+                          onClick={() => handleRemoveUser(usr.uid, usr.displayName)}
+                          className="p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center"
+                          title="Remove Student Profile"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </GlassPanel>
                 ))}

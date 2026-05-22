@@ -24,6 +24,9 @@ class MockPostgrestBuilder {
   private isUpdate = false;
   private isDelete = false;
   private payload: any = null;
+  private orderByColumn: string | null = null;
+  private orderAscending = true;
+  private limitCount: number | null = null;
 
   constructor(table: string) {
     this.table = table;
@@ -73,6 +76,17 @@ class MockPostgrestBuilder {
       const rowVal = row[column] !== undefined ? row[column] : row[camelize(column)];
       return values.map(String).includes(String(rowVal));
     });
+    return this;
+  }
+
+  order(column: string, options?: { ascending?: boolean }) {
+    this.orderByColumn = column;
+    this.orderAscending = options?.ascending !== false;
+    return this;
+  }
+
+  limit(count: number) {
+    this.limitCount = count;
     return this;
   }
 
@@ -140,6 +154,36 @@ class MockPostgrestBuilder {
       this.dataRows = remaining;
       localStorage.setItem(`noteweb-db-${this.table}`, JSON.stringify(remaining));
       resultData = [];
+    }
+
+    // Apply sorting in memory
+    if (this.orderByColumn) {
+      const col = this.orderByColumn;
+      const asc = this.orderAscending;
+      resultData.sort((a, b) => {
+        const valA = a[col] !== undefined ? a[col] : a[camelize(col)];
+        const valB = b[col] !== undefined ? b[col] : b[camelize(col)];
+        
+        if (valA === undefined || valA === null) return 1;
+        if (valB === undefined || valB === null) return -1;
+        
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return asc ? valA - valB : valB - valA;
+        }
+        const timeA = Date.parse(String(valA));
+        const timeB = Date.parse(String(valB));
+        if (!isNaN(timeA) && !isNaN(timeB)) {
+          return asc ? timeA - timeB : timeB - timeA;
+        }
+        return asc
+          ? String(valA).localeCompare(String(valB))
+          : String(valB).localeCompare(String(valA));
+      });
+    }
+
+    // Apply limit
+    if (this.limitCount !== null) {
+      resultData = resultData.slice(0, this.limitCount);
     }
 
     const response = { data: resultData, error: null };

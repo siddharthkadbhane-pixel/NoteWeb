@@ -14,7 +14,8 @@ import {
   Calendar,
   User,
   GraduationCap,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react';
 import { AISummary } from '../components/Notes/AISummary';
 import { Button } from '../components/ui/Button';
@@ -337,6 +338,24 @@ export const Feed: React.FC = () => {
     }
   };
 
+  const handleDeleteNote = async (noteId: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this note?")) return;
+    try {
+      const { error: err } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (err) throw err;
+
+      setNotes((prev) => prev.filter((n) => n.id !== noteId));
+      success("Note deleted successfully!");
+    } catch (e: any) {
+      console.error(e);
+      error("Failed to delete note: " + e.message);
+    }
+  };
+
   const getFormatDate = (timestamp: any) => {
     if (!timestamp) return 'Recent';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -632,6 +651,17 @@ export const Feed: React.FC = () => {
                               >
                                 <Download className="w-3.5 h-3.5" />
                               </a>
+
+                              {/* Delete note button */}
+                              {user && userProfile && (note.uploadedBy === user.uid || userProfile.role === 'admin') && (
+                                <button
+                                  onClick={() => handleDeleteNote(note.id)}
+                                  className="inline-flex items-center justify-center p-2 rounded-lg border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-all duration-200 cursor-pointer active:scale-95"
+                                  title="Delete Note"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         </motion.div>

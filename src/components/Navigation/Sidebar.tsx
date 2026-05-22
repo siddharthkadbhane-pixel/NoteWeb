@@ -14,11 +14,14 @@ import {
   Menu, 
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  Trophy
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { renderAvatar } from '../../pages/Login';
 
 export const Sidebar: React.FC = () => {
   const { user, userProfile, isAdmin, isGuest, logout } = useAuth();
@@ -44,8 +47,10 @@ export const Sidebar: React.FC = () => {
     { to: '/feed', label: 'Browse Notes', icon: <BookOpen className="w-5 h-5" /> },
     { to: '/categories', label: 'Branches', icon: <Grid className="w-5 h-5" /> },
     { to: '/upload', label: 'Upload Notes', icon: <UploadCloud className="w-5 h-5" /> },
+    { to: '/chat', label: 'Campus Chat', icon: <MessageSquare className="w-5 h-5 text-indigo-400" />, protected: true },
+    { to: '/leaderboard', label: 'Rankings', icon: <Trophy className="w-5 h-5 text-amber-400" />, protected: true },
     { to: '/profile', label: 'My Dashboard', icon: <User className="w-5 h-5" />, protected: true },
-    { to: '/admin', label: 'Admin Panel', icon: <ShieldAlert className="w-5 h-5 animate-pulse text-amber-400" />, protected: true, adminOnly: true },
+    { to: '/admin', label: 'Admin Panel', icon: <ShieldAlert className="w-5 h-5 animate-pulse text-rose-400" />, protected: true, adminOnly: true },
     { to: '/about', label: 'About', icon: <Info className="w-5 h-5" /> },
   ];
 
@@ -54,10 +59,6 @@ export const Sidebar: React.FC = () => {
     if (item.protected) return !!user && !isGuest;
     return true;
   });
-
-  const getInitials = (name: string) => {
-    return name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'NH';
-  };
 
   return (
     <>
@@ -187,17 +188,11 @@ export const Sidebar: React.FC = () => {
               ${isCollapsed ? 'justify-center' : 'justify-between'}
             `}>
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm shadow-md flex-shrink-0">
+                <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
                   {isGuest ? (
-                    <span className="font-extrabold text-white text-xs">GS</span>
-                  ) : userProfile?.photoURL ? (
-                    <img 
-                      src={userProfile.photoURL} 
-                      alt="Avatar" 
-                      className="w-full h-full object-cover rounded-xl"
-                    />
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-extrabold text-xs shadow-md">GS</div>
                   ) : (
-                    getInitials(userProfile?.displayName || user?.displayName || '')
+                    renderAvatar(userProfile?.photoURL || '', "w-10 h-10 text-xl")
                   )}
                 </div>
                 {!isCollapsed && (

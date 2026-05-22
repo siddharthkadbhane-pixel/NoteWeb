@@ -3,13 +3,19 @@ import { supabase } from '../supabase/config';
 
 export interface UserProfile {
   uid: string;
+  username: string;
   email: string;
   displayName: string;
+  mobileNo: string;
+  year: string;
+  branch: string;
+  cgpa?: string;
   photoURL: string;
   role: 'student' | 'admin';
   createdAt: any;
   bookmarks: string[];
   setupComplete?: boolean;
+  points: number;
 }
 
 export interface CustomUser {
@@ -34,6 +40,10 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateProfileDetails: (displayName: string, photoURL?: string) => Promise<void>;
   toggleBookmark: (noteId: string) => Promise<void>;
+  loginWithUsername: (username: string) => Promise<UserProfile>;
+  registerUser: (profileData: Omit<UserProfile, 'uid' | 'createdAt' | 'bookmarks' | 'points'>) => Promise<UserProfile>;
+  updatePoints: (additionalPoints: number) => Promise<void>;
+  updateFullProfile: (profile: Partial<UserProfile>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,26 +52,38 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const dbToProfile = (dbRow: any): UserProfile => {
   return {
     uid: dbRow.id || dbRow.uid,
+    username: dbRow.username || '',
     email: dbRow.email || '',
     displayName: dbRow.display_name || dbRow.displayName || '',
+    mobileNo: dbRow.mobile_no || dbRow.mobileNo || '',
+    year: dbRow.year || '',
+    branch: dbRow.branch || '',
+    cgpa: dbRow.cgpa || '',
     photoURL: dbRow.photo_url || dbRow.photoURL || '',
     role: dbRow.role || 'student',
     createdAt: dbRow.created_at || dbRow.createdAt || new Date(),
     bookmarks: dbRow.bookmarks || [],
-    setupComplete: dbRow.setup_complete !== undefined ? dbRow.setup_complete : dbRow.setupComplete
+    setupComplete: dbRow.setup_complete !== undefined ? dbRow.setup_complete : dbRow.setupComplete,
+    points: dbRow.points !== undefined ? Number(dbRow.points) : 0
   };
 };
 
 const profileToDb = (profile: UserProfile): any => {
   return {
     id: profile.uid,
+    username: profile.username,
     email: profile.email,
     display_name: profile.displayName,
+    mobile_no: profile.mobileNo,
+    year: profile.year,
+    branch: profile.branch,
+    cgpa: profile.cgpa,
     photo_url: profile.photoURL,
     role: profile.role,
     created_at: profile.createdAt instanceof Date ? profile.createdAt.toISOString() : profile.createdAt,
     bookmarks: profile.bookmarks,
-    setup_complete: profile.setupComplete
+    setup_complete: profile.setupComplete,
+    points: profile.points
   };
 };
 
@@ -144,12 +166,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isGuest) {
       const guestProfile: UserProfile = {
         uid: 'guest-user-noteweb',
+        username: 'guest',
         email: 'guest@noteweb.local',
         displayName: 'Guest Student',
+        mobileNo: '',
+        year: '1',
+        branch: 'computers',
         photoURL: '',
         role: 'student',
         createdAt: new Date(),
-        bookmarks: []
+        bookmarks: [],
+        points: 0
       };
       setUser(null);
       setUserProfile(guestProfile);
@@ -167,13 +194,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const isFirstUser = await checkIsFirstUser();
           const initialProfile: UserProfile = {
             uid: sessionUser.id,
+            username: sessionUser.email ? sessionUser.email.split('@')[0] : `user_${sessionUser.id.slice(0, 5)}`,
             email: sessionUser.email || '',
             displayName: sessionUser.user_metadata?.display_name || 'Student',
+            mobileNo: '',
+            year: '1',
+            branch: 'computers',
             photoURL: sessionUser.user_metadata?.photo_url || '',
             role: isFirstUser ? 'admin' : 'student',
             createdAt: new Date(),
             bookmarks: [],
-            setupComplete: false
+            setupComplete: false,
+            points: 0
           };
           await saveUserProfile(initialProfile);
           profile = initialProfile;
@@ -249,13 +281,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const userProfileData: UserProfile = {
         uid: sessionUser.id,
+        username: email.split('@')[0],
         email: email,
         displayName: displayName,
+        mobileNo: '',
+        year: '1',
+        branch: 'computers',
         photoURL: '',
         role: role,
         createdAt: new Date(),
         bookmarks: [],
-        setupComplete: false
+        setupComplete: false,
+        points: 0
       };
 
       await saveUserProfile(userProfileData);
@@ -305,13 +342,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const isFirst = await checkIsFirstUser();
         const fallbackProfile: UserProfile = {
           uid: sessionUser.id,
+          username: email.split('@')[0],
           email: sessionUser.email || email,
           displayName: sessionUser.user_metadata?.display_name || email.split('@')[0],
+          mobileNo: '',
+          year: '1',
+          branch: 'computers',
           photoURL: sessionUser.user_metadata?.photo_url || '',
           role: isFirst ? 'admin' : 'student',
           createdAt: new Date(),
           bookmarks: [],
-          setupComplete: false
+          setupComplete: false,
+          points: 0
         };
         await saveUserProfile(fallbackProfile);
         setUser({
@@ -369,30 +411,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!sessionUser) throw new Error('SMS Verification succeeded but no user was returned');
 
           let profile = await fetchUserProfile(sessionUser.id);
+          let activeProfile: UserProfile;
           if (!profile) {
             const isFirst = await checkIsFirstUser();
             const role = isFirst ? 'admin' : 'student';
-            profile = {
+            const newProfile: UserProfile = {
               uid: sessionUser.id,
+              username: `user_${sessionUser.id.slice(0, 5)}`,
               email: sessionUser.email || `${phoneNumber.replace(/\D/g, '')}@noteweb.local`,
               displayName: sessionUser.user_metadata?.display_name || `Student ${phoneNumber}`,
+              mobileNo: phoneNumber,
+              year: '1',
+              branch: 'computers',
               photoURL: sessionUser.user_metadata?.photo_url || '',
               role: role,
               createdAt: new Date(),
               bookmarks: [],
-              setupComplete: false
+              setupComplete: false,
+              points: 0
             };
-            await saveUserProfile(profile);
+            await saveUserProfile(newProfile);
+            activeProfile = newProfile;
+          } else {
+            activeProfile = profile;
           }
 
           setUser({
             uid: sessionUser.id,
-            email: profile.email,
-            displayName: profile.displayName,
-            photoURL: profile.photoURL,
+            email: activeProfile.email,
+            displayName: activeProfile.displayName,
+            photoURL: activeProfile.photoURL,
             phoneNumber: phoneNumber
           });
-          setUserProfile(profile);
+          setUserProfile(activeProfile);
           setLoading(false);
           return { user: sessionUser };
         }
@@ -425,12 +476,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const guestProfile: UserProfile = {
       uid: 'guest-user-noteweb',
+      username: 'guest',
       email: 'guest@noteweb.local',
       displayName: 'Guest Student',
+      mobileNo: '',
+      year: '1',
+      branch: 'computers',
       photoURL: '',
       role: 'student',
       createdAt: new Date(),
-      bookmarks: []
+      bookmarks: [],
+      points: 0
     };
     setUser(null);
     setUserProfile(guestProfile);
@@ -514,6 +570,164 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithUsername = async (username: string): Promise<UserProfile> => {
+    setLoading(true);
+    setIsGuest(false);
+    localStorage.removeItem('noteweb-is-guest');
+
+    try {
+      const sanitizedUsername = username.trim().toLowerCase();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', sanitizedUsername);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        throw new Error('Username not found. Please register first.');
+      }
+
+      const profile = dbToProfile(data[0]);
+      localStorage.setItem('noteweb-mock-uid', profile.uid);
+      localStorage.setItem(`noteweb-profile-${profile.uid}`, JSON.stringify(profile));
+      
+      setUser({
+        uid: profile.uid,
+        email: profile.email,
+        displayName: profile.displayName,
+        photoURL: profile.photoURL,
+      });
+      setUserProfile(profile);
+      setLoading(false);
+      return profile;
+    } catch (error) {
+      setLoading(false);
+      throw error;
+    }
+  };
+
+  const registerUser = async (
+    profileData: Omit<UserProfile, 'uid' | 'createdAt' | 'bookmarks' | 'points'>
+  ): Promise<UserProfile> => {
+    setLoading(true);
+    setIsGuest(false);
+    localStorage.removeItem('noteweb-is-guest');
+
+    try {
+      const sanitizedUsername = profileData.username.trim().toLowerCase();
+      
+      // Check if username exists
+      const { data: existing, error: checkError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', sanitizedUsername);
+
+      if (checkError) throw checkError;
+
+      if (existing && existing.length > 0) {
+        throw new Error('Username is already taken.');
+      }
+
+      const uid = `mock-user-${Math.random().toString(36).substr(2, 9)}`;
+      const isFirst = await checkIsFirstUser();
+      const role = isFirst ? 'admin' : profileData.role || 'student';
+
+      const newProfile: UserProfile = {
+        uid,
+        username: sanitizedUsername,
+        email: profileData.email || `${sanitizedUsername}@noteweb.local`,
+        displayName: profileData.displayName,
+        mobileNo: profileData.mobileNo,
+        year: profileData.year,
+        branch: profileData.branch,
+        cgpa: profileData.cgpa || '',
+        photoURL: profileData.photoURL,
+        role: role,
+        createdAt: new Date(),
+        bookmarks: [],
+        setupComplete: true,
+        points: profileData.role === 'admin' ? 0 : 50, // 50 XP startup bonus!
+      };
+
+      await saveUserProfile(newProfile);
+      localStorage.setItem('noteweb-mock-uid', uid);
+
+      setUser({
+        uid,
+        email: newProfile.email,
+        displayName: newProfile.displayName,
+        photoURL: newProfile.photoURL,
+      });
+      setUserProfile(newProfile);
+      setLoading(false);
+      return newProfile;
+    } catch (error) {
+      setLoading(false);
+      throw error;
+    }
+  };
+
+  const updatePoints = async (additionalPoints: number) => {
+    if (isGuest) return;
+    if (!user || !userProfile) throw new Error('User not logged in');
+
+    const nextPoints = Math.max(0, (userProfile.points || 0) + additionalPoints);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          points: nextPoints
+        })
+        .eq('id', user.uid);
+
+      if (error) throw error;
+
+      const updatedProfile = {
+        ...userProfile,
+        points: nextPoints
+      };
+      localStorage.setItem(`noteweb-profile-${user.uid}`, JSON.stringify(updatedProfile));
+      setUserProfile(updatedProfile);
+    } catch (error) {
+      console.error('Error updating points:', error);
+      throw error;
+    }
+  };
+
+  const updateFullProfile = async (profileUpdates: Partial<UserProfile>) => {
+    if (isGuest) throw new Error('Guests cannot edit profiles');
+    if (!user || !userProfile) throw new Error('User not logged in');
+
+    try {
+      const updatedProfile = {
+        ...userProfile,
+        ...profileUpdates
+      };
+      const dbProfile = profileToDb(updatedProfile);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update(dbProfile)
+        .eq('id', user.uid);
+
+      if (error) throw error;
+
+      localStorage.setItem(`noteweb-profile-${user.uid}`, JSON.stringify(updatedProfile));
+      setUserProfile(updatedProfile);
+      
+      setUser((prev) => prev ? {
+        ...prev,
+        displayName: updatedProfile.displayName,
+        photoURL: updatedProfile.photoURL,
+        email: updatedProfile.email
+      } : null);
+    } catch (error) {
+      console.error('Error updating full profile:', error);
+      throw error;
+    }
+  };
+
   const isAdmin = userProfile?.role === 'admin';
 
   return (
@@ -530,7 +744,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loginAsGuest,
       logout,
       updateProfileDetails,
-      toggleBookmark
+      toggleBookmark,
+      loginWithUsername,
+      registerUser,
+      updatePoints,
+      updateFullProfile
     }}>
       {children}
     </AuthContext.Provider>
