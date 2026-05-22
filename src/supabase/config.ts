@@ -91,7 +91,7 @@ class MockPostgrestBuilder {
   }
 
   // Support direct Promise-like syntax (await supabase.from()...)
-  async then(onfulfilled?: (value: any) => any) {
+  then(onfulfilled?: (value: any) => any, onrejected?: (reason: any) => any) {
     let resultData = [...this.dataRows];
 
     // Apply filters
@@ -187,7 +187,7 @@ class MockPostgrestBuilder {
     }
 
     const response = { data: resultData, error: null };
-    return onfulfilled ? onfulfilled(response) : response;
+    return Promise.resolve(response).then(onfulfilled, onrejected);
   }
 }
 
@@ -460,6 +460,14 @@ if (enableMockFallbacks) {
 // ----------------------------------------------------
 const realSupabase = createClient(supabaseUrl, supabaseKey);
 
+// Promise timeout race helper
+const withTimeout = async (promise: Promise<any>, ms = 2500) => {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('TIMEOUT')), ms)
+  );
+  return Promise.race([promise, timeout]);
+};
+
 class SafePostgrestBuilder {
   private table: string;
   private realBuilder: any;
@@ -507,43 +515,46 @@ class SafePostgrestBuilder {
   }
 
   // Promise-like execution matching real PostgrestBuilder
-  async then(onfulfilled?: (value: any) => any) {
-    try {
-      const response = await this.realBuilder;
-      if (response && response.error) {
-        const errMsg = response.error.message || '';
-        const errCode = response.error.code || '';
-        
-        // Detect database schema violations, unmigrated tables, network issues, or security issues
-        if (
-          errMsg.includes('relation') ||
-          errMsg.includes('does not exist') ||
-          errMsg.includes('violates row-level security') ||
-          errCode === 'P0001' ||
-          errCode.startsWith('42') ||
-          errMsg.includes('API key') ||
-          errMsg.includes('invalid') ||
-          errMsg.includes('JWT')
-        ) {
-          console.warn(`Supabase DB query on table "${this.table}" failed. Falling back to MockPostgres. Error:`, response.error);
-          let mockBuilder = mockSupabase.from(this.table);
-          for (const call of this.calls) {
-            mockBuilder = (mockBuilder as any)[call.method](...call.args);
+  then(onfulfilled?: (value: any) => any, onrejected?: (reason: any) => any) {
+    const promise = (async () => {
+      try {
+        const response = await withTimeout(this.realBuilder, 2500);
+        if (response && response.error) {
+          const errMsg = response.error.message || '';
+          const errCode = response.error.code || '';
+          
+          // Detect database schema violations, unmigrated tables, network issues, or security issues
+          if (
+            errMsg.includes('relation') ||
+            errMsg.includes('does not exist') ||
+            errMsg.includes('violates row-level security') ||
+            errCode === 'P0001' ||
+            errCode.startsWith('42') ||
+            errMsg.includes('API key') ||
+            errMsg.includes('invalid') ||
+            errMsg.includes('JWT')
+          ) {
+            console.warn(`Supabase DB query on table "${this.table}" failed. Falling back to MockPostgres. Error:`, response.error);
+            let mockBuilder = mockSupabase.from(this.table);
+            for (const call of this.calls) {
+              mockBuilder = (mockBuilder as any)[call.method](...call.args);
+            }
+            const mockResponse = await mockBuilder;
+            return mockResponse;
           }
-          const mockResponse = await mockBuilder;
-          return onfulfilled ? onfulfilled(mockResponse) : mockResponse;
         }
+        return response;
+      } catch (e: any) {
+        console.warn(`Supabase DB query on table "${this.table}" threw/timed out. Falling back to MockPostgres. Error:`, e);
+        let mockBuilder = mockSupabase.from(this.table);
+        for (const call of this.calls) {
+          mockBuilder = (mockBuilder as any)[call.method](...call.args);
+        }
+        const mockResponse = await mockBuilder;
+        return mockResponse;
       }
-      return onfulfilled ? onfulfilled(response) : response;
-    } catch (e: any) {
-      console.warn(`Supabase DB query on table "${this.table}" threw an error. Falling back to MockPostgres. Error:`, e);
-      let mockBuilder = mockSupabase.from(this.table);
-      for (const call of this.calls) {
-        mockBuilder = (mockBuilder as any)[call.method](...call.args);
-      }
-      const mockResponse = await mockBuilder;
-      return onfulfilled ? onfulfilled(mockResponse) : mockResponse;
-    }
+    })();
+    return promise.then(onfulfilled, onrejected);
   }
 }
 
@@ -600,14 +611,14 @@ const safeAuth = {
   async signUp(credentials: any) {
     if (isMockMode) return mockSupabase.auth.signUp(credentials);
     try {
-      const response = await realSupabase.auth.signUp(credentials);
+      const response = await withTimeout(realSupabase.auth.signUp(credentials), 2500);
       if (response && response.error) {
         console.warn("Real Supabase signUp failed. Falling back to Mock.", response.error);
         return mockSupabase.auth.signUp(credentials);
       }
       return response;
     } catch (e) {
-      console.warn("Real Supabase signUp threw an error. Falling back to Mock.", e);
+      console.warn("Real Supabase signUp threw/timed out. Falling back to Mock.", e);
       return mockSupabase.auth.signUp(credentials);
     }
   },
@@ -615,14 +626,14 @@ const safeAuth = {
   async signInWithPassword(credentials: any) {
     if (isMockMode) return mockSupabase.auth.signInWithPassword(credentials);
     try {
-      const response = await realSupabase.auth.signInWithPassword(credentials);
+      const response = await withTimeout(realSupabase.auth.signInWithPassword(credentials), 2500);
       if (response && response.error) {
         console.warn("Real Supabase signInWithPassword failed. Falling back to Mock.", response.error);
         return mockSupabase.auth.signInWithPassword(credentials);
       }
       return response;
     } catch (e) {
-      console.warn("Real Supabase signInWithPassword threw an error. Falling back to Mock.", e);
+      console.warn("Real Supabase signInWithPassword threw/timed out. Falling back to Mock.", e);
       return mockSupabase.auth.signInWithPassword(credentials);
     }
   },
@@ -630,14 +641,14 @@ const safeAuth = {
   async signInWithOtp(credentials: any) {
     if (isMockMode) return mockSupabase.auth.signInWithOtp(credentials);
     try {
-      const response = await realSupabase.auth.signInWithOtp(credentials);
+      const response = await withTimeout(realSupabase.auth.signInWithOtp(credentials), 2500);
       if (response && response.error) {
         console.warn("Real Supabase signInWithOtp failed. Falling back to Mock.", response.error);
         return mockSupabase.auth.signInWithOtp(credentials);
       }
       return response;
     } catch (e) {
-      console.warn("Real Supabase signInWithOtp threw an error. Falling back to Mock.", e);
+      console.warn("Real Supabase signInWithOtp threw/timed out. Falling back to Mock.", e);
       return mockSupabase.auth.signInWithOtp(credentials);
     }
   },
@@ -645,14 +656,14 @@ const safeAuth = {
   async verifyOtp(credentials: any) {
     if (isMockMode) return mockSupabase.auth.verifyOtp(credentials);
     try {
-      const response = await realSupabase.auth.verifyOtp(credentials);
+      const response = await withTimeout(realSupabase.auth.verifyOtp(credentials), 2500);
       if (response && response.error) {
         console.warn("Real Supabase verifyOtp failed. Falling back to Mock.", response.error);
         return mockSupabase.auth.verifyOtp(credentials);
       }
       return response;
     } catch (e) {
-      console.warn("Real Supabase verifyOtp threw an error. Falling back to Mock.", e);
+      console.warn("Real Supabase verifyOtp threw/timed out. Falling back to Mock.", e);
       return mockSupabase.auth.verifyOtp(credentials);
     }
   },
@@ -660,14 +671,14 @@ const safeAuth = {
   async signInWithOAuth(credentials: any) {
     if (isMockMode) return mockSupabase.auth.signInWithOAuth(credentials);
     try {
-      const response = await realSupabase.auth.signInWithOAuth(credentials);
+      const response = await withTimeout(realSupabase.auth.signInWithOAuth(credentials), 2500);
       if (response && response.error) {
         console.warn("Real Supabase signInWithOAuth failed. Falling back to Mock.", response.error);
         return mockSupabase.auth.signInWithOAuth(credentials);
       }
       return response;
     } catch (e) {
-      console.warn("Real Supabase signInWithOAuth threw an error. Falling back to Mock.", e);
+      console.warn("Real Supabase signInWithOAuth threw/timed out. Falling back to Mock.", e);
       return mockSupabase.auth.signInWithOAuth(credentials);
     }
   },
@@ -675,7 +686,7 @@ const safeAuth = {
   async signOut() {
     if (isMockMode) return mockSupabase.auth.signOut();
     try {
-      const response = await realSupabase.auth.signOut();
+      const response = await withTimeout(realSupabase.auth.signOut(), 2500);
       if (response && response.error) {
         return mockSupabase.auth.signOut();
       }
@@ -688,7 +699,7 @@ const safeAuth = {
   async updateUser(attributes: any) {
     if (isMockMode) return mockSupabase.auth.updateUser(attributes);
     try {
-      const response = await realSupabase.auth.updateUser(attributes);
+      const response = await withTimeout(realSupabase.auth.updateUser(attributes), 2500);
       if (response && response.error) {
         return mockSupabase.auth.updateUser(attributes);
       }
