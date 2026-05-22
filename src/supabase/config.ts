@@ -1,8 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Environment parameters with mock defaults for sandbox boots (using valid URL placeholders to prevent constructor crashes)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project-to-avoid-constructor-crash.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+// Environment parameters with mock defaults (using actual publishable fallback keys to ensure multi-device cloud builds connect correctly)
+const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const rawSupabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+const supabaseUrl = (rawSupabaseUrl && !rawSupabaseUrl.includes('placeholder') && !rawSupabaseUrl.includes('mock'))
+  ? rawSupabaseUrl
+  : 'https://uyqegcuithhbnvviujbv.supabase.co';
+
+const supabaseKey = (rawSupabaseKey && !rawSupabaseKey.includes('placeholder') && !rawSupabaseKey.includes('mock'))
+  ? rawSupabaseKey
+  : 'sb_publishable_I8b9i3SCxfnLBOMxrfrL6Q_0KV9SFiY';
 
 let realSupabase: any = null;
 try {
@@ -13,8 +21,9 @@ try {
   console.warn("Failed to initialize real Supabase client:", e);
 }
 
-const enableMockFallbacks = import.meta.env.VITE_ENABLE_MOCK_FALLBACKS !== 'false';
-export const isMockMode = (!import.meta.env.VITE_SUPABASE_URL || supabaseUrl.includes('placeholder') || supabaseUrl.includes('mock') || !realSupabase) && enableMockFallbacks;
+const enableMockFallbacks = import.meta.env.VITE_ENABLE_MOCK_FALLBACKS === 'true';
+export const isMockMode = (!supabaseUrl || supabaseUrl.includes('placeholder') || supabaseUrl.includes('mock') || !realSupabase) && enableMockFallbacks;
+
 
 
 // Helper to convert snake_case postgres columns to camelCase for local safety

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../supabase/config';
+import { supabase, isMockMode } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { renderAvatar } from '../utils/avatar';
@@ -53,8 +53,19 @@ export const Chat: React.FC = () => {
       const rawMsgs = data || [];
       const cutoffTime = Date.now() - 24 * 3600 * 1000;
       
-      // Filter out messages older than 24 hours
-      const activeMsgs = rawMsgs.filter((m: any) => new Date(m.created_at).getTime() >= cutoffTime);
+      // Filter out messages older than 24 hours and map schema columns safely
+      const activeMsgs = rawMsgs
+        .filter((m: any) => new Date(m.created_at).getTime() >= cutoffTime)
+        .map((m: any) => ({
+          id: m.id,
+          sender_uid: m.sender_id || m.sender_uid || '',
+          sender_name: m.sender_name || '',
+          sender_avatar: m.sender_avatar || '',
+          sender_branch: m.sender_branch || '',
+          content: m.message || m.content || '',
+          image_url: m.photo_url || m.image_url || undefined,
+          created_at: m.created_at || new Date().toISOString(),
+        }));
       
       // Optionally clean up expired messages in the DB/localstorage to avoid bloat
       const expiredMsgs = rawMsgs.filter((m: any) => new Date(m.created_at).getTime() < cutoffTime);
@@ -97,15 +108,25 @@ export const Chat: React.FC = () => {
 
     setIsSending(true);
     try {
-      const newMessage = {
-        sender_uid: user.uid,
-        sender_name: userProfile.displayName || 'Student',
-        sender_avatar: userProfile.photoURL || '',
-        sender_branch: userProfile.branch || 'computers',
-        content: inputText.trim(),
-        image_url: selectedImage || undefined,
-        created_at: new Date().toISOString(),
-      };
+      const newMessage = isMockMode
+        ? {
+            sender_uid: user.uid,
+            sender_name: userProfile.displayName || 'Student',
+            sender_avatar: userProfile.photoURL || '',
+            sender_branch: userProfile.branch || 'computers',
+            content: inputText.trim(),
+            image_url: selectedImage || undefined,
+            created_at: new Date().toISOString(),
+          }
+        : {
+            sender_id: user.uid,
+            sender_name: userProfile.displayName || 'Student',
+            sender_avatar: userProfile.photoURL || '',
+            sender_branch: userProfile.branch || 'computers',
+            message: inputText.trim(),
+            photo_url: selectedImage || null,
+            created_at: new Date().toISOString(),
+          };
 
       const { error } = await supabase.from('chats').insert([newMessage]);
       if (error) throw error;

@@ -360,7 +360,7 @@ export const Upload: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-6 text-left">
             {/* Drag & Drop PDF */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 pl-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-500 pl-1">
                 Select Notes Document
               </span>
               {!file ? (
@@ -435,16 +435,16 @@ export const Upload: React.FC = () => {
 
               {/* Branch Selector */}
               <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 pl-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-500 pl-1">
                   Curriculum Branch
                 </label>
                 <select
                   value={selectedBranch}
                   onChange={(e) => setSelectedBranch(e.target.value)}
-                  className="w-full py-3 px-4 glass-input text-sm bg-slate-900 text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08]"
+                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
                 >
                   {branches.map((b) => (
-                    <option key={b.id} value={b.id}>
+                    <option key={b.id} value={b.id} className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">
                       {b.name}
                     </option>
                   ))}
@@ -453,44 +453,44 @@ export const Upload: React.FC = () => {
 
               {/* Category Selector */}
               <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 pl-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-500 pl-1">
                   Subject Category
                 </label>
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   disabled={activeBranchCategories.length === 0}
-                  className="w-full py-3 px-4 glass-input text-sm bg-slate-900 text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] disabled:opacity-50"
+                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 disabled:opacity-50 focus:outline-none"
                 >
                   {activeBranchCategories.length > 0 ? (
                     activeBranchCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
+                      <option key={cat.id} value={cat.id} className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">
                         {cat.name}
                       </option>
                     ))
                   ) : (
-                    <option value="">No subjects registered</option>
+                    <option value="" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">No subjects registered</option>
                   )}
                 </select>
               </div>
 
               <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 pl-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-500 pl-1">
                   Semester
                 </label>
                 <select
                   value={semester}
                   onChange={(e) => setSemester(e.target.value)}
-                  className="w-full py-3 px-4 glass-input text-sm bg-slate-900 text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08]"
+                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
                 >
-                  <option value="1">1st Semester</option>
-                  <option value="2">2nd Semester</option>
-                  <option value="3">3rd Semester</option>
-                  <option value="4">4th Semester</option>
-                  <option value="5">5th Semester</option>
-                  <option value="6">6th Semester</option>
-                  <option value="7">7th Semester</option>
-                  <option value="8">8th Semester</option>
+                  <option value="1" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">1st Semester</option>
+                  <option value="2" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">2nd Semester</option>
+                  <option value="3" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">3rd Semester</option>
+                  <option value="4" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">4th Semester</option>
+                  <option value="5" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">5th Semester</option>
+                  <option value="6" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">6th Semester</option>
+                  <option value="7" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">7th Semester</option>
+                  <option value="8" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">8th Semester</option>
                 </select>
               </div>
 
@@ -512,8 +512,8 @@ export const Upload: React.FC = () => {
             </div>
 
             {/* AI Summarizer toggle */}
-            <div className="p-4 rounded-xl border border-white/[0.05] bg-white/[0.01] flex items-center justify-between gap-4">
-              <div className="flex items-start gap-3 text-left text-left">
+            <div className="p-4 rounded-xl border border-white/[0.05] bg-white/[0.01] light-mode:border-slate-900/10 light-mode:bg-slate-900/[0.01] flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3 text-left">
                 <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mt-0.5 flex-shrink-0">
                   <Sparkles className="w-4 h-4" />
                 </div>
@@ -533,19 +533,19 @@ export const Upload: React.FC = () => {
                   onChange={(e) => setGenerateAI(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 peer-checked:after:bg-white"></div>
+                <div className="w-11 h-6 bg-slate-800 light-mode:bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 peer-checked:after:bg-white"></div>
               </label>
             </div>
 
             {/* Upload Progress Indicator */}
             {isUploading && (
-              <div className="space-y-3 p-4 rounded-xl border border-white/[0.05] bg-white/[0.01]">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
+              <div className="space-y-3 p-4 rounded-xl border border-white/[0.05] bg-white/[0.01] light-mode:border-slate-900/10 light-mode:bg-slate-900/[0.01]">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-400 light-mode:text-slate-500">
                   <span>{uploadProgress < 100 ? 'Uploading PDF file...' : 'File Uploaded!'}</span>
                   <span>{uploadProgress}%</span>
                 </div>
                 
-                <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                <div className="w-full bg-slate-800 light-mode:bg-slate-200 rounded-full h-2.5 overflow-hidden">
                   <div 
                     className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}
@@ -565,7 +565,7 @@ export const Upload: React.FC = () => {
 
             {/* Warning alert if not admin */}
             {!isAdmin && (
-              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex gap-3 text-xs">
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 light-mode:bg-amber-500/5 light-mode:border-amber-500/15 light-mode:text-amber-600 flex gap-3 text-xs">
                 <AlertTriangle className="w-5 h-5 flex-shrink-0" />
                 <span className="leading-relaxed">
                   <strong>Moderation Alert:</strong> To keep NoteWeb high-quality and spam-free, your uploaded notes will go through a review process by our Admin moderators before appearing publicly in the feed.
