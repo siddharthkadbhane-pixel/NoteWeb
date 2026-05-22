@@ -79,13 +79,22 @@ export const Chat: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const channelRef = useRef<any>(null);
 
-  const getSafeTime = (dateStr: any) => {
-    if (!dateStr) return Date.now();
+  const getSafeTime = (dateStr: any, id?: string) => {
+    if (id && id.startsWith('broadcast-')) {
+      const parts = id.split('-');
+      if (parts.length >= 2) {
+        const parsedTime = parseInt(parts[1], 10);
+        if (!isNaN(parsedTime) && parsedTime > 0) {
+          return parsedTime;
+        }
+      }
+    }
+    if (!dateStr) return 1716300000000;
     const t = new Date(dateStr).getTime();
-    return isNaN(t) ? Date.now() : t;
+    return isNaN(t) ? 1716300000000 : t;
   };
 
-  // Load and filter messages (keeping only past 24 hours)
+  // Load and filter messages (keeping only past 7 days)
   const fetchMessages = async () => {
     try {
       const { data, error } = await supabase
@@ -96,11 +105,11 @@ export const Chat: React.FC = () => {
       if (error) throw error;
 
       const rawMsgs = data || [];
-      const cutoffTime = Date.now() - 24 * 3600 * 1000;
+      const cutoffTime = Date.now() - 7 * 24 * 3600 * 1000;
       
-      // Filter out messages older than 24 hours and map schema columns safely
+      // Filter out messages older than 7 days and map schema columns safely
       const activeMsgs = rawMsgs
-        .filter((m: any) => getSafeTime(m.created_at) >= cutoffTime)
+        .filter((m: any) => getSafeTime(m.created_at, m.id) >= cutoffTime)
         .map((m: any) => ({
           id: m.id,
           sender_uid: m.sender_id || m.sender_uid || '',
@@ -111,14 +120,6 @@ export const Chat: React.FC = () => {
           image_url: m.photo_url || m.image_url || undefined,
           created_at: m.created_at || new Date().toISOString(),
         }));
-      
-      // Optionally clean up expired messages in the DB/localstorage to avoid bloat
-      const expiredMsgs = rawMsgs.filter((m: any) => getSafeTime(m.created_at) < cutoffTime);
-      if (expiredMsgs.length > 0) {
-        for (const expired of expiredMsgs) {
-          await supabase.from('chats').delete().eq('id', expired.id);
-        }
-      }
 
       // Get broadcasted messages from localStorage
       const storedBroadcastsStr = localStorage.getItem('noteweb-broadcasted-chats');
@@ -129,9 +130,9 @@ export const Chat: React.FC = () => {
         } catch {}
       }
       
-      // Filter out broadcasts older than 24 hours
+      // Filter out broadcasts older than 7 days
       const activeBroadcasts = storedBroadcasts.filter(
-        (m) => getSafeTime(m.created_at) >= cutoffTime
+        (m) => getSafeTime(m.created_at, m.id) >= cutoffTime
       );
       
       // Save active ones back to localStorage
@@ -142,7 +143,7 @@ export const Chat: React.FC = () => {
       setMessages((prev) => {
         // Find all local broadcasted messages currently in state
         const localBroadcasts = prev.filter(
-          (m) => m.id.startsWith('broadcast-') && getSafeTime(m.created_at) >= cutoffTime
+          (m) => m.id.startsWith('broadcast-') && getSafeTime(m.created_at, m.id) >= cutoffTime
         );
         
         // Merge activeBroadcasts and localBroadcasts
@@ -154,14 +155,26 @@ export const Chat: React.FC = () => {
         }
         
         // Merge everything with the newly fetched database messages
-        const merged = [...activeMsgs];
+        const merged = [...activeMsgs] as ChatMessage[];
         for (const b of allBroadcasts) {
-          if (!merged.some((m) => m.id === b.id)) {
+          // Check if this broadcast is already represented in activeMsgs by comparing sender, content and approximate time
+          const isRepresented = activeMsgs.some((m: any) => {
+            if (m.id === b.id) return true;
+            // Match approximate timestamp (+/- 5 minutes) and sender + content
+            const timeDiff = Math.abs(getSafeTime(m.created_at, m.id) - getSafeTime(b.created_at, b.id));
+            return (
+              m.sender_uid === b.sender_uid &&
+              m.content === b.content &&
+              timeDiff < 300000
+            );
+          });
+          
+          if (!isRepresented) {
             merged.push(b);
           }
         }
         
-        return merged.sort((a, b) => getSafeTime(a.created_at) - getSafeTime(b.created_at));
+        return merged.sort((a, b) => getSafeTime(a.created_at, a.id) - getSafeTime(b.created_at, b.id));
       });
     } catch (e) {
       console.error('Error fetching chat messages:', e);
@@ -211,10 +224,10 @@ export const Chat: React.FC = () => {
 
                  setMessages((prev) => {
                   if (prev.some((m) => m.id === msg.id)) return prev;
-                  const cutoffTime = Date.now() - 24 * 3600 * 1000;
-                  if (getSafeTime(msg.created_at) < cutoffTime) return prev;
+                  const cutoffTime = Date.now() - 7 * 24 * 3600 * 1000;
+                  if (getSafeTime(msg.created_at, msg.id) < cutoffTime) return prev;
                   return [...prev, msg].sort(
-                    (a, b) => getSafeTime(a.created_at) - getSafeTime(b.created_at)
+                    (a, b) => getSafeTime(a.created_at, a.id) - getSafeTime(b.created_at, b.id)
                   );
                 });
               }
@@ -265,7 +278,7 @@ export const Chat: React.FC = () => {
 
     setIsSending(true);
     try {
-      const tempMsgId = 'broadcast-' + Math.random().toString(36).substr(2, 9);
+      const tempMsgId = `broadcast-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
       
       const msgPayload: ChatMessage = {
         id: tempMsgId,
@@ -476,7 +489,7 @@ export const Chat: React.FC = () => {
           </div>
           <div className="hidden sm:flex items-center gap-1.5 text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl text-xs font-bold">
             <Clock className="w-3.5 h-3.5" />
-            <span>24h Expiry Shield Active</span>
+            <span>7d Expiry Shield Active</span>
           </div>
         </GlassPanel>
 
@@ -484,7 +497,7 @@ export const Chat: React.FC = () => {
         <div className="flex items-center gap-2 p-3 bg-rose-500/5 border border-rose-500/10 rounded-xl text-xs text-rose-300 text-left">
           <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-400" />
           <p>
-            <strong>Self-Destruct System:</strong> Messages will automatically expire and permanently self-destruct from the database after 24 hours. PDF sharing is strictly prohibited (Photos only).
+            <strong>Self-Destruct System:</strong> Messages will automatically expire and permanently self-destruct from the database after 7 days. PDF sharing is strictly prohibited (Photos only).
           </p>
         </div>
 
@@ -502,7 +515,7 @@ export const Chat: React.FC = () => {
                 <div className="w-12 h-12 rounded-full bg-slate-900 border border-white/5 flex items-center justify-center text-indigo-400 text-xl">💬</div>
                 <div>
                   <h4 className="font-bold text-white text-sm">Quiet Room...</h4>
-                  <p className="text-xs text-slate-500 mt-1 max-w-xs">No active chats in the last 24 hours. Send a message to start the campus vibe!</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-xs">No active chats in the last 7 days. Send a message to start the campus vibe!</p>
                 </div>
               </div>
             ) : (

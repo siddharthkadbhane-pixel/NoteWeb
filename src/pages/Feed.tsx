@@ -180,15 +180,62 @@ export const Feed: React.FC = () => {
   const fetchNotes = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const { data, error: notesErr } = await supabase
+      let fetched: NoteDocument[] = [];
+
+      // Query 1: Fetch approved notes (trying snake_case, then camelCase fallback)
+      const { data: approvedData, error: approvedErr } = await supabase
         .from('notes')
         .select('id, subject, branch, category, semester, teacher, description, pdf_url, pdf_path, file_name, file_size, uploaded_by, uploader_name, uploader_email, created_at, status, likes, likes_count, bookmarks_count, summary')
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
-      
-      if (notesErr) throw notesErr;
-      
-      const fetched: NoteDocument[] = (data || []).map(mapDbNoteToNoteDocument);
+
+      if (approvedErr) {
+        console.warn("Snake_case notes query failed, trying camelCase select...");
+        const { data: camelData, error: camelErr } = await supabase
+          .from('notes')
+          .select('id, subject, branch, category, semester, teacher, description, pdfUrl, pdfPath, fileName, fileSize, uploadedBy, uploaderName, uploaderEmail, createdAt, status, likes, likesCount, bookmarksCount, summary')
+          .eq('status', 'approved')
+          .order('createdAt', { ascending: false });
+        if (camelErr) throw camelErr;
+        fetched = (camelData || []).map(mapDbNoteToNoteDocument);
+      } else {
+        fetched = (approvedData || []).map(mapDbNoteToNoteDocument);
+      }
+
+      // Query 2: If logged in, also fetch own notes so student can see their pending / rejected uploads!
+      if (user && user.uid && user.uid !== 'guest-user-noteweb') {
+        try {
+          const { data: ownData, error: ownErr } = await supabase
+            .from('notes')
+            .select('id, subject, branch, category, semester, teacher, description, pdf_url, pdf_path, file_name, file_size, uploaded_by, uploader_name, uploader_email, created_at, status, likes, likes_count, bookmarks_count, summary')
+            .eq('uploaded_by', user.uid);
+          
+          if (ownErr) {
+            console.warn("Snake_case own notes query failed, trying camelCase...");
+            const { data: ownCamelData } = await supabase
+              .from('notes')
+              .select('id, subject, branch, category, semester, teacher, description, pdfUrl, pdfPath, fileName, fileSize, uploadedBy, uploaderName, uploaderEmail, createdAt, status, likes, likesCount, bookmarksCount, summary')
+              .eq('uploadedBy', user.uid);
+            if (ownCamelData) {
+              const mappedOwn = ownCamelData.map(mapDbNoteToNoteDocument);
+              for (const own of mappedOwn) {
+                if (!fetched.some((n) => n.id === own.id)) {
+                  fetched.push(own);
+                }
+              }
+            }
+          } else if (ownData) {
+            const mappedOwn = ownData.map(mapDbNoteToNoteDocument);
+            for (const own of mappedOwn) {
+              if (!fetched.some((n) => n.id === own.id)) {
+                fetched.push(own);
+              }
+            }
+          }
+        } catch (ownCatchErr) {
+          console.warn("Silent failure fetching own notes:", ownCatchErr);
+        }
+      }
 
       // Get broadcasted notes from localStorage
       const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
@@ -211,11 +258,22 @@ export const Feed: React.FC = () => {
       // Once the DB returns the real row (same real id or matching subject+uploader+time),
       // the optimistic placeholder is replaced cleanly.
       setNotes((prev) => {
-        const prevOptimistic = prev.filter(
-          (n) =>
-            optimisticIdsRef.current.has(n.id) &&
-            !merged.some((m) => m.id === n.id)
-        );
+        const prevOptimistic = prev.filter((n) => {
+          if (!optimisticIdsRef.current.has(n.id)) return false;
+          
+          // Check if this optimistic note matches any DB note by ID or subject + uploader + time
+          const isAlreadyInDb = merged.some((m) => {
+            if (m.id === n.id) return true;
+            const timeDiff = Math.abs(new Date(m.createdAt).getTime() - new Date(n.createdAt).getTime());
+            return (
+              m.subject.toLowerCase() === n.subject.toLowerCase() &&
+              m.uploadedBy === n.uploadedBy &&
+              timeDiff < 120000
+            );
+          });
+          return !isAlreadyInDb;
+        });
+
         const combined = [...prevOptimistic, ...merged];
         // Deduplicate by id
         const seen = new Set<string>();
@@ -693,9 +751,7 @@ export const Feed: React.FC = () => {
                           className="glass-card hover:scale-[1.01] hover:shadow-xl duration-300 flex flex-col justify-between text-left h-[260px] p-5 group relative"
                         >
                           {/* Shimmer hovering glow border effect */}
-                          <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-indigo-500/5 via-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-                          {/* Top row */}
+                          <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-indigo-500/5 via-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />                           {/* Top row */}
                           <div className="space-y-3 z-10 relative">
                             <div className="flex items-start justify-between gap-3">
                               <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/10 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
@@ -705,6 +761,16 @@ export const Feed: React.FC = () => {
                                 <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                                   Sem {note.semester}
                                 </span>
+                                {note.status === 'pending' && (
+                                  <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.2)] animate-pulse">
+                                    Under Review
+                                  </span>
+                                )}
+                                {note.status === 'rejected' && (
+                                  <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-[0_0_8px_rgba(244,63,94,0.2)]">
+                                    Rejected
+                                  </span>
+                                )}
                                 {note.summary && (
                                   <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center gap-1">
                                     <Sparkles className="w-3 h-3 animate-pulse" /> AI Summary

@@ -111,9 +111,18 @@ export const getLocalPdfUrl = async (pdfUrl: string, pdfPath: string): Promise<s
   if (!pdfUrl) return null;
   
   // 1. Handle Base64 directly
+  let isBase64 = false;
+  let base64Data = pdfUrl;
   if (pdfUrl.startsWith('data:application/pdf;base64,')) {
+    isBase64 = true;
+  } else if (/^[a-zA-Z0-9+/=]+$/.test(pdfUrl) && (pdfUrl.startsWith('JVBERi') || pdfUrl.length > 100)) {
+    isBase64 = true;
+    base64Data = 'data:application/pdf;base64,' + pdfUrl;
+  }
+
+  if (isBase64) {
     try {
-      const blob = base64ToBlob(pdfUrl);
+      const blob = base64ToBlob(base64Data);
       return URL.createObjectURL(blob);
     } catch (err) {
       console.error("Failed to parse base64 PDF string:", err);
@@ -168,7 +177,7 @@ export const openPdfDocument = async (pdfUrl: string, pdfPath: string, noteId?: 
       if (url.startsWith('blob:')) return true;
       // dummy.pdf fallback — explicitly detected to trigger a real fetch
       if (url.includes('dummy.pdf')) {
-        console.warn('[NoteWeb PDF Debug] Detected dummy.pdf URL \u2014 will attempt live DB fetch instead.');
+        console.warn('[NoteWeb PDF Debug] Detected dummy.pdf URL — will attempt live DB fetch instead.');
         return true;
       }
       return false;
@@ -178,25 +187,45 @@ export const openPdfDocument = async (pdfUrl: string, pdfPath: string, noteId?: 
     if (isDeadUrl(resolvedUrl) && noteId) {
       console.log(`[NoteWeb PDF Debug] URL is dead/placeholder. Fetching live url from DB for note ID: ${noteId}`);
       try {
-        const { data, error } = await supabase
+        let dbUrl: string | null = null;
+        let dbPath: string | null = null;
+
+        // Try snake_case query first
+        const { data: snakeData, error: snakeErr } = await supabase
           .from('notes')
           .select('pdf_url, pdf_path')
           .eq('id', noteId)
           .single();
-        
-        if (error) {
-          console.error('[NoteWeb PDF Debug] DB fetch for pdf_url failed:', error);
-        } else if (data) {
-          console.log('[NoteWeb PDF Debug] DB returned:', { pdf_url: data.pdf_url, pdf_path: data.pdf_path });
-          if (data.pdf_url && !isDeadUrl(data.pdf_url)) {
-            resolvedUrl = data.pdf_url;
-          } else if (data.pdf_path) {
-            // Try generating a fresh public URL from the stored path
-            const { data: urlData } = supabase.storage.from('notes').getPublicUrl(data.pdf_path);
-            if (urlData?.publicUrl && urlData.publicUrl.startsWith('http') && !urlData.publicUrl.includes('dummy.pdf')) {
-              resolvedUrl = urlData.publicUrl;
-              console.log('[NoteWeb PDF Debug] Resolved via storage.getPublicUrl:', resolvedUrl);
-            }
+
+        if (snakeErr || !snakeData) {
+          console.warn('[NoteWeb PDF Debug] Snake_case query failed or empty, trying camelCase fallback...', snakeErr);
+          const { data: camelData, error: camelErr } = await supabase
+            .from('notes')
+            .select('pdfUrl, pdfPath')
+            .eq('id', noteId)
+            .single();
+
+          if (camelErr) {
+            console.error('[NoteWeb PDF Debug] CamelCase query also failed:', camelErr);
+          } else if (camelData) {
+            dbUrl = (camelData as any).pdfUrl;
+            dbPath = (camelData as any).pdfPath;
+          }
+        } else {
+          dbUrl = snakeData.pdf_url;
+          dbPath = snakeData.pdf_path;
+        }
+
+        console.log('[NoteWeb PDF Debug] DB query returned:', { dbUrl, dbPath });
+
+        if (dbUrl && !isDeadUrl(dbUrl)) {
+          resolvedUrl = dbUrl;
+        } else if (dbPath) {
+          // Try generating a fresh public URL from the stored path
+          const { data: urlData } = supabase.storage.from('notes').getPublicUrl(dbPath);
+          if (urlData?.publicUrl && urlData.publicUrl.startsWith('http') && !urlData.publicUrl.includes('dummy.pdf')) {
+            resolvedUrl = urlData.publicUrl;
+            console.log('[NoteWeb PDF Debug] Resolved via storage.getPublicUrl:', resolvedUrl);
           }
         }
       } catch (dbErr) {
@@ -204,14 +233,27 @@ export const openPdfDocument = async (pdfUrl: string, pdfPath: string, noteId?: 
       }
     }
 
-    // STEP 1: Handle Base64 data URL
-    if (resolvedUrl && resolvedUrl.startsWith('data:application/pdf;base64,')) {
-      console.log('[NoteWeb PDF Debug] Resolving as Base64 data URL');
-      const blob = base64ToBlob(resolvedUrl);
-      if (pdfPath) await storeOfflinePdf(pdfPath, blob);
-      if (noteId) await storeOfflinePdf(noteId, blob);
-      window.open(URL.createObjectURL(blob), '_blank');
-      return;
+    // STEP 1: Handle Base64 data URL or raw Base64 string
+    if (resolvedUrl) {
+      let isBase64 = false;
+      let base64Data = resolvedUrl;
+
+      if (resolvedUrl.startsWith('data:application/pdf;base64,')) {
+        isBase64 = true;
+      } else if (/^[a-zA-Z0-9+/=]+$/.test(resolvedUrl) && (resolvedUrl.startsWith('JVBERi') || resolvedUrl.length > 100)) {
+        isBase64 = true;
+        base64Data = 'data:application/pdf;base64,' + resolvedUrl;
+        console.log('[NoteWeb PDF Debug] Raw Base64 PDF string detected without prefix, prepended prefix.');
+      }
+
+      if (isBase64) {
+        console.log('[NoteWeb PDF Debug] Resolving as Base64 data URL');
+        const blob = base64ToBlob(base64Data);
+        if (pdfPath) await storeOfflinePdf(pdfPath, blob);
+        if (noteId) await storeOfflinePdf(noteId, blob);
+        window.open(URL.createObjectURL(blob), '_blank');
+        return;
+      }
     }
 
     // STEP 2: Check IndexedDB local cache (survives page refreshes)
