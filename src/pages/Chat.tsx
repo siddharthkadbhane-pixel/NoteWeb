@@ -41,6 +41,12 @@ export const Chat: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const channelRef = useRef<any>(null);
 
+  const getSafeTime = (dateStr: any) => {
+    if (!dateStr) return Date.now();
+    const t = new Date(dateStr).getTime();
+    return isNaN(t) ? Date.now() : t;
+  };
+
   // Load and filter messages (keeping only past 24 hours)
   const fetchMessages = async () => {
     try {
@@ -56,7 +62,7 @@ export const Chat: React.FC = () => {
       
       // Filter out messages older than 24 hours and map schema columns safely
       const activeMsgs = rawMsgs
-        .filter((m: any) => new Date(m.created_at).getTime() >= cutoffTime)
+        .filter((m: any) => getSafeTime(m.created_at) >= cutoffTime)
         .map((m: any) => ({
           id: m.id,
           sender_uid: m.sender_id || m.sender_uid || '',
@@ -69,7 +75,7 @@ export const Chat: React.FC = () => {
         }));
       
       // Optionally clean up expired messages in the DB/localstorage to avoid bloat
-      const expiredMsgs = rawMsgs.filter((m: any) => new Date(m.created_at).getTime() < cutoffTime);
+      const expiredMsgs = rawMsgs.filter((m: any) => getSafeTime(m.created_at) < cutoffTime);
       if (expiredMsgs.length > 0) {
         for (const expired of expiredMsgs) {
           await supabase.from('chats').delete().eq('id', expired.id);
@@ -87,7 +93,7 @@ export const Chat: React.FC = () => {
       
       // Filter out broadcasts older than 24 hours
       const activeBroadcasts = storedBroadcasts.filter(
-        (m) => new Date(m.created_at).getTime() >= cutoffTime
+        (m) => getSafeTime(m.created_at) >= cutoffTime
       );
       
       // Save active ones back to localStorage
@@ -98,7 +104,7 @@ export const Chat: React.FC = () => {
       setMessages((prev) => {
         // Find all local broadcasted messages currently in state
         const localBroadcasts = prev.filter(
-          (m) => m.id.startsWith('broadcast-') && new Date(m.created_at).getTime() >= cutoffTime
+          (m) => m.id.startsWith('broadcast-') && getSafeTime(m.created_at) >= cutoffTime
         );
         
         // Merge activeBroadcasts and localBroadcasts
@@ -117,7 +123,7 @@ export const Chat: React.FC = () => {
           }
         }
         
-        return merged.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        return merged.sort((a, b) => getSafeTime(a.created_at) - getSafeTime(b.created_at));
       });
     } catch (e) {
       console.error('Error fetching chat messages:', e);
@@ -165,12 +171,12 @@ export const Chat: React.FC = () => {
                   localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(storedBroadcasts));
                 }
 
-                setMessages((prev) => {
+                 setMessages((prev) => {
                   if (prev.some((m) => m.id === msg.id)) return prev;
                   const cutoffTime = Date.now() - 24 * 3600 * 1000;
-                  if (new Date(msg.created_at).getTime() < cutoffTime) return prev;
+                  if (getSafeTime(msg.created_at) < cutoffTime) return prev;
                   return [...prev, msg].sort(
-                    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                    (a, b) => getSafeTime(a.created_at) - getSafeTime(b.created_at)
                   );
                 });
               }

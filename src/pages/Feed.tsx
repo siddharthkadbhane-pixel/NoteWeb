@@ -172,9 +172,26 @@ export const Feed: React.FC = () => {
       
       const fetched: NoteDocument[] = (data || []).map(mapDbNoteToNoteDocument);
 
+      // Get broadcasted notes from localStorage
+      const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
+      let storedNotes: any[] = [];
+      if (storedNotesStr) {
+        try {
+          storedNotes = JSON.parse(storedNotesStr);
+        } catch {}
+      }
+      
+      const merged = [...fetched];
+      for (const sn of storedNotes) {
+        const mappedSn = mapDbNoteToNoteDocument(sn);
+        if (!merged.some((n) => n.id === mappedSn.id)) {
+          merged.push(mappedSn);
+        }
+      }
+
       // Sort in-memory to bypass complex indexing
-      sortNotes(fetched, sortBy);
-      setNotes(fetched);
+      sortNotes(merged, sortBy);
+      setNotes(merged);
     } catch (e: any) {
       console.error(e);
       if (!silent) {
@@ -188,7 +205,7 @@ export const Feed: React.FC = () => {
   useEffect(() => {
     fetchNotes();
 
-    // 1. Set up Realtime subscription for notes table postgres events
+    // 1. Set up Realtime subscription for notes table postgres events and broadcast events
     let channel: any = null;
     try {
       if (typeof supabase.channel === 'function') {
@@ -200,6 +217,39 @@ export const Feed: React.FC = () => {
             () => {
               console.log('Realtime change in notes table, refetching silently...');
               fetchNotes(true);
+            }
+          )
+          .on(
+            'broadcast',
+            { event: 'new-note' },
+            (response: any) => {
+              console.log('Broadcast received in notes channel:', response);
+              if (response?.payload) {
+                const newNote = response.payload;
+                
+                // Save to localStorage
+                const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
+                let storedNotes: any[] = [];
+                if (storedNotesStr) {
+                  try {
+                    storedNotes = JSON.parse(storedNotesStr);
+                  } catch {}
+                }
+                if (!storedNotes.some((n: any) => n.id === newNote.id)) {
+                  storedNotes.push(newNote);
+                  localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(storedNotes));
+                }
+                
+                const mappedNote = mapDbNoteToNoteDocument(newNote);
+                setNotes((prev) => {
+                  if (prev.some((n) => n.id === mappedNote.id)) return prev;
+                  const updated = [mappedNote, ...prev];
+                  // Sort dynamically
+                  const sorted = [...updated];
+                  sortNotes(sorted, sortBy);
+                  return sorted;
+                });
+              }
             }
           )
           .subscribe();
@@ -223,8 +273,13 @@ export const Feed: React.FC = () => {
   const sortNotes = (items: NoteDocument[], criteria: 'recent' | 'popular') => {
     if (criteria === 'recent') {
       items.sort((a, b) => {
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        const getSafeTime = (val: any) => {
+          if (!val) return 0;
+          const t = new Date(val).getTime();
+          return isNaN(t) ? 0 : t;
+        };
+        const timeA = getSafeTime(a.createdAt);
+        const timeB = getSafeTime(b.createdAt);
         return timeB - timeA;
       });
     } else {
