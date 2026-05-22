@@ -147,21 +147,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem(`noteweb-profile-${profile.uid}`, JSON.stringify(profile));
   };
 
-  // Helper to check if this is the very first user in the database to seed Admin role
-  const checkIsFirstUser = async (): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id');
-      
-      if (error) throw error;
-      return !data || data.length === 0;
-    } catch (e) {
-      console.warn("Could not query profiles count, defaulting to false admin seeding:", e);
-      return false;
-    }
-  };
-
   useEffect(() => {
     if (isGuest) {
       const guestProfile: UserProfile = {
@@ -191,7 +176,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let profile = await fetchUserProfile(sessionUser.id);
         
         if (!profile) {
-          const isFirstUser = await checkIsFirstUser();
           const initialProfile: UserProfile = {
             uid: sessionUser.id,
             username: sessionUser.email ? sessionUser.email.split('@')[0] : `user_${sessionUser.id.slice(0, 5)}`,
@@ -201,7 +185,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             year: '1',
             branch: 'computers',
             photoURL: sessionUser.user_metadata?.photo_url || '',
-            role: isFirstUser ? 'admin' : 'student',
+            role: 'student',
             createdAt: new Date(),
             bookmarks: [],
             setupComplete: false,
@@ -276,8 +260,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const hasSession = !!data.session;
-      const isFirst = await checkIsFirstUser();
-      const role = isFirst ? 'admin' : 'student';
+      const role = 'student';
 
       const userProfileData: UserProfile = {
         uid: sessionUser.id,
@@ -339,7 +322,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const profile = await fetchUserProfile(sessionUser.id);
       if (!profile) {
-        const isFirst = await checkIsFirstUser();
         const fallbackProfile: UserProfile = {
           uid: sessionUser.id,
           username: email.split('@')[0],
@@ -349,7 +331,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           year: '1',
           branch: 'computers',
           photoURL: sessionUser.user_metadata?.photo_url || '',
-          role: isFirst ? 'admin' : 'student',
+          role: 'student',
           createdAt: new Date(),
           bookmarks: [],
           setupComplete: false,
@@ -413,8 +395,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           let profile = await fetchUserProfile(sessionUser.id);
           let activeProfile: UserProfile;
           if (!profile) {
-            const isFirst = await checkIsFirstUser();
-            const role = isFirst ? 'admin' : 'student';
             const newProfile: UserProfile = {
               uid: sessionUser.id,
               username: `user_${sessionUser.id.slice(0, 5)}`,
@@ -424,7 +404,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               year: '1',
               branch: 'computers',
               photoURL: sessionUser.user_metadata?.photo_url || '',
-              role: role,
+              role: 'student',
               createdAt: new Date(),
               bookmarks: [],
               setupComplete: false,
@@ -630,8 +610,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const uid = `mock-user-${Math.random().toString(36).substr(2, 9)}`;
-      const isFirst = await checkIsFirstUser();
-      const role = isFirst ? 'admin' : profileData.role || 'student';
+      const role = profileData.role || 'student';
 
       const newProfile: UserProfile = {
         uid,
