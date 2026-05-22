@@ -222,13 +222,67 @@ const authChangeListeners: Array<(event: string, session: any) => void> = [];
 const MOCK_STORAGE_KEY = 'noteweb-mock-storage-urls';
 const mockStorageFiles = new Map<string, string>();
 
-// Restore any previously saved URLs from localStorage on module load
+// Local IndexedDB helpers to store and retrieve files in Mock Mode without circular dependencies
+const OFFLINE_DB_NAME = 'NoteWebOfflineCache';
+const OFFLINE_STORE_NAME = 'offline-pdfs';
+const OFFLINE_DB_VERSION = 1;
+
+const getOfflineDb = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(OFFLINE_DB_NAME, OFFLINE_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(OFFLINE_STORE_NAME)) {
+        db.createObjectStore(OFFLINE_STORE_NAME);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+const storeOfflinePdfLocal = async (key: string, blob: Blob): Promise<void> => {
+  try {
+    const db = await getOfflineDb();
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(OFFLINE_STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(OFFLINE_STORE_NAME);
+      const request = store.put(blob, key);
+      request.onsuccess = () => {
+        console.log(`[Mock Storage] Stored raw file in IndexedDB under key: ${key}`);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.warn("Failed to store PDF locally in IndexedDB:", err);
+  }
+};
+
+// Restore any previously saved URLs from localStorage on module load.
+// We also clear out any giant Base64 strings to prevent QuotaExceededError and free up browser memory!
 try {
   const saved = localStorage.getItem(MOCK_STORAGE_KEY);
   if (saved) {
     const parsed = JSON.parse(saved);
+    let hasBase64 = false;
     for (const [k, v] of Object.entries(parsed)) {
-      if (typeof v === 'string') mockStorageFiles.set(k, v);
+      if (typeof v === 'string') {
+        if (v.startsWith('data:')) {
+          hasBase64 = true;
+        } else {
+          mockStorageFiles.set(k, v);
+        }
+      }
+    }
+    if (hasBase64) {
+      console.log("[Mock Storage] Wiped legacy Base64 files from localStorage to free up space!");
+      // Overwrite with lightweight keys
+      const obj: Record<string, string> = {};
+      mockStorageFiles.forEach((val, key) => {
+        obj[key] = val;
+      });
+      localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(obj));
     }
   }
 } catch {}
@@ -236,9 +290,18 @@ try {
 const persistMockStorageFiles = () => {
   try {
     const obj: Record<string, string> = {};
-    mockStorageFiles.forEach((v, k) => { obj[k] = v; });
+    mockStorageFiles.forEach((v, k) => {
+      // Only store a lightweight marker in localStorage if the URL is a temporary Object URL
+      if (v.startsWith('blob:')) {
+        obj[k] = 'indexeddb';
+      } else {
+        obj[k] = v;
+      }
+    });
     localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(obj));
-  } catch {}
+  } catch (err) {
+    console.warn("Failed to persist mock storage metadata:", err);
+  }
 };
 
 const mockSupabase = {
@@ -482,19 +545,17 @@ const mockSupabase = {
           await new Promise((r) => setTimeout(r, 800));
           try {
             if (file) {
-              // blob: URLs expire when the page reloads, so we also store in IndexedDB via storeOfflinePdf
-              // For the mock URL map, store a data URL for persistence
-              const reader = new FileReader();
-              const dataUrl = await new Promise<string>((res, rej) => {
-                reader.onload = () => res(reader.result as string);
-                reader.onerror = rej;
-                reader.readAsDataURL(file);
-              });
-              mockStorageFiles.set(path, dataUrl);
+              // Store the raw file directly in IndexedDB instead of Base64 string to prevent QuotaExceededError!
+              await storeOfflinePdfLocal(path, file);
+              
+              // Store a temporary object URL in-memory for instant active session previews
+              const objectUrl = URL.createObjectURL(file);
+              mockStorageFiles.set(path, objectUrl);
               persistMockStorageFiles();
+              console.log(`[Mock Storage] Successfully uploaded and cached file in IndexedDB under path: ${path}`);
             }
           } catch (e) {
-            console.warn("Failed to create data URL for mock file upload:", e);
+            console.warn("Failed to save mock file upload to IndexedDB:", e);
           }
           return { data: { path }, error: null };
         },
@@ -502,7 +563,12 @@ const mockSupabase = {
         getPublicUrl: (path: string) => {
           const storedUrl = mockStorageFiles.get(path);
           if (storedUrl) {
-            return { data: { publicUrl: storedUrl } };
+            // If it is a temporary blob URL from the active session, return it
+            if (storedUrl.startsWith('blob:')) {
+              return { data: { publicUrl: storedUrl } };
+            }
+            // Otherwise return a standard URL containing the path, which pdfDb.ts will resolve via IndexedDB
+            return { data: { publicUrl: `https://mock-supabase.local/storage/v1/object/public/notes/${path}` } };
           }
           // No URL found for this path — the file was not uploaded in this session/device.
           // Return dummy.pdf as absolute last resort and log a clear warning for debugging.
@@ -516,6 +582,7 @@ const mockSupabase = {
 
         remove: async (paths: string[]) => {
           paths.forEach(path => mockStorageFiles.delete(path));
+          persistMockStorageFiles();
           return { data: paths, error: null };
         }
       };
