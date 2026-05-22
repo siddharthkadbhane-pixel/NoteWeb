@@ -76,7 +76,49 @@ export const Chat: React.FC = () => {
         }
       }
 
-      setMessages(activeMsgs);
+      // Get broadcasted messages from localStorage
+      const storedBroadcastsStr = localStorage.getItem('noteweb-broadcasted-chats');
+      let storedBroadcasts: ChatMessage[] = [];
+      if (storedBroadcastsStr) {
+        try {
+          storedBroadcasts = JSON.parse(storedBroadcastsStr);
+        } catch {}
+      }
+      
+      // Filter out broadcasts older than 24 hours
+      const activeBroadcasts = storedBroadcasts.filter(
+        (m) => new Date(m.created_at).getTime() >= cutoffTime
+      );
+      
+      // Save active ones back to localStorage
+      if (activeBroadcasts.length !== storedBroadcasts.length) {
+        localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(activeBroadcasts));
+      }
+
+      setMessages((prev) => {
+        // Find all local broadcasted messages currently in state
+        const localBroadcasts = prev.filter(
+          (m) => m.id.startsWith('broadcast-') && new Date(m.created_at).getTime() >= cutoffTime
+        );
+        
+        // Merge activeBroadcasts and localBroadcasts
+        const allBroadcasts = [...localBroadcasts];
+        for (const b of activeBroadcasts) {
+          if (!allBroadcasts.some((m) => m.id === b.id)) {
+            allBroadcasts.push(b);
+          }
+        }
+        
+        // Merge everything with the newly fetched database messages
+        const merged = [...activeMsgs];
+        for (const b of allBroadcasts) {
+          if (!merged.some((m) => m.id === b.id)) {
+            merged.push(b);
+          }
+        }
+        
+        return merged.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      });
     } catch (e) {
       console.error('Error fetching chat messages:', e);
     } finally {
@@ -109,6 +151,20 @@ export const Chat: React.FC = () => {
               console.log('Broadcast received in chats channel:', response);
               if (response?.payload) {
                 const msg = response.payload;
+                
+                // Save to localStorage
+                const storedBroadcastsStr = localStorage.getItem('noteweb-broadcasted-chats');
+                let storedBroadcasts: ChatMessage[] = [];
+                if (storedBroadcastsStr) {
+                  try {
+                    storedBroadcasts = JSON.parse(storedBroadcastsStr);
+                  } catch {}
+                }
+                if (!storedBroadcasts.some((m) => m.id === msg.id)) {
+                  storedBroadcasts.push(msg);
+                  localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(storedBroadcasts));
+                }
+
                 setMessages((prev) => {
                   if (prev.some((m) => m.id === msg.id)) return prev;
                   const cutoffTime = Date.now() - 24 * 3600 * 1000;
@@ -245,6 +301,19 @@ export const Chat: React.FC = () => {
             } catch (broadcastErr) {
               console.warn("Failed to send broadcast message:", broadcastErr);
             }
+          }
+
+          // Save to localStorage
+          const storedBroadcastsStr = localStorage.getItem('noteweb-broadcasted-chats');
+          let storedBroadcasts: ChatMessage[] = [];
+          if (storedBroadcastsStr) {
+            try {
+              storedBroadcasts = JSON.parse(storedBroadcastsStr);
+            } catch {}
+          }
+          if (!storedBroadcasts.some((m) => m.id === broadcastPayload.id)) {
+            storedBroadcasts.push(broadcastPayload);
+            localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(storedBroadcasts));
           }
 
           setMessages((prev) => [...prev, broadcastPayload]);

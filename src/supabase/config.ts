@@ -567,11 +567,14 @@ class SafePostgrestBuilder {
                                    errMsg.toLowerCase().includes('schema cache');
 
           // Detect database schema violations, unmigrated tables, network issues, or security issues
+          const isRls = errMsg.toLowerCase().includes('row-level security') || 
+                        errMsg.toLowerCase().includes('policy') ||
+                        errCode === '42501';
+
           if (
-            !isColumnMismatch && (
+            !isColumnMismatch && !isRls && (
               errMsg.includes('relation') ||
               errMsg.includes('does not exist') ||
-              errMsg.includes('violates row-level security') ||
               errCode === 'P0001' ||
               errCode.startsWith('42') ||
               errMsg.includes('API key') ||
