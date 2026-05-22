@@ -88,6 +88,25 @@ const profileToDb = (profile: UserProfile): any => {
   };
 };
 
+const profileToDbCamel = (profile: UserProfile): any => {
+  return {
+    id: profile.uid,
+    username: profile.username,
+    email: profile.email,
+    displayName: profile.displayName,
+    mobileNo: profile.mobileNo,
+    year: profile.year,
+    branch: profile.branch,
+    cgpa: profile.cgpa,
+    photoUrl: profile.photoURL,
+    role: profile.role,
+    createdAt: profile.createdAt instanceof Date ? profile.createdAt.toISOString() : profile.createdAt,
+    bookmarks: profile.bookmarks,
+    setupComplete: profile.setupComplete,
+    points: profile.points
+  };
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -136,11 +155,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .insert([dbProfile]);
       
       if (error) {
-        // If profile already exists, perform update
-        await supabase
-          .from('profiles')
-          .update(dbProfile)
-          .eq('id', profile.uid);
+        if (error.message?.includes('column') || error.code === '42703') {
+          const dbProfileCamel = profileToDbCamel(profile);
+          const { error: camelErr } = await supabase
+            .from('profiles')
+            .insert([dbProfileCamel]);
+          
+          if (camelErr) {
+            await supabase
+              .from('profiles')
+              .update(dbProfileCamel)
+              .eq('id', profile.uid);
+          }
+        } else {
+          // If profile already exists, perform update
+          const { error: updateErr } = await supabase
+            .from('profiles')
+            .update(dbProfile)
+            .eq('id', profile.uid);
+          
+          if (updateErr && (updateErr.message?.includes('column') || updateErr.code === '42703')) {
+            const dbProfileCamel = profileToDbCamel(profile);
+            await supabase
+              .from('profiles')
+              .update(dbProfileCamel)
+              .eq('id', profile.uid);
+          }
+        }
       }
     } catch (e) {
       console.warn("Database profiles save failed, saving locally:", e);
@@ -691,7 +732,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .update(dbProfile)
         .eq('id', user.uid);
 
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('column') || error.code === '42703') {
+          const dbProfileCamel = profileToDbCamel(updatedProfile);
+          const { error: camelErr } = await supabase
+            .from('profiles')
+            .update(dbProfileCamel)
+            .eq('id', user.uid);
+          
+          if (camelErr) throw camelErr;
+        } else {
+          throw error;
+        }
+      }
 
       localStorage.setItem(`noteweb-profile-${user.uid}`, JSON.stringify(updatedProfile));
       setUserProfile(updatedProfile);

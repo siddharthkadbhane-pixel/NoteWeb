@@ -87,9 +87,39 @@ export const Chat: React.FC = () => {
     setIsLoading(true);
     fetchMessages();
 
-    // Poll every 3 seconds for mock real-time chats
-    const interval = setInterval(fetchMessages, 3000);
-    return () => clearInterval(interval);
+    // 1. Set up Realtime subscription for chats table postgres events
+    let channel: any = null;
+    try {
+      if (typeof supabase.channel === 'function') {
+        channel = supabase
+          .channel('public:chats')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'chats' },
+            () => {
+              console.log('Realtime change in chats table, refetching...');
+              fetchMessages();
+            }
+          )
+          .subscribe();
+      }
+    } catch (err) {
+      console.warn("Realtime subscription failed on Chat:", err);
+    }
+
+    // 2. Keep a passive 15-second polling fallback to save CPU and network bandwidth
+    const interval = setInterval(fetchMessages, 15000);
+
+    return () => {
+      clearInterval(interval);
+      if (channel) {
+        try {
+          channel.unsubscribe();
+        } catch (e) {
+          console.warn("Failed to unsubscribe chats channel:", e);
+        }
+      }
+    };
   }, []);
 
   // Auto-scroll to the bottom of the feed
@@ -108,8 +138,40 @@ export const Chat: React.FC = () => {
 
     setIsSending(true);
     try {
-      const newMessage = isMockMode
-        ? {
+      let insertErr: any = null;
+
+      if (isMockMode) {
+        const newMessageMock = {
+          sender_uid: user.uid,
+          sender_name: userProfile.displayName || 'Student',
+          sender_avatar: userProfile.photoURL || '',
+          sender_branch: userProfile.branch || 'computers',
+          content: inputText.trim(),
+          image_url: selectedImage || undefined,
+          created_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from('chats').insert([newMessageMock]);
+        insertErr = error;
+      } else {
+        // Try inserting using the new schema format (sender_id, message, photo_url)
+        const newMessageNew = {
+          sender_id: user.uid,
+          sender_name: userProfile.displayName || 'Student',
+          sender_avatar: userProfile.photoURL || '',
+          sender_branch: userProfile.branch || 'computers',
+          message: inputText.trim(),
+          photo_url: selectedImage || null,
+          created_at: new Date().toISOString(),
+        };
+
+        const { error } = await supabase.from('chats').insert([newMessageNew]);
+        insertErr = error;
+
+        // If the new schema insert fails (likely because 'message' or 'photo_url' column doesn't exist),
+        // self-heal by trying the old schema format (sender_uid, content, image_url)
+        if (insertErr && (insertErr.message?.includes('column') || insertErr.code === '42703')) {
+          console.warn("New chat schema insert failed. Self-healing by trying old schema...");
+          const newMessageOld = {
             sender_uid: user.uid,
             sender_name: userProfile.displayName || 'Student',
             sender_avatar: userProfile.photoURL || '',
@@ -117,19 +179,14 @@ export const Chat: React.FC = () => {
             content: inputText.trim(),
             image_url: selectedImage || undefined,
             created_at: new Date().toISOString(),
-          }
-        : {
-            sender_id: user.uid,
-            sender_name: userProfile.displayName || 'Student',
-            sender_avatar: userProfile.photoURL || '',
-            sender_branch: userProfile.branch || 'computers',
-            message: inputText.trim(),
-            photo_url: selectedImage || null,
-            created_at: new Date().toISOString(),
           };
 
-      const { error } = await supabase.from('chats').insert([newMessage]);
-      if (error) throw error;
+          const { error: oldError } = await supabase.from('chats').insert([newMessageOld]);
+          insertErr = oldError;
+        }
+      }
+
+      if (insertErr) throw insertErr;
 
       setInputText('');
       setSelectedImage(null);

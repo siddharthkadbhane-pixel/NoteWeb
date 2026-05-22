@@ -45,8 +45,8 @@ export const Leaderboard: React.FC = () => {
   const [sortBy, setSortBy] = useState<'points' | 'uploads' | 'cgpa'>('points');
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchLeaderboardData = async () => {
-    setIsLoading(true);
+  const fetchLeaderboardData = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       // 1. Fetch profiles
       const { data: profiles, error: pErr } = await supabase.from('profiles').select('*');
@@ -81,12 +81,63 @@ export const Leaderboard: React.FC = () => {
     } catch (e) {
       console.error('Leaderboard fetch failed:', e);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchLeaderboardData();
+
+    // 1. Set up Realtime subscriptions for profiles and notes
+    let channelProfiles: any = null;
+    let channelNotes: any = null;
+
+    try {
+      if (typeof supabase.channel === 'function') {
+        channelProfiles = supabase
+          .channel('public:profiles_leaderboard')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'profiles' },
+            () => {
+              console.log('Realtime change in profiles table, updating leaderboard silently...');
+              fetchLeaderboardData(true);
+            }
+          )
+          .subscribe();
+
+        channelNotes = supabase
+          .channel('public:notes_leaderboard')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'notes' },
+            () => {
+              console.log('Realtime change in notes table, updating leaderboard silently...');
+              fetchLeaderboardData(true);
+            }
+          )
+          .subscribe();
+      }
+    } catch (err) {
+      console.warn("Realtime subscriptions failed on Leaderboard:", err);
+    }
+
+    return () => {
+      if (channelProfiles) {
+        try {
+          channelProfiles.unsubscribe();
+        } catch (e) {
+          console.warn("Failed to unsubscribe profiles leaderboard channel:", e);
+        }
+      }
+      if (channelNotes) {
+        try {
+          channelNotes.unsubscribe();
+        } catch (e) {
+          console.warn("Failed to unsubscribe notes leaderboard channel:", e);
+        }
+      }
+    };
   }, []);
 
   // Filtered & Sorted list

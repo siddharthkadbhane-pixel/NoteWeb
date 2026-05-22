@@ -159,8 +159,8 @@ export const Feed: React.FC = () => {
   const [activeNoteForSummary, setActiveNoteForSummary] = useState<NoteDocument | null>(null);
 
   // Fetch all APPROVED notes
-  const fetchNotes = async () => {
-    setIsLoading(true);
+  const fetchNotes = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       // Fetch only approved notes for the feed page. Admins see pending uploads in Admin dashboard!
       const { data, error: notesErr } = await supabase
@@ -177,14 +177,46 @@ export const Feed: React.FC = () => {
       setNotes(fetched);
     } catch (e: any) {
       console.error(e);
-      error("Failed to load notes: " + e.message);
+      if (!silent) {
+        error("Failed to load notes: " + e.message);
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchNotes();
+
+    // 1. Set up Realtime subscription for notes table postgres events
+    let channel: any = null;
+    try {
+      if (typeof supabase.channel === 'function') {
+        channel = supabase
+          .channel('public:notes')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'notes' },
+            () => {
+              console.log('Realtime change in notes table, refetching silently...');
+              fetchNotes(true);
+            }
+          )
+          .subscribe();
+      }
+    } catch (err) {
+      console.warn("Realtime subscription failed on Feed:", err);
+    }
+
+    return () => {
+      if (channel) {
+        try {
+          channel.unsubscribe();
+        } catch (e) {
+          console.warn("Failed to unsubscribe notes channel:", e);
+        }
+      }
+    };
   }, []);
 
   // Handle Sort triggers

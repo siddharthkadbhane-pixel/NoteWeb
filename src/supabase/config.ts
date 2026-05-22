@@ -817,7 +817,27 @@ export const supabase = (enableMockFallbacks
         }
         return new SafePostgrestBuilder(table, realSupabase.from(table));
       },
-      storage: safeStorage
+      storage: safeStorage,
+      channel(name: string, opts?: any) {
+        if (isMockMode || !realSupabase || typeof realSupabase.channel !== 'function') {
+          return {
+            on: function() { return this; },
+            subscribe: () => {
+              return {
+                unsubscribe: () => {}
+              };
+            },
+            unsubscribe: () => {}
+          } as any;
+        }
+        return realSupabase.channel(name, opts);
+      },
+      removeChannel(channel: any) {
+        if (isMockMode || !realSupabase || typeof realSupabase.removeChannel !== 'function') {
+          return Promise.resolve();
+        }
+        return realSupabase.removeChannel(channel);
+      }
     }
   : realSupabase) as any;
 
