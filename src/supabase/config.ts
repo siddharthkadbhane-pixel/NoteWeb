@@ -4,8 +4,17 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project-to-avoid-constructor-crash.supabase.co';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
+let realSupabase: any = null;
+try {
+  if (supabaseUrl && supabaseKey && !supabaseUrl.includes('placeholder') && !supabaseUrl.includes('mock')) {
+    realSupabase = createClient(supabaseUrl, supabaseKey);
+  }
+} catch (e) {
+  console.warn("Failed to initialize real Supabase client:", e);
+}
+
 const enableMockFallbacks = import.meta.env.VITE_ENABLE_MOCK_FALLBACKS !== 'false';
-const isMockMode = (!import.meta.env.VITE_SUPABASE_URL || supabaseUrl.includes('placeholder') || supabaseUrl.includes('mock')) && enableMockFallbacks;
+const isMockMode = (!import.meta.env.VITE_SUPABASE_URL || supabaseUrl.includes('placeholder') || supabaseUrl.includes('mock') || !realSupabase) && enableMockFallbacks;
 
 
 // Helper to convert snake_case postgres columns to camelCase for local safety
@@ -381,33 +390,35 @@ const mockSupabase = {
 
     onAuthStateChange: (callback: any) => {
       authChangeListeners.push(callback);
-      // Immediately trigger current session status
-      const mockUid = localStorage.getItem('noteweb-mock-uid');
-      if (mockUid) {
-        const savedProfile = localStorage.getItem(`noteweb-profile-${mockUid}`);
-        let email = `${mockUid}@noteweb.local`;
-        let displayName = 'Student';
-        let photoURL = '';
-        
-        if (savedProfile) {
-          try {
-            const parsed = JSON.parse(savedProfile);
-            email = parsed.email || email;
-            displayName = parsed.displayName || parsed.display_name || displayName;
-            photoURL = parsed.photoURL || parsed.photo_url || photoURL;
-          } catch {}
-        }
-        
-        callback('SIGNED_IN', {
-          user: {
-            id: mockUid,
-            email,
-            user_metadata: { display_name: displayName, photo_url: photoURL }
+      // Asynchronously trigger current session status to prevent synchronous state updates during React's render phase
+      setTimeout(() => {
+        const mockUid = localStorage.getItem('noteweb-mock-uid');
+        if (mockUid) {
+          const savedProfile = localStorage.getItem(`noteweb-profile-${mockUid}`);
+          let email = `${mockUid}@noteweb.local`;
+          let displayName = 'Student';
+          let photoURL = '';
+          
+          if (savedProfile) {
+            try {
+              const parsed = JSON.parse(savedProfile);
+              email = parsed.email || email;
+              displayName = parsed.displayName || parsed.display_name || displayName;
+              photoURL = parsed.photoURL || parsed.photo_url || photoURL;
+            } catch {}
           }
-        });
-      } else {
-        callback('SIGNED_OUT', null);
-      }
+          
+          callback('SIGNED_IN', {
+            user: {
+              id: mockUid,
+              email,
+              user_metadata: { display_name: displayName, photo_url: photoURL }
+            }
+          });
+        } else {
+          callback('SIGNED_OUT', null);
+        }
+      }, 0);
 
       return {
         data: {
@@ -458,14 +469,19 @@ if (enableMockFallbacks) {
 // ----------------------------------------------------
 // 2. High-Fidelity Safe Supabase Wrapper & Fallbacks
 // ----------------------------------------------------
-const realSupabase = createClient(supabaseUrl, supabaseKey);
-
 // Promise timeout race helper
-const withTimeout = async (promise: Promise<any>, ms = 2500) => {
+const withTimeout = async (promise: any, ms = 2500): Promise<any> => {
+  const safePromise = new Promise<any>((resolve, reject) => {
+    if (promise && typeof promise.then === 'function') {
+      promise.then(resolve, reject);
+    } else {
+      resolve(promise);
+    }
+  });
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('TIMEOUT')), ms)
   );
-  return Promise.race([promise, timeout]);
+  return Promise.race([safePromise, timeout]);
 };
 
 class SafePostgrestBuilder {
@@ -710,19 +726,47 @@ const safeAuth = {
   },
 
   onAuthStateChange(callback: any) {
-    if (isMockMode) {
+    if (isMockMode || !realSupabase) {
       return mockSupabase.auth.onAuthStateChange(callback);
     }
     // Listen to BOTH real and mock auth states for user sync
-    const realSub = realSupabase.auth.onAuthStateChange(callback);
-    const mockSub = mockSupabase.auth.onAuthStateChange(callback);
+    let realSub: any = null;
+    let mockSub: any = null;
+
+    try {
+      realSub = realSupabase.auth.onAuthStateChange(callback);
+    } catch (e) {
+      console.warn("realSupabase.auth.onAuthStateChange failed:", e);
+    }
+
+    try {
+      mockSub = mockSupabase.auth.onAuthStateChange(callback);
+    } catch (e) {
+      console.warn("mockSupabase.auth.onAuthStateChange failed:", e);
+    }
 
     return {
       data: {
         subscription: {
           unsubscribe: () => {
-            realSub?.data?.subscription?.unsubscribe();
-            mockSub?.data?.subscription?.unsubscribe();
+            try {
+              if (realSub?.data?.subscription?.unsubscribe) {
+                realSub.data.subscription.unsubscribe();
+              } else if (realSub?.unsubscribe) {
+                realSub.unsubscribe();
+              }
+            } catch (err) {
+              console.warn("realSub unsubscribe failed:", err);
+            }
+            try {
+              if (mockSub?.data?.subscription?.unsubscribe) {
+                mockSub.data.subscription.unsubscribe();
+              } else if (mockSub?.unsubscribe) {
+                mockSub.unsubscribe();
+              }
+            } catch (err) {
+              console.warn("mockSub unsubscribe failed:", err);
+            }
           }
         }
       }
