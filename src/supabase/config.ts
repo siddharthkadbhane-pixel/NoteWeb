@@ -21,13 +21,9 @@ try {
   console.warn("Failed to initialize real Supabase client:", e);
 }
 
-const isKeyJwt = typeof supabaseKey === 'string' && supabaseKey.split('.').length === 3;
-const isUrlPlaceholder = !supabaseUrl || supabaseUrl.includes('placeholder') || supabaseUrl.includes('mock');
-const isKeyPlaceholder = !supabaseKey || supabaseKey.includes('placeholder') || supabaseKey.includes('mock') || !isKeyJwt;
-
-// Force mock mode if using placeholders/invalid keys to prevent fatal JWT/API key errors and enable seamless emulator testing
-export const isMockMode = isUrlPlaceholder || isKeyPlaceholder || !realSupabase || import.meta.env.VITE_ENABLE_MOCK_FALLBACKS === 'true';
-const enableMockFallbacks = isMockMode || import.meta.env.VITE_ENABLE_MOCK_FALLBACKS === 'true';
+// Strict Live Mode enforcement: Disable all mock/offline fallbacks and force active real Supabase connection.
+export const isMockMode = false;
+const enableMockFallbacks = false;
 
 
 
