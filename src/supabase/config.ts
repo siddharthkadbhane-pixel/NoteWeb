@@ -827,6 +827,7 @@ export const supabase = (enableMockFallbacks
         if (isMockMode || !realSupabase || typeof realSupabase.channel !== 'function') {
           return {
             on: function() { return this; },
+            send: () => { return Promise.resolve({ error: null }); },
             subscribe: () => {
               return {
                 unsubscribe: () => {}
