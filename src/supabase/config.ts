@@ -203,6 +203,9 @@ class MockPostgrestBuilder {
 // Subscription callbacks array for mock auth listener
 const authChangeListeners: Array<(event: string, session: any) => void> = [];
 
+// Session-based in-memory store for mock uploaded binary files to serve actual user uploads on download
+const mockStorageFiles = new Map<string, string>();
+
 const mockSupabase = {
   auth: {
     signUp: async ({ email, password: _password, options }: any) => {
@@ -440,19 +443,31 @@ const mockSupabase = {
   storage: {
     from: (_bucket: string) => {
       return {
-        upload: async (path: string, _file: File | Blob) => {
+        upload: async (path: string, file: File | Blob) => {
           await new Promise((r) => setTimeout(r, 800));
-          // Store basic details in mock
+          try {
+            if (file) {
+              const localUrl = URL.createObjectURL(file);
+              mockStorageFiles.set(path, localUrl);
+            }
+          } catch (e) {
+            console.warn("Failed to create object URL for mock file upload:", e);
+          }
           return { data: { path }, error: null };
         },
 
-        getPublicUrl: (_path: string) => {
-          // Emulate returning a local blob URL if uploaded or generic mockup PDF
+        getPublicUrl: (path: string) => {
+          const storedUrl = mockStorageFiles.get(path);
+          if (storedUrl) {
+            return { data: { publicUrl: storedUrl } };
+          }
+          // Emulate returning a generic mockup PDF for default seeded notes
           let publicUrl = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
           return { data: { publicUrl } };
         },
 
         remove: async (paths: string[]) => {
+          paths.forEach(path => mockStorageFiles.delete(path));
           return { data: paths, error: null };
         }
       };
