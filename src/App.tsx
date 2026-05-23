@@ -27,7 +27,7 @@ function App() {
         <AuthProvider>
           <ScreenshotProtection>
             <Router>
-              <div className="min-h-screen min-h-[100dvh] bg-[#0A0A0C] text-[#E4E4E7] light-mode:bg-[#F8F9FA] light-mode:text-[#1E293B] transition-colors duration-300 flex overscroll-y-none relative overflow-hidden">
+              <div className="min-h-screen min-h-[100dvh] bg-[#0A0A0C] text-[#E4E4E7] light-mode:bg-[#F8F9FA] light-mode:text-[#1E293B] transition-colors duration-300 flex relative overflow-x-hidden">
                 {/* 3D Geometric Floating Particle Network Background */}
                 <InteractiveBackground />
 
