@@ -519,7 +519,7 @@ export const Home: React.FC = () => {
                       cx="56"
                       cy="56"
                       r="45"
-                      className="stroke-slate-800/40 fill-none"
+                      className={`${isDark ? 'stroke-slate-800/40' : 'stroke-slate-200'} fill-none`}
                       strokeWidth="5"
                     />
                     {/* Active ring indicator dial */}
@@ -536,7 +536,7 @@ export const Home: React.FC = () => {
                   </svg>
                   {/* Centered digits display */}
                   <div className="absolute flex flex-col items-center justify-center">
-                    <span className="text-xl font-black text-white font-mono tracking-tight leading-none">
+                    <span className={`text-xl font-black font-mono tracking-tight leading-none ${isDark ? 'text-white' : 'text-slate-800'}`}>
                       {formatTime(timeRemaining)}
                     </span>
                     <span className="text-[7.5px] font-black uppercase text-purple-400 tracking-wider mt-1 block">
@@ -548,15 +548,25 @@ export const Home: React.FC = () => {
                 {/* Timer Controls & Mode presets */}
                 <div className="flex flex-col gap-3 flex-1 w-full text-center sm:text-left">
                   {/* Preset modes selector */}
-                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                  <div className={`grid grid-cols-3 gap-1.5 p-1 rounded-xl border ${
+                    isDark 
+                      ? 'bg-white/[0.02] border-white/[0.04]' 
+                      : 'bg-slate-100/50 border-slate-200/60'
+                  }`}>
                     {(['focus', 'short', 'long'] as const).map(mode => (
                       <button
                         key={mode}
                         onClick={() => switchTimerMode(mode)}
                         className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                           timerMode === mode 
-                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/20' 
-                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02] border border-transparent'
+                            ? (isDark 
+                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/20' 
+                                : 'bg-purple-100 text-purple-700 border border-purple-200/60'
+                              ) 
+                            : (isDark 
+                                ? 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02] border border-transparent' 
+                                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 border border-transparent'
+                              )
                         }`}
                       >
                         {mode === 'focus' ? 'Focus 25' : mode === 'short' ? 'Short 5' : 'Long 15'}
@@ -587,7 +597,11 @@ export const Home: React.FC = () => {
 
                     <button
                       onClick={resetTimer}
-                      className="p-2.5 rounded-xl border border-white/[0.04] bg-white/[0.01] text-slate-400 hover:text-white hover:bg-white/5 active:scale-90 transition-all cursor-pointer"
+                      className={`p-2.5 rounded-xl border transition-all active:scale-90 cursor-pointer ${
+                        isDark 
+                          ? 'border-white/[0.04] bg-white/[0.01] text-slate-400 hover:text-white hover:bg-white/5' 
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-800 hover:bg-slate-100'
+                      }`}
                       title="Reset focus clock"
                     >
                       <RotateCcw className="w-4 h-4" />
