@@ -57,6 +57,14 @@ function App() {
                       } 
                     />
                     <Route 
+                      path="/profile/:uid" 
+                      element={
+                        <ProtectedRoute>
+                          <Profile />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
                       path="/chat" 
                       element={
                         <ProtectedRoute>

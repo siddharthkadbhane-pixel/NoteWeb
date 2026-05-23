@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase, isMockMode } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -12,7 +13,8 @@ import {
   Clock, 
   AlertTriangle,
   MessageSquare,
-  Lock
+  Lock,
+  X
 } from 'lucide-react';
 
 const compressImage = (base64Str: string, maxWidth = 400, maxHeight = 400, quality = 0.6): Promise<string> => {
@@ -68,12 +70,14 @@ interface ChatMessage {
 export const Chat: React.FC = () => {
   const { user, userProfile, isGuest } = useAuth();
   const { error: toastError, info } = useToast();
+  const navigate = useNavigate();
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -527,7 +531,10 @@ export const Chat: React.FC = () => {
                     className={`flex items-end gap-3 ${isMe ? 'flex-row-reverse text-right' : 'text-left'}`}
                   >
                     {/* Avatar */}
-                    <div className="flex-shrink-0">
+                    <div 
+                      onClick={() => msg.sender_uid && navigate(`/profile/${msg.sender_uid}`)} 
+                      className="flex-shrink-0 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                    >
                       {renderAvatar(msg.sender_avatar, "w-9 h-9 text-lg")}
                     </div>
 
@@ -535,7 +542,12 @@ export const Chat: React.FC = () => {
                     <div className="max-w-[70%] space-y-1">
                       {/* Name Header */}
                       <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-400 tracking-wider">
-                        <span>{msg.sender_name}</span>
+                        <span 
+                          onClick={() => msg.sender_uid && navigate(`/profile/${msg.sender_uid}`)} 
+                          className="hover:text-indigo-400 transition-colors cursor-pointer"
+                        >
+                          {msg.sender_name}
+                        </span>
                         <span>{getBranchIcon(msg.sender_branch)}</span>
                       </div>
 
@@ -549,7 +561,11 @@ export const Chat: React.FC = () => {
 
                         {/* Attached Image inside Bubble */}
                         {msg.image_url && (
-                          <div className="mt-2.5 rounded-xl overflow-hidden border border-white/10 max-w-xs shadow-lg bg-black/40">
+                          <div 
+                            onClick={() => setZoomedImage(msg.image_url || null)}
+                            className="mt-2.5 rounded-xl overflow-hidden border border-white/10 max-w-xs shadow-lg bg-black/40 cursor-zoom-in hover:opacity-90 active:scale-[0.99] transition-all"
+                            title="Click to zoom in"
+                          >
                             <img 
                               src={msg.image_url} 
                               alt="Shared attachment" 
@@ -643,6 +659,53 @@ export const Chat: React.FC = () => {
           </form>
         </GlassPanel>
       </div>
+
+      {/* Lightbox Image Modal */}
+      {zoomedImage && (
+        <div 
+          onClick={() => setZoomedImage(null)}
+          className="fixed inset-0 bg-[#0A0A0C]/90 backdrop-blur-md z-50 flex items-center justify-center p-4 cursor-zoom-out animate-fade-in text-left"
+        >
+          {/* Close button */}
+          <button 
+            onClick={() => setZoomedImage(null)}
+            className="absolute top-4 right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95 z-50 border border-white/10"
+            title="Close Lightbox"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          
+          {/* Fullscreen image container */}
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="max-w-[90vw] max-h-[85vh] relative flex flex-col items-center justify-center text-center animate-scale-up"
+          >
+            <img 
+              src={zoomedImage} 
+              alt="Zoomed attachment" 
+              className="max-w-full max-h-[75vh] object-contain rounded-2xl border border-white/10 shadow-2xl select-none"
+            />
+            {/* Action Bar */}
+            <div className="flex items-center gap-2 mt-4 px-4 py-2 bg-slate-900/85 border border-white/[0.08] backdrop-blur rounded-2xl">
+              <a 
+                href={zoomedImage} 
+                download={`attachment_${Date.now()}.jpg`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs transition-all active:scale-95 shadow-md shadow-indigo-600/15"
+              >
+                Open in New Tab
+              </a>
+              <button 
+                onClick={() => setZoomedImage(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 font-extrabold text-xs transition-all active:scale-95 border border-white/10"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

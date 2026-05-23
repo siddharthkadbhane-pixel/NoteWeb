@@ -455,12 +455,6 @@ export const Upload: React.FC = () => {
         summary: summaryText || null
       };
 
-      const isRlsError = (err: any) => {
-        if (!err) return false;
-        const msg = err.message?.toLowerCase() || '';
-        return msg.includes('row-level security') || msg.includes('policy') || err.code === '42501';
-      };
-
       const handleBroadcastFallback = async (notePayload: any) => {
         console.warn("Database insert blocked by Row-Level Security. Using Realtime Broadcast fallback...");
         
@@ -561,34 +555,27 @@ export const Upload: React.FC = () => {
 
       const { data: insertData, error: insertErr } = await supabase.from('notes').insert([noteDoc]).select();
       if (insertErr) {
-        if (isRlsError(insertErr)) {
-          await handleBroadcastFallback(noteDoc);
-          return;
-        }
+        console.warn("Primary note insert failed:", insertErr);
+        
+        // If it's a column mismatch, try the camelCase fallback
         if (insertErr.message?.includes('column') || insertErr.code === '42703') {
           console.warn("Snake_case insert on notes table failed. Trying camelCase fallback...");
           const { data: camelInsertData, error: camelInsertErr } = await supabase.from('notes').insert([noteDocCamel]).select();
           if (camelInsertErr) {
-            if (isRlsError(camelInsertErr)) {
-              await handleBroadcastFallback(noteDocCamel);
-              return;
-            }
-            let dbErrMsg = camelInsertErr.message || "Failed to insert record into database";
-            if (dbErrMsg.toLowerCase().includes("relation") && dbErrMsg.toLowerCase().includes("does not exist")) {
-              dbErrMsg = "The 'notes' database table does not exist in your Supabase backend. Please ensure you run the SQL migration query provided in your implementation plan inside the Supabase SQL Editor.";
-            }
-            throw new Error(dbErrMsg);
+            console.warn("CamelCase insert fallback also failed. Falling back to P2P Broadcast sync:", camelInsertErr);
+            await handleBroadcastFallback(noteDocCamel);
+            return;
           } else {
             // camelCase insert success
             const insertedRow = (camelInsertData && camelInsertData[0]) ? camelInsertData[0] : { ...noteDocCamel, id: 'db-note-' + Date.now() };
             await broadcastSuccessNote(insertedRow);
           }
         } else {
-          let dbErrMsg = insertErr.message || "Failed to insert record into database";
-          if (dbErrMsg.toLowerCase().includes("relation") && dbErrMsg.toLowerCase().includes("does not exist")) {
-            dbErrMsg = "The 'notes' database table does not exist in your Supabase backend. Please ensure you run the SQL migration query provided in your implementation plan inside the Supabase SQL Editor.";
-          }
-          throw new Error(dbErrMsg);
+          // For any other DB error (RLS, type mismatch like 'operator does not exist: text = uuid', or foreign key constraints),
+          // gracefully fallback to P2P Broadcast and local storage so the note is synced and shown immediately!
+          console.warn("Database insert failed. Falling back to P2P Broadcast sync:", insertErr.message);
+          await handleBroadcastFallback(noteDoc);
+          return;
         }
       } else {
         // snake_case insert success

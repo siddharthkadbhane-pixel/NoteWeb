@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { renderAvatar } from '../utils/avatar';
@@ -38,6 +39,7 @@ const BRANCH_LABELS: Record<string, string> = {
 
 export const Leaderboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   const [usersList, setUsersList] = useState<LeaderboardUser[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -217,15 +219,20 @@ export const Leaderboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="order-2 md:order-1 flex flex-col items-center"
+                className="order-2 md:order-1 flex flex-col items-center w-full"
               >
                 <GlassPanel className="w-full bg-[#121218]/40 border-slate-400/20 p-5 rounded-2xl flex flex-col items-center relative overflow-hidden">
                   <div className="absolute top-2 right-2 text-slate-400 font-extrabold text-sm">#2</div>
-                  <div className="relative">
-                    {renderAvatar(podiumTop3[1].photoURL, "w-16 h-16 text-3xl")}
-                    <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-slate-400 border border-white text-white rounded-full text-xs font-bold shadow">🥈</span>
+                  <div 
+                    onClick={() => podiumTop3[1]?.uid && navigate(`/profile/${podiumTop3[1].uid}`)} 
+                    className="flex flex-col items-center hover:scale-105 transition-transform duration-200 w-full cursor-pointer"
+                  >
+                    <div className="relative">
+                      {renderAvatar(podiumTop3[1].photoURL, "w-16 h-16 text-3xl")}
+                      <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-slate-400 border border-white text-white rounded-full text-xs font-bold shadow">🥈</span>
+                    </div>
+                    <h4 className="font-extrabold text-white text-sm mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[1].displayName}</h4>
                   </div>
-                  <h4 className="font-extrabold text-white text-sm mt-3 truncate w-full text-center">{podiumTop3[1].displayName}</h4>
                   <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[1].branch]}</span>
                   <span className="text-sm font-bold text-slate-300 mt-2 bg-slate-400/10 px-3 py-1 rounded-full border border-slate-400/20">
                     {getMetricString(podiumTop3[1])}
@@ -241,15 +248,20 @@ export const Leaderboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="order-1 md:order-2 flex flex-col items-center scale-105"
+                className="order-1 md:order-2 flex flex-col items-center scale-105 w-full"
               >
                 <GlassPanel className="w-full bg-[#121218]/50 border-amber-400/30 p-6 rounded-3xl flex flex-col items-center relative overflow-hidden shadow-xl shadow-amber-400/5">
                   <div className="absolute top-2 right-2 text-amber-400 font-extrabold text-sm">#1</div>
-                  <div className="relative">
-                    {renderAvatar(podiumTop3[0].photoURL, "w-20 h-20 text-4xl")}
-                    <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 bg-amber-400 border border-white text-white rounded-full text-sm font-bold shadow">👑</span>
+                  <div 
+                    onClick={() => podiumTop3[0]?.uid && navigate(`/profile/${podiumTop3[0].uid}`)} 
+                    className="flex flex-col items-center hover:scale-105 transition-transform duration-200 w-full cursor-pointer"
+                  >
+                    <div className="relative">
+                      {renderAvatar(podiumTop3[0].photoURL, "w-20 h-20 text-4xl")}
+                      <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 bg-amber-400 border border-white text-white rounded-full text-sm font-bold shadow">👑</span>
+                    </div>
+                    <h4 className="font-extrabold text-white text-base mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[0].displayName}</h4>
                   </div>
-                  <h4 className="font-extrabold text-white text-base mt-3 truncate w-full text-center">{podiumTop3[0].displayName}</h4>
                   <span className="text-[10px] text-amber-300 font-semibold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[0].branch]}</span>
                   <span className="text-base font-black text-amber-400 mt-3 bg-amber-400/10 px-4 py-1.5 rounded-full border border-amber-400/20">
                     {getMetricString(podiumTop3[0])}
@@ -265,15 +277,20 @@ export const Leaderboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="order-3 flex flex-col items-center"
+                className="order-3 flex flex-col items-center w-full"
               >
                 <GlassPanel className="w-full bg-[#121218]/40 border-amber-700/20 p-5 rounded-2xl flex flex-col items-center relative overflow-hidden">
                   <div className="absolute top-2 right-2 text-amber-700 font-extrabold text-sm">#3</div>
-                  <div className="relative">
-                    {renderAvatar(podiumTop3[2].photoURL, "w-16 h-16 text-3xl")}
-                    <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-amber-700 border border-white text-white rounded-full text-xs font-bold shadow">🥉</span>
+                  <div 
+                    onClick={() => podiumTop3[2]?.uid && navigate(`/profile/${podiumTop3[2].uid}`)} 
+                    className="flex flex-col items-center hover:scale-105 transition-transform duration-200 w-full cursor-pointer"
+                  >
+                    <div className="relative">
+                      {renderAvatar(podiumTop3[2].photoURL, "w-16 h-16 text-3xl")}
+                      <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-amber-700 border border-white text-white rounded-full text-xs font-bold shadow">🥉</span>
+                    </div>
+                    <h4 className="font-extrabold text-white text-sm mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[2].displayName}</h4>
                   </div>
-                  <h4 className="font-extrabold text-white text-sm mt-3 truncate w-full text-center">{podiumTop3[2].displayName}</h4>
                   <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[2].branch]}</span>
                   <span className="text-sm font-bold text-amber-700 mt-2 bg-amber-700/10 px-3 py-1 rounded-full border border-amber-700/20">
                     {getMetricString(podiumTop3[2])}
@@ -395,10 +412,13 @@ export const Leaderboard: React.FC = () => {
                     </span>
 
                     {/* Student Info */}
-                    <div className="flex-1 pl-4 flex items-center gap-3 min-w-0">
+                    <div 
+                      onClick={() => peer.uid && navigate(`/profile/${peer.uid}`)} 
+                      className="flex-1 pl-4 flex items-center gap-3 min-w-0 hover:translate-x-0.5 transition-transform duration-200 cursor-pointer group"
+                    >
                       {renderAvatar(peer.photoURL, "w-9 h-9 text-lg")}
-                      <div className="min-w-0">
-                        <span className="font-extrabold text-white text-xs leading-none flex items-center gap-1.5">
+                      <div className="min-w-0 text-left">
+                        <span className="font-extrabold text-white text-xs leading-none flex items-center gap-1.5 group-hover:text-indigo-400 transition-colors">
                           {peer.displayName}
                           {isMe && <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">YOU</span>}
                         </span>

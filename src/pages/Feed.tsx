@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -79,6 +79,7 @@ export const Feed: React.FC = () => {
   const { user, userProfile, toggleBookmark, isGuest } = useAuth();
   const { success, error, info } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const showPaywall = isGuest || !user;
 
@@ -183,6 +184,9 @@ export const Feed: React.FC = () => {
   // AI Drawer state
   const [activeNoteForSummary, setActiveNoteForSummary] = useState<NoteDocument | null>(null);
 
+  // Diagnostic: tracks last fetch error for display in empty state
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   // Fetch all notes — always reads fresh user from userRef to avoid stale closures
   const fetchNotes = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -190,68 +194,77 @@ export const Feed: React.FC = () => {
     try {
       let fetched: NoteDocument[] = [];
 
-      // Query 1: Fetch approved notes (trying snake_case, then camelCase fallback)
+      // Query 1: Fetch ALL approved notes using select('*') to avoid column-name mismatches
       const { data: approvedData, error: approvedErr } = await supabase
         .from('notes')
-        .select('id, subject, branch, category, semester, teacher, description, pdf_url, pdf_path, file_name, file_size, uploaded_by, uploader_name, uploader_email, created_at, status, likes, likes_count, bookmarks_count, summary')
+        .select('*')
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
       if (approvedErr) {
-        console.warn("Snake_case notes query failed, trying camelCase select...");
-        const { data: camelData, error: camelErr } = await supabase
+        // Fallback: try ordering by createdAt (camelCase schema)
+        console.warn('[NoteWeb Feed] snake_case query failed:', approvedErr.message, '— retrying without order...');
+        const { data: fallbackData, error: fallbackErr } = await supabase
           .from('notes')
-          .select('id, subject, branch, category, semester, teacher, description, pdfUrl, pdfPath, fileName, fileSize, uploadedBy, uploaderName, uploaderEmail, createdAt, status, likes, likesCount, bookmarksCount, summary')
-          .eq('status', 'approved')
-          .order('createdAt', { ascending: false });
-        if (camelErr) throw camelErr;
-        fetched = (camelData || []).map(mapDbNoteToNoteDocument);
+          .select('*')
+          .eq('status', 'approved');
+        
+        if (fallbackErr) {
+          // Last resort: fetch ALL notes regardless of status
+          console.warn('[NoteWeb Feed] status filter query failed:', fallbackErr.message, '— fetching all notes...');
+          const { data: allData, error: allErr } = await supabase.from('notes').select('*');
+          if (allErr) throw allErr;
+          fetched = (allData || []).map(mapDbNoteToNoteDocument);
+        } else {
+          fetched = (fallbackData || []).map(mapDbNoteToNoteDocument);
+        }
       } else {
         fetched = (approvedData || []).map(mapDbNoteToNoteDocument);
       }
 
-      // Query 2: If logged in, also fetch own notes so student can see their pending / rejected uploads!
+      console.log(`[NoteWeb Feed] Fetched ${fetched.length} approved notes from DB`);
+
+      // Query 2: If logged in, also fetch own notes so student sees their uploads immediately
       if (currentUser && currentUser.uid && currentUser.uid !== 'guest-user-noteweb') {
         try {
           const { data: ownData, error: ownErr } = await supabase
             .from('notes')
-            .select('id, subject, branch, category, semester, teacher, description, pdf_url, pdf_path, file_name, file_size, uploaded_by, uploader_name, uploader_email, created_at, status, likes, likes_count, bookmarks_count, summary')
+            .select('*')
             .eq('uploaded_by', currentUser.uid);
           
           if (ownErr) {
-            console.warn("Snake_case own notes query failed, trying camelCase...");
-            const { data: ownCamelData } = await supabase
+            // Try camelCase column fallback
+            const { data: ownCamelData, error: ownCamelErr } = await supabase
               .from('notes')
-              .select('id, subject, branch, category, semester, teacher, description, pdfUrl, pdfPath, fileName, fileSize, uploadedBy, uploaderName, uploaderEmail, createdAt, status, likes, likesCount, bookmarksCount, summary')
+              .select('*')
               .eq('uploadedBy', currentUser.uid);
-            if (ownCamelData) {
+            
+            if (!ownCamelErr && ownCamelData) {
               const mappedOwn = ownCamelData.map(mapDbNoteToNoteDocument);
               for (const own of mappedOwn) {
-                if (!fetched.some((n) => n.id === own.id)) {
-                  fetched.push(own);
-                }
+                if (!fetched.some((n) => n.id === own.id)) fetched.push(own);
               }
+              console.log(`[NoteWeb Feed] Fetched ${ownCamelData.length} own notes (camelCase fallback)`);
+            } else {
+              console.warn('[NoteWeb Feed] Own notes query failed (both snake + camel):', ownErr?.message);
             }
           } else if (ownData) {
             const mappedOwn = ownData.map(mapDbNoteToNoteDocument);
             for (const own of mappedOwn) {
-              if (!fetched.some((n) => n.id === own.id)) {
-                fetched.push(own);
-              }
+              if (!fetched.some((n) => n.id === own.id)) fetched.push(own);
             }
+            console.log(`[NoteWeb Feed] Fetched ${ownData.length} own notes for user ${currentUser.uid}`);
           }
-        } catch (ownCatchErr) {
-          console.warn("Silent failure fetching own notes:", ownCatchErr);
+        } catch (ownCatchErr: any) {
+          console.warn('[NoteWeb Feed] Own notes fetch threw:', ownCatchErr?.message);
         }
       }
 
-      // Get broadcasted notes from localStorage
+      // Get broadcasted notes from localStorage (RLS-blocked uploads)
       const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
       let storedNotes: any[] = [];
       if (storedNotesStr) {
-        try {
-          storedNotes = JSON.parse(storedNotesStr);
-        } catch {}
+        try { storedNotes = JSON.parse(storedNotesStr); } catch {}
       }
       
       const merged = [...fetched];
@@ -261,6 +274,12 @@ export const Feed: React.FC = () => {
           merged.push(mappedSn);
         }
       }
+
+      if (storedNotes.length > 0) {
+        console.log(`[NoteWeb Feed] Merged ${storedNotes.length} broadcasted notes from localStorage`);
+      }
+
+      console.log(`[NoteWeb Feed] Total after merge: ${merged.length} notes`);
 
       // Merge optimistic notes — keep any that haven't arrived from DB yet
       setNotes((prev) => {
@@ -281,7 +300,6 @@ export const Feed: React.FC = () => {
         });
 
         const combined = [...prevOptimistic, ...merged];
-        // Deduplicate by id
         const seen = new Set<string>();
         const deduped = combined.filter((n) => {
           if (seen.has(n.id)) return false;
@@ -291,15 +309,19 @@ export const Feed: React.FC = () => {
         sortNotes(deduped, sortBy);
         return deduped;
       });
+
+      setFetchError(null);
     } catch (e: any) {
-      console.error(e);
-      if (!silent) {
-        error("Failed to load notes: " + e.message);
-      }
+      console.error('[NoteWeb Feed] fetchNotes threw:', e);
+      setFetchError(e.message || 'Unknown fetch error');
+      // Always show error — even on silent polls — so user can diagnose
+      error('Could not load notes: ' + (e.message || 'Check console for details'));
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [sortBy]);  // Only recreate when sortBy changes
+  }, [sortBy]);
+
+
 
   useEffect(() => {
     fetchNotes();
@@ -836,8 +858,11 @@ export const Feed: React.FC = () => {
 
                           {/* Middle metadata details */}
                           <div className="flex items-center justify-between border-t border-white/[0.04] pt-3 text-[10px] font-medium text-slate-500 z-10 relative mt-4">
-                            <span className="flex items-center gap-1 truncate max-w-[130px]">
-                              <User className="w-3 h-3 flex-shrink-0" /> {note.uploaderName}
+                            <span 
+                              onClick={() => note.uploadedBy && navigate(`/profile/${note.uploadedBy}`)}
+                              className="flex items-center gap-1 truncate max-w-[130px] hover:text-indigo-400 cursor-pointer transition-colors duration-200"
+                            >
+                              <User className="w-3 h-3 flex-shrink-0 text-indigo-500" /> {note.uploaderName}
                             </span>
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3 flex-shrink-0" /> {getFormatDate(note.createdAt)}
@@ -915,29 +940,53 @@ export const Feed: React.FC = () => {
                   </AnimatePresence>
                 </motion.div>
               ) : (
-                // Empty search state
-                <GlassPanel className="h-96 flex flex-col items-center justify-center gap-4 text-center bg-[#16161D]/20">
+                // Empty state with Refresh button and diagnostics
+                <GlassPanel className="h-auto min-h-64 flex flex-col items-center justify-center gap-4 text-center bg-[#16161D]/20 p-8">
                   <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center border border-white/5 text-slate-500">
                     <Search className="w-8 h-8" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white light-mode:text-slate-800">No notes found</h3>
-                    <p className="text-xs text-slate-500 max-w-sm mt-1 mx-auto leading-relaxed">
-                      We couldn't find any study notes matching your filters. Try selecting a different semester, clearing search keys, or upload your own notes to start the library!
-                    </p>
+                    <h3 className="font-bold text-white light-mode:text-slate-800">
+                      {fetchError ? '⚠️ Could not load notes' : 'No notes found'}
+                    </h3>
+                    {fetchError ? (
+                      <p className="text-xs text-rose-400 max-w-sm mt-1 mx-auto leading-relaxed font-mono break-all">
+                        {fetchError}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-slate-500 max-w-sm mt-1 mx-auto leading-relaxed">
+                        {notes.length > 0
+                          ? "Notes exist but are hidden by filters. Try clearing them."
+                          : "No approved notes in the library yet. Upload your own to start!"}
+                      </p>
+                    )}
                   </div>
-                  <Button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedSemester('all');
-                      setSelectedBranch('all');
-                      setSelectedCategory('all');
-                    }}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    Clear Filters
-                  </Button>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <Button
+                      onClick={() => fetchNotes(false)}
+                      variant="primary"
+                      size="sm"
+                    >
+                      🔄 Refresh Notes
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedSemester('all');
+                        setSelectedBranch('all');
+                        setSelectedCategory('all');
+                      }}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Clear Filters
+                    </Button>
+                  </div>
+                  {notes.length > 0 && filteredNotes.length === 0 && (
+                    <p className="text-[11px] text-slate-600 mt-1">
+                      {notes.length} note{notes.length !== 1 ? 's' : ''} loaded but hidden by current filters
+                    </p>
+                  )}
                 </GlassPanel>
               )}
             </div>

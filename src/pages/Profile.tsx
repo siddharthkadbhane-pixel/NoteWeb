@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -64,6 +65,79 @@ const mapDbNoteToNoteDocument = (n: any): NoteDocument => {
   };
 };
 
+interface UserProfile {
+  uid: string;
+  username: string;
+  email: string;
+  displayName: string;
+  mobileNo: string;
+  year: string;
+  branch: string;
+  cgpa?: string;
+  photoURL: string;
+  role: 'student' | 'admin';
+  createdAt: any;
+  bookmarks: string[];
+  setupComplete?: boolean;
+  points: number;
+}
+
+const dbToProfile = (dbRow: any): UserProfile => {
+  return {
+    uid: dbRow.id || dbRow.uid,
+    username: dbRow.username || '',
+    email: dbRow.email || '',
+    displayName: dbRow.display_name || dbRow.displayName || '',
+    mobileNo: dbRow.mobile_no || dbRow.mobileNo || '',
+    year: dbRow.year || '',
+    branch: dbRow.branch || '',
+    cgpa: dbRow.cgpa || '',
+    photoURL: dbRow.photo_url || dbRow.photoURL || '',
+    role: dbRow.role || 'student',
+    createdAt: dbRow.created_at || dbRow.createdAt || new Date(),
+    bookmarks: dbRow.bookmarks || [],
+    setupComplete: dbRow.setup_complete !== undefined ? dbRow.setup_complete : dbRow.setupComplete,
+    points: dbRow.points !== undefined ? Number(dbRow.points) : 0
+  };
+};
+
+const compressProfileImage = (base64Str: string, maxWidth = 150, maxHeight = 150, quality = 0.75): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } else {
+        resolve(base64Str);
+      }
+    };
+    img.onerror = () => resolve(base64Str);
+  });
+};
+
+
 const BRANCH_LABELS: Record<string, string> = {
   computers: 'Computer Science (CSE)',
   electronics: 'Electronics & Comm (ECE)',
@@ -93,7 +167,12 @@ const GRADIENTS = [
 export const Profile: React.FC = () => {
   const { user, userProfile, toggleBookmark, updatePoints, updateFullProfile } = useAuth();
   const { success, error } = useToast();
+  const { uid: urlUid } = useParams<{ uid?: string }>();
 
+  const isViewingSelf = !urlUid || urlUid === user?.uid;
+  const targetUid = urlUid || user?.uid;
+
+  const [viewedProfile, setViewedProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<'uploads' | 'bookmarks'>('uploads');
   const [myUploads, setMyUploads] = useState<NoteDocument[]>([]);
   const [myBookmarks, setMyBookmarks] = useState<NoteDocument[]>([]);
@@ -111,6 +190,7 @@ export const Profile: React.FC = () => {
   // Custom Avatar Builder states
   const [selectedEmoji, setSelectedEmoji] = useState(EMOJIS[0]);
   const [selectedGradient, setSelectedGradient] = useState(GRADIENTS[0].class);
+  const [customPhotoBase64, setCustomPhotoBase64] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Daily check-in status
@@ -120,7 +200,7 @@ export const Profile: React.FC = () => {
   const [questsClaimed, setQuestsClaimed] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (userProfile) {
+    if (userProfile && isViewingSelf) {
       setEditName(userProfile.displayName || '');
       setEditMobile(userProfile.mobileNo || '');
       setEditBranch(userProfile.branch || 'computers');
@@ -128,23 +208,109 @@ export const Profile: React.FC = () => {
       setEditCgpa(userProfile.cgpa || '');
       setEditEmail(userProfile.email || '');
       
-      if (userProfile.photoURL?.includes('|')) {
-        const [emo, grad] = userProfile.photoURL.split('|');
-        setSelectedEmoji(emo);
-        setSelectedGradient(grad);
+      if (userProfile.photoURL) {
+        if (userProfile.photoURL.includes('|')) {
+          const [emo, grad] = userProfile.photoURL.split('|');
+          setSelectedEmoji(emo);
+          setSelectedGradient(grad);
+          setCustomPhotoBase64(null);
+        } else {
+          setCustomPhotoBase64(userProfile.photoURL);
+        }
       }
     }
-  }, [userProfile, isEditing]);
+  }, [userProfile, isEditing, isViewingSelf]);
+
+  const fetchViewedProfile = async () => {
+    if (!targetUid) return;
+    if (isViewingSelf && userProfile) {
+      setViewedProfile(userProfile);
+      return;
+    }
+    try {
+      const { data, error: profileErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', targetUid);
+
+      if (profileErr) throw profileErr;
+
+      if (data && data.length > 0) {
+        setViewedProfile(dbToProfile(data[0]));
+      } else {
+        // Local cache fallback
+        const saved = localStorage.getItem(`noteweb-profile-${targetUid}`);
+        if (saved) {
+          setViewedProfile(JSON.parse(saved));
+        } else {
+          setViewedProfile({
+            uid: targetUid,
+            username: 'scholar_' + targetUid.substring(0, 5),
+            email: 'scholar@noteweb.local',
+            displayName: 'Campus Student',
+            mobileNo: '',
+            year: '1',
+            branch: 'computers',
+            photoURL: '',
+            role: 'student',
+            createdAt: new Date(),
+            bookmarks: [],
+            points: 150
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch target user profile:", e);
+      setViewedProfile({
+        uid: targetUid,
+        username: 'scholar_' + targetUid.substring(0, 5),
+        email: 'scholar@noteweb.local',
+        displayName: 'Campus Student',
+        mobileNo: '',
+        year: '1',
+        branch: 'computers',
+        photoURL: '',
+        role: 'student',
+        createdAt: new Date(),
+        bookmarks: [],
+        points: 150
+      });
+    }
+  };
+
+  const handleProfilePictureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      error('Invalid file type! Please upload an image file.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Str = reader.result as string;
+      try {
+        const compressed = await compressProfileImage(base64Str);
+        setCustomPhotoBase64(compressed);
+        success('Profile picture loaded! Click Save below to apply.');
+      } catch (err) {
+        setCustomPhotoBase64(base64Str);
+        console.error("Compression failed, using raw image:", err);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const fetchMyData = async () => {
-    if (!user) return;
+    if (!targetUid) return;
     setIsLoading(true);
     try {
-      // 1. Fetch My Uploads
+      // 1. Fetch Target Uploads
       const { data: uploadsData, error: uploadsErr } = await supabase
         .from('notes')
         .select('*')
-        .eq('uploaded_by', user.uid);
+        .eq('uploaded_by', targetUid);
       
       if (uploadsErr) throw uploadsErr;
 
@@ -152,12 +318,22 @@ export const Profile: React.FC = () => {
       uploads.sort((a: NoteDocument, b: NoteDocument) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setMyUploads(uploads);
 
-      // 2. Fetch My Bookmarks
-      if (userProfile?.bookmarks && userProfile.bookmarks.length > 0) {
+      // 2. Fetch Target Bookmarks
+      let targetBookmarks: string[] = [];
+      if (isViewingSelf) {
+        targetBookmarks = userProfile?.bookmarks || [];
+      } else {
+        const { data: profileData } = await supabase.from('profiles').select('bookmarks').eq('id', targetUid).single();
+        if (profileData) {
+          targetBookmarks = profileData.bookmarks || [];
+        }
+      }
+
+      if (targetBookmarks && targetBookmarks.length > 0) {
         const { data: bookmarksData, error: bookmarksErr } = await supabase
           .from('notes')
           .select('*')
-          .in('id', userProfile.bookmarks);
+          .in('id', targetBookmarks);
         
         if (bookmarksErr) throw bookmarksErr;
 
@@ -204,10 +380,13 @@ export const Profile: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchMyData();
+    if (targetUid) {
+      fetchViewedProfile();
+      fetchMyData();
+    }
     checkDailyCooldown();
     loadQuestStatus();
-  }, [user, userProfile?.bookmarks]);
+  }, [targetUid, userProfile?.bookmarks, user]);
 
   // Periodic check-in countdown update
   useEffect(() => {
@@ -235,7 +414,7 @@ export const Profile: React.FC = () => {
 
     setIsSavingProfile(true);
     try {
-      const avatarPayload = `${selectedEmoji}|${selectedGradient}`;
+      const avatarPayload = customPhotoBase64 || `${selectedEmoji}|${selectedGradient}`;
       await updateFullProfile({
         displayName: editName.trim(),
         mobileNo: editMobile.trim(),
@@ -245,8 +424,9 @@ export const Profile: React.FC = () => {
         email: editEmail,
         photoURL: avatarPayload
       });
-      success("Profile details and custom avatar saved successfully!");
+      success("Profile details saved successfully!");
       setIsEditing(false);
+      fetchViewedProfile();
     } catch (err: any) {
       error("Failed to save profile details: " + err.message);
     } finally {
@@ -330,8 +510,8 @@ export const Profile: React.FC = () => {
       title: 'Bookmark Collector',
       description: 'Add 3 or more note bookmarks to your stash',
       reward: 50,
-      isMet: (userProfile?.bookmarks?.length || 0) >= 3,
-      progressText: `${Math.min(userProfile?.bookmarks?.length || 0, 3)}/3 Saved`
+      isMet: (viewedProfile?.bookmarks?.length || 0) >= 3,
+      progressText: `${Math.min(viewedProfile?.bookmarks?.length || 0, 3)}/3 Saved`
     },
     {
       id: 'popular_writer',
@@ -356,14 +536,14 @@ export const Profile: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-transparent pointer-events-none" />
           
           <div className="flex flex-col sm:flex-row sm:items-center gap-6 text-left z-10 relative">
-            {renderAvatar(userProfile?.photoURL || '', "w-24 h-24 text-5xl")}
+            {renderAvatar(viewedProfile?.photoURL || '', "w-24 h-24 text-5xl")}
             
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-3xl font-extrabold text-white tracking-tight">
-                  {userProfile?.displayName || 'Student'}
+                  {viewedProfile?.displayName || 'Student'}
                 </h2>
-                {userProfile?.role === 'admin' ? (
+                {viewedProfile?.role === 'admin' ? (
                   <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
                     <ShieldCheck className="w-3.5 h-3.5" /> ADMINISTRATOR
                   </span>
@@ -373,25 +553,27 @@ export const Profile: React.FC = () => {
                   </span>
                 )}
               </div>
-              <p className="text-sm font-semibold text-slate-400">@{userProfile?.username}</p>
+              <p className="text-sm font-semibold text-slate-400">@{viewedProfile?.username}</p>
               
               <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs font-semibold text-slate-500">
-                <span>📚 Branch: {BRANCH_LABELS[userProfile?.branch || ''] || 'General'}</span>
-                <span>🎓 Class: {YEAR_LABELS[userProfile?.year || ''] || 'N/A'}</span>
-                {userProfile?.cgpa && <span>📐 CGPA: {userProfile.cgpa}</span>}
+                <span>📚 Branch: {BRANCH_LABELS[viewedProfile?.branch || ''] || 'General'}</span>
+                <span>🎓 Class: {YEAR_LABELS[viewedProfile?.year || ''] || 'N/A'}</span>
+                {viewedProfile?.cgpa && <span>📐 CGPA: {viewedProfile.cgpa}</span>}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 z-10 relative self-start lg:self-auto">
-            <Button
-              onClick={() => setIsEditing(!isEditing)}
-              variant="secondary"
-              leftIcon={<Edit2 className="w-4 h-4" />}
-            >
-              {isEditing ? 'Cancel Edit' : 'Edit Profile & Avatar'}
-            </Button>
-          </div>
+          {isViewingSelf && (
+            <div className="flex items-center gap-3 z-10 relative self-start lg:self-auto">
+              <Button
+                onClick={() => setIsEditing(!isEditing)}
+                variant="secondary"
+                leftIcon={<Edit2 className="w-4 h-4" />}
+              >
+                {isEditing ? 'Cancel Edit' : 'Edit Profile & Avatar'}
+              </Button>
+            </div>
+          )}
         </GlassPanel>
 
         {/* Live profile edit sheet with avatar builder */}
@@ -469,43 +651,87 @@ export const Profile: React.FC = () => {
 
               {/* LIVE AVATAR BUILDER */}
               <div className="border border-white/[0.06] rounded-xl p-4 bg-slate-950/20">
-                <span className="block text-xs font-bold text-slate-200 mb-3 uppercase tracking-wider">Update Cartoon Avatar Theme</span>
+                <span className="block text-xs font-bold text-slate-200 mb-3 uppercase tracking-wider">Update Profile Picture Style</span>
                 <div className="flex flex-col md:flex-row items-center gap-6">
-                  {renderAvatar(`${selectedEmoji}|${selectedGradient}`, "w-20 h-20 text-4xl")}
+                  {renderAvatar(customPhotoBase64 || `${selectedEmoji}|${selectedGradient}`, "w-20 h-20 text-4xl")}
                   
-                  <div className="flex-1 w-full space-y-3">
+                  <div className="flex-1 w-full space-y-4">
+                    {/* Device upload first */}
                     <div>
-                      <span className="block text-[10px] font-bold text-slate-400 mb-1">Pick Avatar Emoji</span>
-                      <div className="flex flex-wrap gap-1">
-                        {EMOJIS.map((emoji) => (
-                          <button
-                            key={emoji}
+                      <span className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Option A: Upload Custom Picture from Device</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          id="profile-picture-upload"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleProfilePictureUpload}
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => document.getElementById('profile-picture-upload')?.click()}
+                          leftIcon={<UploadCloud className="w-4 h-4" />}
+                        >
+                          Choose Image File
+                        </Button>
+                        {customPhotoBase64 && (
+                          <Button
                             type="button"
-                            onClick={() => setSelectedEmoji(emoji)}
-                            className={`w-7 h-7 flex items-center justify-center rounded-lg text-base transition-transform active:scale-95 ${
-                              selectedEmoji === emoji ? 'bg-indigo-600/30 border border-indigo-500 scale-105' : 'bg-slate-900 border border-white/[0.04]'
-                            }`}
+                            variant="ghost"
+                            onClick={() => setCustomPhotoBase64(null)}
+                            className="text-rose-400 hover:text-rose-300 font-extrabold text-xs animate-fade-in"
                           >
-                            {emoji}
-                          </button>
-                        ))}
+                            Reset to Emoji
+                          </Button>
+                        )}
                       </div>
                     </div>
 
-                    <div>
-                      <span className="block text-[10px] font-bold text-slate-400 mb-1">Pick Gradient Style</span>
-                      <div className="flex flex-wrap gap-1">
-                        {GRADIENTS.map((grad) => (
-                          <button
-                            key={grad.name}
-                            type="button"
-                            onClick={() => setSelectedGradient(grad.class)}
-                            title={grad.name}
-                            className={`w-6 h-6 rounded-lg bg-gradient-to-tr ${grad.class} flex items-center justify-center border ${
-                              selectedGradient === grad.class ? 'border-white scale-105' : 'border-transparent opacity-85'
-                            }`}
-                          />
-                        ))}
+                    <div className="border-t border-white/[0.04] pt-3">
+                      <span className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Option B: Or Design Cartoon Avatar Theme</span>
+                      
+                      <div className="space-y-3 opacity-90">
+                        <div>
+                          <span className="block text-[9px] font-bold text-slate-500 mb-1">Pick Avatar Emoji</span>
+                          <div className="flex flex-wrap gap-1">
+                            {EMOJIS.map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedEmoji(emoji);
+                                  setCustomPhotoBase64(null); // Clear custom photo when emoji is chosen
+                                }}
+                                className={`w-7 h-7 flex items-center justify-center rounded-lg text-base transition-transform active:scale-95 ${
+                                  selectedEmoji === emoji && !customPhotoBase64 ? 'bg-indigo-600/30 border border-indigo-500 scale-105' : 'bg-slate-900 border border-white/[0.04]'
+                                }`}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="block text-[9px] font-bold text-slate-500 mb-1">Pick Gradient Style</span>
+                          <div className="flex flex-wrap gap-1">
+                            {GRADIENTS.map((grad) => (
+                              <button
+                                key={grad.name}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedGradient(grad.class);
+                                  setCustomPhotoBase64(null); // Clear custom photo when gradient is chosen
+                                }}
+                                title={grad.name}
+                                className={`w-6 h-6 rounded-lg bg-gradient-to-tr ${grad.class} flex items-center justify-center border ${
+                                  selectedGradient === grad.class && !customPhotoBase64 ? 'border-white scale-105' : 'border-transparent opacity-85'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -549,7 +775,7 @@ export const Profile: React.FC = () => {
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Balance</span>
                 <div className="flex items-baseline gap-2 mt-1">
                   <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-300">
-                    {userProfile?.points || 0}
+                    {viewedProfile?.points || 0}
                   </h3>
                   <span className="text-sm font-extrabold text-amber-400">XP</span>
                 </div>
@@ -560,35 +786,43 @@ export const Profile: React.FC = () => {
                   <Trophy className="w-4 h-4 text-yellow-500" />
                   <span>College Standing:</span>
                   <span className="text-white ml-auto">
-                    {(userProfile?.points || 0) > 300 ? '⭐ Elite Scholar' : (userProfile?.points || 0) > 100 ? '📘 Active Member' : '🌱 New Contributor'}
+                    {(viewedProfile?.points || 0) > 300 ? '⭐ Elite Scholar' : (viewedProfile?.points || 0) > 100 ? '📘 Active Member' : '🌱 New Contributor'}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-white/[0.05]">
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <h4 className="text-xs font-bold text-white">Daily Check-In</h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Claim +20 XP once every 24 hours</p>
+            {isViewingSelf ? (
+              <div className="mt-6 pt-4 border-t border-white/[0.05]">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <h4 className="text-xs font-bold text-white">Daily Check-In</h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Claim +20 XP once every 24 hours</p>
+                  </div>
+                  {checkinCooldown ? (
+                    <button
+                      disabled
+                      className="px-3.5 py-1.5 rounded-xl border border-white/[0.06] bg-slate-900 text-slate-500 font-extrabold text-xs"
+                    >
+                      Cooldown: {checkinCooldown}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleClaimDaily}
+                      className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 font-extrabold text-xs transition-all cursor-pointer shadow-lg shadow-orange-500/20 active:scale-95"
+                    >
+                      Claim +20 XP
+                    </button>
+                  )}
                 </div>
-                {checkinCooldown ? (
-                  <button
-                    disabled
-                    className="px-3.5 py-1.5 rounded-xl border border-white/[0.06] bg-slate-900 text-slate-500 font-extrabold text-xs"
-                  >
-                    Cooldown: {checkinCooldown}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleClaimDaily}
-                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 font-extrabold text-xs transition-all cursor-pointer shadow-lg shadow-orange-500/20 active:scale-95"
-                  >
-                    Claim +20 XP
-                  </button>
-                )}
               </div>
-            </div>
+            ) : (
+              <div className="mt-6 pt-4 border-t border-white/[0.05] flex items-center justify-center text-center">
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+                  Verified Member since {getFormatDate(viewedProfile?.createdAt)}
+                </span>
+              </div>
+            )}
           </GlassPanel>
 
           {/* Gamified Mini Quests & Tasks Hub */}
@@ -632,12 +866,18 @@ export const Profile: React.FC = () => {
                             <CheckCircle className="w-3.5 h-3.5 text-slate-400" /> Claimed
                           </div>
                         ) : quest.isMet ? (
-                          <button
-                            onClick={() => handleClaimQuest(quest.id, quest.reward)}
-                            className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] transition-all cursor-pointer active:scale-95 shadow-md shadow-emerald-600/15"
-                          >
-                            Claim Reward
-                          </button>
+                          isViewingSelf ? (
+                            <button
+                              onClick={() => handleClaimQuest(quest.id, quest.reward)}
+                              className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] transition-all cursor-pointer active:scale-95 shadow-md shadow-emerald-600/15"
+                            >
+                              Claim Reward
+                            </button>
+                          ) : (
+                            <div className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/15">
+                              Completed
+                            </div>
+                          )
                         ) : (
                           <div className="text-[10px] font-extrabold text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-xl border border-indigo-500/15">
                             In Progress
@@ -663,7 +903,7 @@ export const Profile: React.FC = () => {
                 : 'border-transparent text-slate-400 hover:text-slate-200'}
             `}
           >
-            <BookOpen className="w-4 h-4" /> My Contributions ({myUploads.length})
+            <BookOpen className="w-4 h-4" /> {isViewingSelf ? 'My Contributions' : 'Contributions'} ({myUploads.length})
           </button>
           <button
             onClick={() => setActiveTab('bookmarks')}
@@ -730,13 +970,15 @@ export const Profile: React.FC = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteNote(note.id, note.pdfPath)}
-                          className="p-2 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all active:scale-95"
-                          title="Delete Note"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {isViewingSelf && (
+                          <button
+                            onClick={() => handleDeleteNote(note.id, note.pdfPath)}
+                            className="p-2 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all active:scale-95"
+                            title="Delete Note"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </GlassPanel>
@@ -750,7 +992,9 @@ export const Profile: React.FC = () => {
                 <div>
                   <h4 className="font-bold text-white">No contributions yet</h4>
                   <p className="text-xs text-slate-500 max-w-xs mt-1">
-                    You haven't uploaded any study notes yet. Click the contribution link in navigation to share!
+                    {isViewingSelf 
+                      ? "You haven't uploaded any study notes yet. Click the contribution link in navigation to share!"
+                      : "This scholar hasn't uploaded any study notes yet."}
                   </p>
                 </div>
               </GlassPanel>
@@ -789,13 +1033,15 @@ export const Profile: React.FC = () => {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => handleUnbookmark(note.id)}
-                        className="p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-95"
-                        title="Remove Bookmark"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {isViewingSelf && (
+                        <button
+                          onClick={() => handleUnbookmark(note.id)}
+                          className="p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-95"
+                          title="Remove Bookmark"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </GlassPanel>
                 ))}
@@ -808,7 +1054,9 @@ export const Profile: React.FC = () => {
                 <div>
                   <h4 className="font-bold text-white">No bookmarks saved</h4>
                   <p className="text-xs text-slate-500 max-w-xs mt-1">
-                    You haven't bookmarked any notes. Explore the public feed page and hit bookmark to collect them!
+                    {isViewingSelf
+                      ? "You haven't bookmarked any notes. Explore the public feed page and hit bookmark to collect them!"
+                      : "This scholar hasn't bookmarked any notes yet."}
                   </p>
                 </div>
               </GlassPanel>
