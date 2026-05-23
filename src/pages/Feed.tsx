@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
@@ -88,6 +88,10 @@ export const Feed: React.FC = () => {
 
   // Track optimistically-injected note IDs so we can merge them properly on real fetch
   const optimisticIdsRef = useRef<Set<string>>(new Set());
+
+  // Always-fresh ref to user so stale closures (polling interval, realtime handlers) can read it
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,9 +183,10 @@ export const Feed: React.FC = () => {
   // AI Drawer state
   const [activeNoteForSummary, setActiveNoteForSummary] = useState<NoteDocument | null>(null);
 
-  // Fetch all APPROVED notes
-  const fetchNotes = async (silent = false) => {
+  // Fetch all notes — always reads fresh user from userRef to avoid stale closures
+  const fetchNotes = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
+    const currentUser = userRef.current;
     try {
       let fetched: NoteDocument[] = [];
 
@@ -206,19 +211,19 @@ export const Feed: React.FC = () => {
       }
 
       // Query 2: If logged in, also fetch own notes so student can see their pending / rejected uploads!
-      if (user && user.uid && user.uid !== 'guest-user-noteweb') {
+      if (currentUser && currentUser.uid && currentUser.uid !== 'guest-user-noteweb') {
         try {
           const { data: ownData, error: ownErr } = await supabase
             .from('notes')
             .select('id, subject, branch, category, semester, teacher, description, pdf_url, pdf_path, file_name, file_size, uploaded_by, uploader_name, uploader_email, created_at, status, likes, likes_count, bookmarks_count, summary')
-            .eq('uploaded_by', user.uid);
+            .eq('uploaded_by', currentUser.uid);
           
           if (ownErr) {
             console.warn("Snake_case own notes query failed, trying camelCase...");
             const { data: ownCamelData } = await supabase
               .from('notes')
               .select('id, subject, branch, category, semester, teacher, description, pdfUrl, pdfPath, fileName, fileSize, uploadedBy, uploaderName, uploaderEmail, createdAt, status, likes, likesCount, bookmarksCount, summary')
-              .eq('uploadedBy', user.uid);
+              .eq('uploadedBy', currentUser.uid);
             if (ownCamelData) {
               const mappedOwn = ownCamelData.map(mapDbNoteToNoteDocument);
               for (const own of mappedOwn) {
@@ -257,21 +262,19 @@ export const Feed: React.FC = () => {
         }
       }
 
-      // Merge optimistic notes: keep any optimistic notes that haven't arrived in DB yet.
-      // Once the DB returns the real row (same real id or matching subject+uploader+time),
-      // the optimistic placeholder is replaced cleanly.
+      // Merge optimistic notes — keep any that haven't arrived from DB yet
       setNotes((prev) => {
         const prevOptimistic = prev.filter((n) => {
           if (!optimisticIdsRef.current.has(n.id)) return false;
           
-          // Check if this optimistic note matches any DB note by ID or subject + uploader + time
+          // Replace optimistic note once the real DB row arrives
           const isAlreadyInDb = merged.some((m) => {
             if (m.id === n.id) return true;
             const timeDiff = Math.abs(new Date(m.createdAt).getTime() - new Date(n.createdAt).getTime());
             return (
               m.subject.toLowerCase() === n.subject.toLowerCase() &&
               m.uploadedBy === n.uploadedBy &&
-              timeDiff < 120000
+              timeDiff < 300000  // 5 minute window
             );
           });
           return !isAlreadyInDb;
@@ -296,17 +299,17 @@ export const Feed: React.FC = () => {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  };
+  }, [sortBy]);  // Only recreate when sortBy changes
 
   useEffect(() => {
     fetchNotes();
 
-    // 1. Set up Realtime subscription for notes table — separate INSERT/UPDATE/DELETE handlers
+    // 1. Set up Realtime subscription — uses SAME channel name as Upload.tsx broadcast
     let channel: any = null;
     try {
       if (typeof supabase.channel === 'function') {
         channel = supabase
-          .channel('public:notes-feed-v2')
+          .channel('public:notes')  // MUST match the channel Upload.tsx broadcasts on
           .on(
             'postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'notes' },
@@ -314,8 +317,8 @@ export const Feed: React.FC = () => {
               console.log('[NoteWeb Realtime] New note inserted:', payload.new?.subject);
               setRealtimeSynced(true);
               fetchNotes(true);
-              // Toast for new approved notes from other users
-              if (payload.new && payload.new.uploaded_by !== user?.uid && payload.new.status === 'approved') {
+              // Toast for new approved notes from other users — use ref to avoid stale closure
+              if (payload.new && payload.new.uploaded_by !== userRef.current?.uid && payload.new.status === 'approved') {
                 info(`📄 New note: "${payload.new.subject}" just appeared!`);
               }
             }
@@ -348,7 +351,7 @@ export const Feed: React.FC = () => {
               if (response?.payload) {
                 const newNote = response.payload;
                 
-                // Save to localStorage
+                // Save to localStorage for persistence across refreshes
                 const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
                 let storedNotes: any[] = [];
                 if (storedNotesStr) {
@@ -402,7 +405,7 @@ export const Feed: React.FC = () => {
         }
       }
     };
-  }, [user?.uid]);
+  }, [fetchNotes]);  // Re-run when fetchNotes is recreated (also triggers on user login since userRef updates)
 
   // Handle Sort triggers
   const sortNotes = (items: NoteDocument[], criteria: 'recent' | 'popular') => {
