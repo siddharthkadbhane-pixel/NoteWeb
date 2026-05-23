@@ -56,34 +56,7 @@ const dbToProfile = (dbRow: any): UserProfile => {
   let role: 'student' | 'admin' = 'student';
 
   if (rawRole === 'admin') {
-    const email = (dbRow.email || '').toLowerCase().trim();
-    const username = (dbRow.username || '').toLowerCase().trim();
-    
-    // 1. Read admin whitelists from env
-    const envAdminEmails = import.meta.env.VITE_ADMIN_EMAILS
-      ? import.meta.env.VITE_ADMIN_EMAILS.split(',').map((e: string) => e.trim().toLowerCase())
-      : [];
-      
-    // 2. Predefined legitimate patterns & mock admin account checks
-    const isMockGoogleAdmin = username === 'google' || email === 'google@noteweb.local';
-    const hasAdminEmailPattern = email.startsWith('admin@') || 
-                                 email.includes('admin.noteweb') ||
-                                 username === 'admin' ||
-                                 username === 'siddharth' ||
-                                 username === 'sid_phantom' ||
-                                 email === 'siddharth@noteweb.local';
-                                 
-    const isExplicitAdmin = envAdminEmails.includes(email) || envAdminEmails.includes(username);
-
-    if (isMockGoogleAdmin || hasAdminEmailPattern || isExplicitAdmin) {
-      role = 'admin';
-    } else {
-      console.warn(
-        `[NoteWeb Security Guard] Prevented unauthorized admin access elevation for user: "${username}" (${email}). ` +
-        `Downgrading role to "student". To whitelist this user as admin, add their email/username to VITE_ADMIN_EMAILS in .env.`
-      );
-      role = 'student';
-    }
+    role = 'admin';
   }
 
   return {
