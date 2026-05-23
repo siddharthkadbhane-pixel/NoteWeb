@@ -1,14 +1,14 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+/* Custom variant: light-mode class on body (backward compat) */
 @variant light-mode (.light-mode &);
 
 /* ─────────────────────────────────────────────────────────────
-   Premium Custom Variable Tokens (Obsidian Dark & Warm Alabaster)
+   Premium Custom Variable Tokens
    ───────────────────────────────────────────────────────────── */
 :root {
-  --vh: 1vh;
-  /* Cosmic Dark Mode Base Tokens */
+  /* Cosmic Dark Base */
   --bg-dark: #020204;
   --bg-dark-card: rgba(10, 10, 16, 0.45);
   --accent-cyan: #00F2FE;
@@ -16,16 +16,10 @@
   --accent-rose: #FF007F;
   --text-platinum: #E2E8F0;
   
-  /* Warm Alabaster Light Mode Base Tokens */
+  /* Warm Alabaster Light */
   --bg-light: #F4F4F6;
-  --bg-light-card: rgba(255, 255, 255, 0.75);
+  --bg-light-card: rgba(255, 255, 255, 0.85);
   --text-charcoal: #0F172A;
-}
-
-@supports (height: 100dvh) {
-  :root {
-    --dvh: 1dvh;
-  }
 }
 
 @layer base {
@@ -34,40 +28,48 @@
     min-height: 100%;
     min-height: 100dvh;
     scroll-behavior: smooth;
+    background-color: var(--bg-dark);
+    color: var(--text-platinum);
+  }
+
+  html.light {
+    background-color: var(--bg-light);
+    color: var(--text-charcoal);
   }
 
   body {
-    background-color: var(--bg-dark);
-    color: var(--text-platinum);
-    @apply font-sans antialiased overflow-x-hidden transition-colors duration-300 selection:bg-indigo-500/30 selection:text-indigo-200;
+    @apply antialiased overflow-x-hidden transition-colors duration-300 selection:bg-indigo-500/30 selection:text-indigo-200;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-overflow-scrolling: touch;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     min-height: 100vh;
     min-height: 100dvh;
+    background-color: var(--bg-dark);
+    color: var(--text-platinum);
   }
 
-  /* Warm Alabaster Light Mode Overrides */
+  /* Light mode body overrides */
   body.light-mode,
-  [data-theme="light"] body,
-  html[data-theme="light"] body {
-    background-color: var(--bg-light);
-    color: var(--text-charcoal);
+  html.light body {
+    background-color: var(--bg-light) !important;
+    color: var(--text-charcoal) !important;
   }
 
-  /* Safe scrolling container locks */
+  /* Prevent scroll when sidebar overlay open */
   body.sidebar-open {
     overflow: hidden;
     position: fixed;
     width: 100%;
   }
 
+  /* Dark mode native selects */
   select option {
     background-color: #0A0A0E;
     color: #E2E8F0;
   }
 
+  html.light select option,
   body.light-mode select option {
     background-color: #FFFFFF;
     color: var(--text-charcoal);
@@ -83,7 +85,7 @@
 }
 
 @layer utilities {
-  /* Bespoke Frosted Glassmorphism Styles (Custom Human-made visual) */
+  /* ─── Glassmorphism ─── */
   .glass-panel {
     background: rgba(8, 8, 12, 0.55);
     border: 1px solid rgba(255, 255, 255, 0.045);
@@ -91,13 +93,14 @@
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
   }
   
-  .light-mode .glass-panel {
-    background: rgba(240, 240, 243, 0.7);
-    border: 1px solid rgba(15, 23, 42, 0.06);
-    backdrop-filter: blur(24px) saturate(120%);
-    box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.04);
+  html.light .glass-panel,
+  body.light-mode .glass-panel {
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    backdrop-filter: blur(24px) saturate(140%);
+    box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
   }
-
+  
   .glass-card {
     background: rgba(10, 10, 16, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.035);
@@ -113,22 +116,25 @@
     box-shadow: 0 12px 40px -10px rgba(0, 242, 254, 0.08);
   }
   
-  .light-mode .glass-card {
+  html.light .glass-card,
+  body.light-mode .glass-card {
     background: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(15, 23, 42, 0.04);
+    border: 1px solid rgba(99, 102, 241, 0.1);
     border-radius: 20px;
     backdrop-filter: blur(16px);
-    box-shadow: 0 4px 20px 0 rgba(15, 23, 42, 0.02);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.03), 0 1px 2px rgba(0, 0, 0, 0.01);
+    color: var(--text-charcoal);
   }
 
-  .light-mode .glass-card:hover {
-    background: rgba(255, 255, 255, 0.9);
-    border-color: rgba(79, 70, 229, 0.15);
-    transform: translateY(-2px);
-    box-shadow: 0 12px 40px -10px rgba(15, 23, 42, 0.06);
+  html.light .glass-card:hover,
+  body.light-mode .glass-card:hover {
+    background: #ffffff;
+    border-color: rgba(99, 102, 241, 0.35);
+    transform: translateY(-3px);
+    box-shadow: 0 16px 36px -8px rgba(99, 102, 241, 0.08), 0 4px 12px -4px rgba(99, 102, 241, 0.03);
   }
 
+  /* Glass inputs */
   .glass-input {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -144,35 +150,21 @@
     box-shadow: 0 0 16px rgba(0, 242, 254, 0.08);
   }
 
-  .light-mode .glass-input {
-    background: rgba(15, 23, 42, 0.02);
-    border: 1px solid rgba(15, 23, 42, 0.06);
-    border-radius: 12px;
-    outline: none;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    color: var(--text-charcoal);
+  html.light .glass-input,
+  body.light-mode .glass-input {
+    background: #ffffff;
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    color: #0f172a;
   }
 
-  .light-mode .glass-input:focus {
-    background: #FFFFFF;
-    border-color: rgba(79, 70, 229, 0.45);
-    box-shadow: 0 0 16px rgba(79, 70, 229, 0.05);
+  html.light .glass-input:focus,
+  body.light-mode .glass-input:focus {
+    background: #ffffff;
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08), 0 2px 4px rgba(0, 0, 0, 0.02);
   }
 
-  /* Custom Glow Accents */
-  .glow-purple {
-    background: radial-gradient(circle at 50% 50%, rgba(127, 0, 255, 0.12) 0%, transparent 65%);
-  }
-
-  .glow-indigo {
-    background: radial-gradient(circle at 50% 50%, rgba(0, 242, 254, 0.08) 0%, transparent 65%);
-  }
-
-  .glow-pink {
-    background: radial-gradient(circle at 50% 50%, rgba(255, 0, 127, 0.06) 0%, transparent 65%);
-  }
-
-  /* Custom Professional Text Gradient */
+  /* Text gradients */
   .text-gradient-primary {
     background: linear-gradient(135deg, #E2E8F0 10%, #00F2FE 50%, #7F00FF 90%);
     background-size: 200% auto;
@@ -181,52 +173,50 @@
     animation: shineText 6s linear infinite;
   }
   
-  .light-mode .text-gradient-primary {
+  html.light .text-gradient-primary,
+  body.light-mode .text-gradient-primary {
     background: linear-gradient(135deg, #0F172A 10%, #4F46E5 50%, #9333EA 90%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    animation: none;
   }
 
-  /* Custom animations */
+  /* Ambient glows */
+  .glow-purple { background: radial-gradient(circle at 50% 50%, rgba(127, 0, 255, 0.12) 0%, transparent 65%); }
+  .glow-indigo { background: radial-gradient(circle at 50% 50%, rgba(0, 242, 254, 0.08) 0%, transparent 65%); }
+  .glow-pink   { background: radial-gradient(circle at 50% 50%, rgba(255, 0, 127, 0.06) 0%, transparent 65%); }
+
+  /* Animations */
   @keyframes shineText {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
   }
 
-  /* Sleek Scrollbars */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
   }
 
-  ::-webkit-scrollbar-track {
-    background: transparent;
+  .animate-spin-slow {
+    animation: spin-slow 4s linear infinite;
   }
 
-  ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 99px;
-    transition: background 0.3s;
-  }
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.06); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0, 242, 254, 0.25); }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 242, 254, 0.2);
-  }
+  html.light ::-webkit-scrollbar-thumb,
+  body.light-mode ::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.1); }
 
-  .light-mode ::-webkit-scrollbar-thumb {
-    background: rgba(15, 23, 42, 0.06);
-  }
-
-  .light-mode ::-webkit-scrollbar-thumb:hover {
-    background: rgba(79, 70, 229, 0.2);
-  }
+  html.light ::-webkit-scrollbar-thumb:hover,
+  body.light-mode ::-webkit-scrollbar-thumb:hover { background: rgba(79, 70, 229, 0.25); }
 }
 
-/* Premium Animated Floating Vector border glow (pure CSS custom effect) */
-.premium-border-glow {
-  position: relative;
-}
+/* ─── Premium Animated Border Glow ─── */
+.premium-border-glow { position: relative; }
 
 .premium-border-glow::before {
   content: '';
@@ -248,21 +238,36 @@
   opacity: 1;
 }
 
-/* Light mode specific border glow */
-.light-mode .premium-border-glow::before {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(147, 51, 234, 0.1));
+html.light .premium-border-glow::before,
+body.light-mode .premium-border-glow::before {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(147, 51, 234, 0.12));
 }
 
-.light-mode .premium-border-glow:hover::before {
+html.light .premium-border-glow:hover::before,
+body.light-mode .premium-border-glow:hover::before {
   background: linear-gradient(135deg, #4F46E5, #9333EA);
 }
 
-.pdf-page-shadow {
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+/* ─── PDF page shadow ─── */
+.pdf-page-shadow { box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5); }
+
+html.light .pdf-page-shadow,
+body.light-mode .pdf-page-shadow { box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1); }
+
+/* ─── Safe area padding ─── */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* ─── Light mode card text fix (ensure readability) ─── */
+html.light .text-slate-200,
+html.light .text-white,
+body.light-mode .text-slate-200 {
+  /* Let Tailwind handle, but glass-card overrides with var(--text-charcoal) */
 }
 
-.light-mode .pdf-page-shadow {
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+/* ─── Light mode background for transparent page wrappers ─── */
+html.light [class*="bg-\\[#05050A\\]"],
+html.light [class*="bg-\\[#0A0A0F\\]"] {
+  background-color: rgba(248, 249, 250, 0.8) !important;
 }
 
 @media (max-width: 1024px) {
@@ -270,17 +275,8 @@
     min-height: 100vh;
     min-height: 100dvh;
   }
-
   #root {
     overflow-x: hidden;
     position: relative;
   }
-}
-
-html[data-theme="light"] {
-  background-color: var(--bg-light);
-}
-html[data-theme="light"] body {
-  background-color: var(--bg-light);
-  color: var(--text-charcoal);
 }

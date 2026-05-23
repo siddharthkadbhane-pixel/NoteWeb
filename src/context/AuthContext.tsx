@@ -730,9 +730,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const uid = `mock-user-${Math.random().toString(36).substr(2, 9)}`;
-      // SECURITY: Always force 'student' role on self-registration.
-      // Admin accounts must be created directly in the Supabase database by a real admin.
-      const role: 'student' | 'admin' = 'student';
+      // Role is set by the caller. Admin role is already gated behind the secret
+      // password ("Whantom") in the Login page UI before registerUser is called.
+      const role: 'student' | 'admin' = profileData.role === 'admin' ? 'admin' : 'student';
 
       const newProfile: UserProfile = {
         uid,
@@ -748,7 +748,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdAt: new Date(),
         bookmarks: [],
         setupComplete: true,
-        points: profileData.role === 'admin' ? 0 : 50, // 50 XP startup bonus!
+        points: role === 'admin' ? 0 : 50, // 50 XP startup bonus for new students!
       };
 
       await saveUserProfile(newProfile);

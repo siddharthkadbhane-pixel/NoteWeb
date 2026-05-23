@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 import { 
   Gamepad2, 
   Trophy, 
@@ -72,6 +73,7 @@ const HANDCRAFTED_QUOTES = [
 export const Home: React.FC = () => {
   const { user, userProfile, isGuest } = useAuth();
   const { success, error, info } = useToast();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
 
   // Greeting and Quotes
@@ -345,29 +347,29 @@ export const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full relative py-6 px-3 sm:px-6 lg:px-8 flex flex-col justify-start items-center overflow-x-hidden text-left">
+    <div className={`min-h-screen w-full relative py-6 px-3 sm:px-6 lg:px-8 flex flex-col justify-start items-center overflow-x-hidden text-left ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
       
-      {/* Background ambient blurring glows */}
-      <div className="absolute top-1/12 right-1/12 w-[450px] h-[450px] bg-purple-600/5 rounded-full pointer-events-none blur-3xl opacity-35" />
-      <div className="absolute bottom-1/12 left-1/12 w-[450px] h-[450px] bg-[#00F2FE]/5 rounded-full pointer-events-none blur-3xl opacity-30" />
+      {/* Background ambient glows */}
+      <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-purple-600/5 rounded-full pointer-events-none blur-3xl" />
+      <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-[#00F2FE]/5 rounded-full pointer-events-none blur-3xl" />
 
       <div className="max-w-7xl mx-auto z-10 relative flex flex-col gap-8 w-full">
         
         {/* Workspace Title Block */}
-        <div className="flex flex-col gap-2.5 border-b border-white/[0.04] pb-5">
+        <div className={`flex flex-col gap-2.5 border-b pb-5 ${isDark ? 'border-white/[0.06]' : 'border-slate-200/80'}`}>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase bg-[#00F2FE]/10 border border-[#00F2FE]/25 text-[#00F2FE]">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase border ${isDark ? 'bg-[#00F2FE]/10 border-[#00F2FE]/25 text-[#00F2FE]' : 'bg-indigo-50 border-indigo-200 text-indigo-600'}`}>
               <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Active Workspace Desk
             </span>
-            <span className="text-[10px] font-bold text-slate-500 bg-white/[0.02] border border-white/[0.04] px-2.5 py-1 rounded-full flex items-center gap-1">
-              <Clock className="w-3 h-3 text-slate-400" /> Auto-saved Desk
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border ${isDark ? 'text-slate-500 bg-white/[0.02] border-white/[0.04]' : 'text-slate-400 bg-slate-100/80 border-slate-200/60'}`}>
+              <Clock className="w-3 h-3" /> Auto-saved Desk
             </span>
           </div>
           
-          <h1 className="text-3xl font-black text-white tracking-tight leading-none mt-1">
+          <h1 className={`text-3xl font-black tracking-tight leading-none mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
             Welcome back, <span className="bg-gradient-to-r from-[#00F2FE] via-[#7F00FF] to-[#FF007F] bg-clip-text text-transparent">{studentName}</span>
           </h1>
-          <p className="text-xs text-slate-400 font-medium">
+          <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Manage notes, trigger timer bursts, study daily trivia concept teasers, and coordinate library modules.
           </p>
         </div>
@@ -383,20 +385,20 @@ export const Home: React.FC = () => {
           <div className="lg:col-span-5 flex flex-col gap-6 w-full">
             
             {/* WIDGET 1: AESTHETIC INTERACTIVE NOTEPAD */}
-            <div className={`rounded-3xl border p-5 flex flex-col gap-4 shadow-xl backdrop-blur-2xl transition-all duration-300 relative overflow-hidden ${currentNotepadStyle.bg}`}>
+            <div className={`rounded-3xl border p-5 flex flex-col gap-4 shadow-xl backdrop-blur-2xl transition-all duration-300 relative overflow-hidden ${isDark ? currentNotepadStyle.bg : 'bg-white/90 border-slate-200/80 text-slate-800 focus-within:border-indigo-300'}`}>
               
               {/* Notepad Glow Backdrop Decoration */}
               <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-tr from-white/[0.01] to-white/[0.03] blur-xl pointer-events-none" />
 
               {/* Notepad Header Panel */}
-              <div className="flex items-center justify-between border-b border-white/[0.04] pb-3 z-10">
+              <div className={`flex items-center justify-between border-b pb-3 z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center">
-                    <AlignLeft className="w-4 h-4 text-slate-400" />
+                  <div className={`w-8 h-8 rounded-xl border flex items-center justify-center ${isDark ? 'bg-white/[0.03] border-white/[0.08]' : 'bg-slate-100 border-slate-200'}`}>
+                    <AlignLeft className={`w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                   </div>
                   <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-200">Study Scratchpad</h3>
-                    <p className="text-[9px] text-slate-500 font-bold mt-0.5">Stored in local cache</p>
+                    <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Study Scratchpad</h3>
+                    <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Stored in local cache</p>
                   </div>
                 </div>
 
@@ -423,11 +425,11 @@ export const Home: React.FC = () => {
                 value={noteText}
                 onChange={handleNoteChange}
                 placeholder="Jot down quick lecture summaries, formulas, lists, or questions here. It auto-saves instantly..."
-                className={`w-full h-48 focus:outline-none resize-none font-medium leading-relaxed ${fontSizeClasses[fontSize]} ${currentNotepadStyle.textarea}`}
+                className={`w-full h-48 focus:outline-none resize-none font-medium leading-relaxed ${fontSizeClasses[fontSize]} ${isDark ? currentNotepadStyle.textarea : 'bg-transparent text-slate-800 placeholder-slate-400'}`}
               />
 
               {/* Editor Controls Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/[0.04] z-10">
+              <div className={`flex flex-wrap items-center justify-between gap-3 pt-3 border-t z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
                 {/* Font Size Preset Toggles */}
                 <div className="flex items-center gap-1.5 bg-white/[0.02] border border-white/[0.04] p-0.5 rounded-lg text-[9px] font-bold text-slate-400">
                   {(['sm', 'base', 'lg'] as const).map(sz => (
@@ -475,20 +477,20 @@ export const Home: React.FC = () => {
             </div>
 
             {/* WIDGET 2: HIGH-FIDELITY POMODORO FOCUS TIMER */}
-            <div className="rounded-3xl border border-white/5 p-5 flex flex-col gap-4 shadow-xl backdrop-blur-2xl bg-[#05050A]/60 relative overflow-hidden premium-border-glow">
+            <div className={`rounded-3xl border p-5 flex flex-col gap-4 shadow-xl backdrop-blur-2xl relative overflow-hidden premium-border-glow ${isDark ? 'border-white/5 bg-[#05050A]/60' : 'border-slate-200/80 bg-white/90'}`}>
               
               {/* Radiant Inner Glow Deco */}
               <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#7F00FF]/5 blur-3xl pointer-events-none" />
 
               {/* Timer Header */}
-              <div className="flex items-center justify-between border-b border-white/[0.04] pb-3 z-10">
+              <div className={`flex items-center justify-between border-b pb-3 z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
                     <Clock className="w-4 h-4 text-purple-400" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-200">Focus Commander</h3>
-                    <p className="text-[9px] text-slate-500 font-bold mt-0.5">Pomodoro cycle interval</p>
+                    <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Focus Commander</h3>
+                    <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Pomodoro cycle interval</p>
                   </div>
                 </div>
 
@@ -611,34 +613,34 @@ export const Home: React.FC = () => {
           <div className="lg:col-span-7 flex flex-col gap-6 w-full">
             
             {/* WIDGET 3: STUDENT GREETING & RANK BADGE PANEL */}
-            <div className="rounded-3xl border border-white/5 p-6 shadow-xl backdrop-blur-2xl bg-gradient-to-tr from-[#05050A]/70 via-[#0B0F19]/40 to-[#05050A]/70 flex flex-col sm:flex-row items-center sm:justify-between gap-6 relative overflow-hidden premium-border-glow">
+            <div className={`rounded-3xl border p-6 shadow-xl backdrop-blur-2xl flex flex-col sm:flex-row items-center sm:justify-between gap-6 relative overflow-hidden premium-border-glow ${isDark ? 'border-white/5 bg-gradient-to-tr from-[#05050A]/70 via-[#0B0F19]/40 to-[#05050A]/70' : 'border-slate-200/80 bg-gradient-to-tr from-white/95 to-indigo-50/60'}`}>
               
               {/* Dynamic decorative visual neon particle line overlay */}
               <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-[#00F2FE] via-[#7F00FF] to-[#FF007F]" />
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#00F2FE]/5 blur-3xl pointer-events-none" />
 
               <div className="space-y-2.5 z-10 flex-1">
-                <div className="flex items-center gap-1.5 text-[9px] font-black tracking-wider uppercase text-slate-400">
+                <div className={`flex items-center gap-1.5 text-[9px] font-black tracking-wider uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   <Award className="w-3.5 h-3.5 text-amber-400" /> Student Profile Standing
                 </div>
-                <h3 className="text-xl font-black text-white leading-tight">
+                <h3 className={`text-xl font-black leading-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
                   Academic Rank Dashboard
                 </h3>
-                <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-400 mt-1">
-                  <span className="px-2.5 py-1 rounded bg-white/[0.02] border border-white/[0.04]">
-                    Branch: <strong className="text-white">{studentBranch}</strong>
+                <div className={`flex flex-wrap items-center gap-4 text-xs font-semibold mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span className={`px-2.5 py-1 rounded border ${isDark ? 'bg-white/[0.02] border-white/[0.04]' : 'bg-slate-100/80 border-slate-200/60'}`}>
+                    Branch: <strong className={isDark ? 'text-white' : 'text-slate-800'}>{studentBranch}</strong>
                   </span>
-                  <span className="px-2.5 py-1 rounded bg-white/[0.02] border border-white/[0.04]">
-                    Standing: <strong className="text-white">{studentYear}</strong>
+                  <span className={`px-2.5 py-1 rounded border ${isDark ? 'bg-white/[0.02] border-white/[0.04]' : 'bg-slate-100/80 border-slate-200/60'}`}>
+                    Standing: <strong className={isDark ? 'text-white' : 'text-slate-800'}>{studentYear}</strong>
                   </span>
                 </div>
                 
-                {/* Handcrafted quotes motivator panel */}
-                <div className="border-t border-white/[0.04] pt-3 mt-3">
-                  <p className="text-xs text-indigo-200 italic font-medium">
+                {/* Quote */}
+                <div className={`border-t pt-3 mt-3 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
+                  <p className={`text-xs italic font-medium ${isDark ? 'text-indigo-200' : 'text-indigo-600'}`}>
                     "{activeQuote.text}"
                   </p>
-                  <span className="text-[9px] font-bold text-slate-500 block mt-1">
+                  <span className={`text-[9px] font-bold block mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                     — {activeQuote.author}
                   </span>
                 </div>
@@ -660,24 +662,24 @@ export const Home: React.FC = () => {
             </div>
 
             {/* WIDGET 4: CAMPUS ACADEMIC TRIVIA ARENA (FULLY INTERACTIVE) */}
-            <div className="rounded-3xl border border-white/5 p-6 shadow-xl backdrop-blur-2xl bg-[#05050A]/60 flex flex-col gap-4 relative overflow-hidden premium-border-glow">
+            <div className={`rounded-3xl border p-6 shadow-xl backdrop-blur-2xl flex flex-col gap-4 relative overflow-hidden premium-border-glow ${isDark ? 'border-white/5 bg-[#05050A]/60' : 'border-slate-200/80 bg-white/90'}`}>
               
               {/* Backlit background glow */}
               <div className="absolute top-0 right-0 w-44 h-44 bg-gradient-to-tr from-[#00FF87]/5 to-[#60EFFF]/5 blur-3xl pointer-events-none" />
 
               {/* Trivia Header */}
-              <div className="flex items-center justify-between border-b border-white/[0.04] pb-3 z-10">
+              <div className={`flex items-center justify-between border-b pb-3 z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                     <Gamepad2 className="w-4 h-4 text-emerald-400 animate-pulse" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-200">Daily Brain Teaser</h3>
-                    <p className="text-[9px] text-slate-500 font-bold mt-0.5">Solve trivia to earn points</p>
+                    <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Daily Brain Teaser</h3>
+                    <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Solve trivia to earn points</p>
                   </div>
                 </div>
 
-                <span className="text-[9px] font-black tracking-wider uppercase text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
+                <span className="text-[9px] font-black tracking-wider uppercase text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
                   TRIVIA ARENA
                 </span>
               </div>
@@ -687,8 +689,8 @@ export const Home: React.FC = () => {
                 
                 {/* Question */}
                 <div>
-                  <span className="text-[9px] font-black text-slate-500 tracking-widest block uppercase">Question #{triviaIndex + 1}</span>
-                  <h4 className="text-sm sm:text-base font-extrabold text-white leading-relaxed mt-1">
+                  <span className={`text-[9px] font-black tracking-widest block uppercase ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Question #{triviaIndex + 1}</span>
+                  <h4 className={`text-sm sm:text-base font-extrabold leading-relaxed mt-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>
                     {ACADEMIC_TRIVIA[triviaIndex]!.question}
                   </h4>
                 </div>
@@ -762,16 +764,16 @@ export const Home: React.FC = () => {
             </div>
 
             {/* WIDGET 5: QUICK BRANCHES EXPLORER NAVIGATION PANEL */}
-            <div className="rounded-3xl border border-white/5 p-6 shadow-xl backdrop-blur-2xl bg-[#05050A]/60 flex flex-col gap-4 relative overflow-hidden premium-border-glow">
+            <div className={`rounded-3xl border p-6 shadow-xl backdrop-blur-2xl flex flex-col gap-4 relative overflow-hidden premium-border-glow ${isDark ? 'border-white/5 bg-[#05050A]/60' : 'border-slate-200/80 bg-white/90'}`}>
               
-              <div className="flex items-center justify-between border-b border-white/[0.04] pb-3 z-10">
+              <div className={`flex items-center justify-between border-b pb-3 z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
                     <BookMarked className="w-4 h-4 text-sky-400" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-200">Curriculum Branches</h3>
-                    <p className="text-[9px] text-slate-500 font-bold mt-0.5">Browse notes by department</p>
+                    <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Curriculum Branches</h3>
+                    <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Browse notes by department</p>
                   </div>
                 </div>
 
@@ -789,41 +791,41 @@ export const Home: React.FC = () => {
                 {/* CS Branch */}
                 <div 
                   onClick={() => navigate('/feed', { state: { branchFilter: 'computers' } })}
-                  className="p-3.5 rounded-2xl bg-white/[0.01] border border-white/[0.04] hover:bg-[#00F2FE]/5 hover:border-[#00F2FE]/30 transition-all cursor-pointer group active:scale-95"
+                  className={`p-3.5 rounded-2xl border hover:border-sky-300/50 transition-all cursor-pointer group active:scale-95 ${isDark ? 'bg-white/[0.01] border-white/[0.04] hover:bg-[#00F2FE]/5' : 'bg-slate-50/80 border-slate-200/60 hover:bg-sky-50'}`}
                 >
-                  <span className="text-[8px] font-black uppercase text-sky-400 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded">CS Branch</span>
-                  <h4 className="text-xs font-extrabold text-white mt-2 group-hover:text-sky-300">Computer Science</h4>
-                  <span className="text-[9px] text-slate-500 font-medium mt-1 block group-hover:text-slate-400">Data Structures & DBMS</span>
+                  <span className="text-[8px] font-black uppercase text-sky-500 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded">CS Branch</span>
+                  <h4 className={`text-xs font-extrabold mt-2 group-hover:text-sky-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>Computer Science</h4>
+                  <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Data Structures & DBMS</span>
                 </div>
 
                 {/* Math Branch */}
                 <div 
                   onClick={() => navigate('/feed', { state: { branchFilter: 'maths' } })}
-                  className="p-3.5 rounded-2xl bg-white/[0.01] border border-white/[0.04] hover:bg-[#7F00FF]/5 hover:border-[#7F00FF]/30 transition-all cursor-pointer group active:scale-95"
+                  className={`p-3.5 rounded-2xl border hover:border-purple-300/50 transition-all cursor-pointer group active:scale-95 ${isDark ? 'bg-white/[0.01] border-white/[0.04] hover:bg-[#7F00FF]/5' : 'bg-slate-50/80 border-slate-200/60 hover:bg-purple-50'}`}
                 >
-                  <span className="text-[8px] font-black uppercase text-purple-400 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">M Branch</span>
-                  <h4 className="text-xs font-extrabold text-white mt-2 group-hover:text-purple-300">Mathematics</h4>
-                  <span className="text-[9px] text-slate-500 font-medium mt-1 block group-hover:text-slate-400">Calculus & Algebra</span>
+                  <span className="text-[8px] font-black uppercase text-purple-500 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">M Branch</span>
+                  <h4 className={`text-xs font-extrabold mt-2 group-hover:text-purple-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>Mathematics</h4>
+                  <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Calculus & Algebra</span>
                 </div>
 
                 {/* Science Branch */}
                 <div 
                   onClick={() => navigate('/feed', { state: { branchFilter: 'science' } })}
-                  className="p-3.5 rounded-2xl bg-white/[0.01] border border-white/[0.04] hover:bg-[#FF0844]/5 hover:border-[#FF0844]/30 transition-all cursor-pointer group active:scale-95"
+                  className={`p-3.5 rounded-2xl border hover:border-rose-300/50 transition-all cursor-pointer group active:scale-95 ${isDark ? 'bg-white/[0.01] border-white/[0.04] hover:bg-rose-500/5' : 'bg-slate-50/80 border-slate-200/60 hover:bg-rose-50'}`}
                 >
-                  <span className="text-[8px] font-black uppercase text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded">BSE Branch</span>
-                  <h4 className="text-xs font-extrabold text-white mt-2 group-hover:text-rose-300">Basic Sciences</h4>
-                  <span className="text-[9px] text-slate-500 font-medium mt-1 block group-hover:text-slate-400">Physics & Mechanics</span>
+                  <span className="text-[8px] font-black uppercase text-rose-500 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded">BSE Branch</span>
+                  <h4 className={`text-xs font-extrabold mt-2 group-hover:text-rose-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>Basic Sciences</h4>
+                  <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Physics & Mechanics</span>
                 </div>
 
               </div>
 
               {/* Feed CTA panel */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-2.5 pt-4 border-t border-white/[0.04] text-[10px] font-bold text-slate-500 z-10">
+              <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 mt-2.5 pt-4 border-t text-[10px] font-bold z-10 ${isDark ? 'border-white/[0.04] text-slate-500' : 'border-slate-200/60 text-slate-400'}`}>
                 <span className="flex items-center gap-1.5"><Smile className="w-3.5 h-3.5 text-indigo-400 animate-bounce" /> Library catalog: {stats.notesCount} verified uploads</span>
                 <button
                   onClick={() => navigate('/feed')}
-                  className="text-indigo-400 hover:text-white transition-colors flex items-center gap-0.5 group active:scale-95"
+                  className={`transition-colors flex items-center gap-0.5 group active:scale-95 ${isDark ? 'text-indigo-400 hover:text-white' : 'text-indigo-600 hover:text-indigo-800'}`}
                 >
                   Go to Library Feed <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-all" />
                 </button>

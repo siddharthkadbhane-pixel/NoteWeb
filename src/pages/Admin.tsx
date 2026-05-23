@@ -747,47 +747,72 @@ export const Admin: React.FC = () => {
                   return (
                     <GlassPanel 
                       key={usr.uid} 
-                      className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-white/[0.05] bg-[#16161D]/20 hover:border-white/10"
+                      className={`p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border transition-all duration-300 ${
+                        isOnline
+                          ? 'border-emerald-500/20 bg-emerald-500/[0.02]'
+                          : 'border-white/[0.05] bg-[#16161D]/20'
+                      } hover:border-white/10`}
                     >
                       <div className="flex items-start gap-4 min-w-0">
                         <div className="relative flex-shrink-0">
-                          <div className="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/10 mt-1">
+                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center border mt-1 ${
+                            isOnline
+                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                              : 'bg-indigo-500/10 border-indigo-500/10 text-indigo-400'
+                          }`}>
                             <User className="w-5 h-5" />
                           </div>
                           {/* Online indicator */}
-                          {isOnline && (
-                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#0A0A0C] animate-pulse" />
-                          )}
+                          <span className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#0A0A0C] ${
+                            isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+                          }`} />
                         </div>
                         <div className="min-w-0 text-left">
-                          <h4 className="font-bold text-white leading-snug truncate light-mode:text-slate-900">
-                            {usr.displayName}
-                          </h4>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-bold text-white leading-snug truncate light-mode:text-slate-900">
+                              {usr.displayName}
+                            </h4>
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                              isOnline
+                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                : 'bg-slate-500/10 border-white/5 text-slate-400'
+                            }`}>
+                              {isOnline ? 'ONLINE' : 'OFFLINE'}
+                            </span>
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                              usr.role === 'admin' 
+                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
+                                : 'bg-slate-500/10 border-white/5 text-slate-400'
+                            }`}>
+                              {usr.role.toUpperCase()}
+                            </span>
+                          </div>
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 text-xs mt-1.5 font-medium">
                             <span>Email: {usr.email}</span>
                             <span>•</span>
                             <span>Registered {getFormatDate(usr.createdAt)}</span>
-                            {isOnline && (
-                              <>
-                                <span>•</span>
-                                <span className="text-emerald-400 flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
-                                  Online on {userSessions.length} {userSessions.length === 1 ? 'device' : 'devices'}
-                                </span>
-                              </>
-                            )}
                           </div>
+
+                          {/* List of active devices if online */}
+                          {isOnline && userSessions.length > 0 && (
+                            <div className="flex flex-col gap-1 mt-2.5">
+                              {userSessions.map((session) => (
+                                <div key={session.deviceId} className="flex items-center gap-2 text-[10px] text-slate-400 font-medium">
+                                  <span className="flex items-center gap-1 text-indigo-400">
+                                    {getDeviceIcon(session.deviceInfo)}
+                                    {session.deviceInfo}
+                                  </span>
+                                  <span className="text-slate-600">·</span>
+                                  <Clock className="w-3 h-3 text-slate-650" />
+                                  <span>Active {getRelativeTime(session.onlineSince)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3.5 self-start md:self-auto ml-[60px] md:ml-0">
-                        <span className={`
-                          text-[10px] font-extrabold tracking-wider px-2.5 py-1 rounded-full border
-                          ${usr.role === 'admin' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-slate-500/10 border-white/5 text-slate-400'}
-                        `}>
-                          {usr.role.toUpperCase()}
-                        </span>
-
                         <button
                           onClick={() => handleRoleToggle(usr.uid, usr.role)}
                           className={`
@@ -797,13 +822,13 @@ export const Admin: React.FC = () => {
                               : 'border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-white'}
                           `}
                         >
-                          {usr.role === 'admin' ? 'Demote to Student' : 'Elevate to Admin'}
+                          {usr.role === 'admin' ? 'Demote' : 'Elevate'}
                         </button>
 
                         {usr.uid !== currentAuthUser?.uid && (
                           <button
                             onClick={() => handleRemoveUser(usr.uid, usr.displayName)}
-                            className="p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center"
+                            className="p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
                             title="Remove Student Profile"
                           >
                             <Trash2 className="w-4 h-4" />

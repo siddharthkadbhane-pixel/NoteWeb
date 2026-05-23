@@ -93,9 +93,9 @@ export const Chat: React.FC = () => {
         }
       }
     }
-    if (!dateStr) return 1716300000000;
+    if (!dateStr) return Date.now();
     const t = new Date(dateStr).getTime();
-    return isNaN(t) ? 1716300000000 : t;
+    return isNaN(t) ? Date.now() : t;
   };
 
   // Load and filter messages (keeping only past 7 days)
@@ -468,7 +468,7 @@ export const Chat: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100dvh-4rem)] w-full py-8 px-4 md:px-8 relative overflow-hidden flex flex-col items-center bg-[#0A0A0C]">
+    <div className="min-h-[calc(100dvh-4rem)] w-full py-8 px-4 md:px-8 relative overflow-hidden flex flex-col items-center bg-[#F8F9FA] text-[#0F172A] dark:bg-[#0A0A0C] dark:text-[#E2E8F0]">
       {/* Visual background accents */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" />
@@ -482,7 +482,7 @@ export const Chat: React.FC = () => {
               <MessageSquare className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
                 Campus Chat Lounge
                 <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   LIVE FEED
@@ -518,7 +518,7 @@ export const Chat: React.FC = () => {
               <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-slate-500 py-16">
                 <div className="w-12 h-12 rounded-full bg-slate-900 border border-white/5 flex items-center justify-center text-indigo-400 text-xl">💬</div>
                 <div>
-                  <h4 className="font-bold text-white text-sm">Quiet Room...</h4>
+                  <h4 className="font-bold text-slate-800 dark:text-white text-sm">Quiet Room...</h4>
                   <p className="text-xs text-slate-500 mt-1 max-w-xs">No active chats in the last 7 days. Send a message to start the campus vibe!</p>
                 </div>
               </div>
@@ -555,7 +555,7 @@ export const Chat: React.FC = () => {
                       <div className={`p-3.5 rounded-2xl border text-xs font-medium leading-relaxed break-words text-left ${
                         isMe 
                           ? 'bg-indigo-600 border-indigo-500 text-white rounded-br-none shadow-md shadow-indigo-600/10' 
-                          : 'bg-[#181824]/80 border-white/[0.04] text-slate-200 rounded-bl-none'
+                          : 'bg-white border-slate-200 text-slate-850 dark:bg-[#181824]/80 dark:border-white/[0.04] dark:text-slate-200 rounded-bl-none'
                       }`}>
                         {msg.content}
 

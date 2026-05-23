@@ -16,7 +16,7 @@ import { Profile } from './pages/Profile';
 import { Admin } from './pages/Admin';
 import { Chat } from './pages/Chat';
 import { Leaderboard } from './pages/Leaderboard';
-import { Quiz } from './pages/Quiz';
+import { FloatingThemeToggle } from './components/Navigation/FloatingThemeToggle';
 import { InteractiveBackground } from './components/ui/InteractiveBackground';
 import { ScreenshotProtection } from './components/ScreenshotProtection';
 
@@ -27,15 +27,18 @@ function App() {
         <AuthProvider>
           <ScreenshotProtection>
             <Router>
-              <div className="min-h-screen min-h-[100dvh] bg-[#0A0A0C] text-[#E4E4E7] light-mode:bg-[#F8F9FA] light-mode:text-[#1E293B] transition-colors duration-300 flex relative overflow-x-hidden">
-                {/* 3D Geometric Floating Particle Network Background */}
+              <div className="min-h-screen min-h-[100dvh] transition-colors duration-300 flex relative overflow-x-hidden bg-[#F4F4F6] text-[#0F172A] dark:bg-[#020204] dark:text-[#E2E8F0]">
+                {/* Particle Network Background */}
                 <InteractiveBackground />
 
-                {/* Collapsible, responsive Frosted glass sidebar */}
+                {/* Sidebar/Navigation */}
                 <Sidebar />
-                
-                {/* Main Content Area: Adjusted spacing for floating left dock (desktop) & bottom nav pill (mobile) */}
-                <main className="flex-1 min-w-0 pt-20 lg:pt-8 pb-28 lg:pb-8 lg:pl-28 px-4 md:px-8 transition-all duration-300 pb-safe z-10 relative">
+
+                {/* Fixed Floating Theme Toggle Button */}
+                <FloatingThemeToggle />
+
+                {/* Main Content: pt-14 for mobile top bar, pb-24 for bottom nav, lg:pl-20 for desktop dock */}
+                <main className="flex-1 min-w-0 pt-14 lg:pt-0 pb-24 lg:pb-6 lg:pl-20 px-0 transition-all duration-300 z-10 relative w-full">
                   <Routes>
                     {/* Publicly Accessible Routes */}
                     <Route path="/" element={<Home />} />
@@ -43,58 +46,57 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/categories" element={<Categories />} />
                     <Route path="/feed" element={<Feed />} />
-                    <Route path="/quiz" element={<Quiz />} />
 
                     {/* Protected Student Features */}
-                    <Route 
-                      path="/upload" 
+                    <Route
+                      path="/upload"
                       element={
                         <ProtectedRoute>
                           <Upload />
                         </ProtectedRoute>
-                      } 
+                      }
                     />
-                    <Route 
-                      path="/profile" 
+                    <Route
+                      path="/profile"
                       element={
                         <ProtectedRoute>
                           <Profile />
                         </ProtectedRoute>
-                      } 
+                      }
                     />
-                    <Route 
-                      path="/profile/:uid" 
+                    <Route
+                      path="/profile/:uid"
                       element={
                         <ProtectedRoute>
                           <Profile />
                         </ProtectedRoute>
-                      } 
+                      }
                     />
-                    <Route 
-                      path="/chat" 
+                    <Route
+                      path="/chat"
                       element={
                         <ProtectedRoute>
                           <Chat />
                         </ProtectedRoute>
-                      } 
+                      }
                     />
-                    <Route 
-                      path="/leaderboard" 
+                    <Route
+                      path="/leaderboard"
                       element={
                         <ProtectedRoute>
                           <Leaderboard />
                         </ProtectedRoute>
-                      } 
+                      }
                     />
 
                     {/* Protected Admin Controls */}
-                    <Route 
-                      path="/admin" 
+                    <Route
+                      path="/admin"
                       element={
                         <ProtectedRoute adminOnly>
                           <Admin />
                         </ProtectedRoute>
-                      } 
+                      }
                     />
                   </Routes>
                 </main>
