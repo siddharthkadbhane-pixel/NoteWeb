@@ -7,7 +7,6 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { GlassPanel } from '../components/ui/GlassPanel';
 import { motion } from 'framer-motion';
 
 export const Home: React.FC = () => {
@@ -116,10 +115,10 @@ export const Home: React.FC = () => {
               <div className="absolute top-4 left-6 w-full h-[280px] glass-panel border border-white/5 bg-slate-900/40 rounded-2xl opacity-40 -rotate-3 blur-[1px] pointer-events-none" />
               
               {/* Main Card: Sleek Quiz Arena scorecard mockup */}
-              <GlassPanel glowBorder className="absolute top-0 left-0 w-full h-[280px] p-6 flex flex-col justify-between text-left shadow-2xl relative bg-slate-950/40">
+              <div className="absolute top-0 left-0 w-full h-[280px] p-6 flex flex-col justify-between text-left shadow-2xl relative bg-[#0A0A0F]/70 glass-card premium-border-glow">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#7F00FF] to-[#E100FF] flex items-center justify-center text-white shadow-lg shadow-purple-600/20">
                       <Gamepad2 className="w-5 h-5" />
                     </div>
                     <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1 animate-pulse">
@@ -151,7 +150,7 @@ export const Home: React.FC = () => {
                     Play Arena <ArrowRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
-              </GlassPanel>
+              </div>
             </div>
           </motion.div>
         </section>
@@ -169,10 +168,9 @@ export const Home: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
             {features.map((feat, idx) => (
-              <GlassPanel 
+              <div 
                 key={idx} 
-                hoverEffect
-                className="p-6 border border-white/[0.05] bg-[#16161D]/15 flex flex-col justify-between gap-6"
+                className="p-6 glass-card premium-border-glow flex flex-col justify-between gap-6 hover:scale-[1.02] cursor-default"
               >
                 <div className="space-y-4">
                   <div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center">
@@ -183,7 +181,7 @@ export const Home: React.FC = () => {
                     {feat.description}
                   </p>
                 </div>
-              </GlassPanel>
+              </div>
             ))}
           </div>
         </section>

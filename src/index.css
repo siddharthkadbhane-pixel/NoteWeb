@@ -4,12 +4,22 @@
 @variant light-mode (.light-mode &);
 
 /* ─────────────────────────────────────────────────────────────
-   Mobile Viewport Height Fix (iOS Safari, Chrome Mobile etc.)
-   Use --vh custom property for accurate viewport calculations
+   Premium Custom Variable Tokens (Obsidian Dark & Warm Alabaster)
    ───────────────────────────────────────────────────────────── */
 :root {
   --vh: 1vh;
-  /* Fallback for browsers not supporting dvh */
+  /* Cosmic Dark Mode Base Tokens */
+  --bg-dark: #020204;
+  --bg-dark-card: rgba(10, 10, 16, 0.45);
+  --accent-cyan: #00F2FE;
+  --accent-violet: #7F00FF;
+  --accent-rose: #FF007F;
+  --text-platinum: #E2E8F0;
+  
+  /* Warm Alabaster Light Mode Base Tokens */
+  --bg-light: #F4F4F6;
+  --bg-light-card: rgba(255, 255, 255, 0.75);
+  --text-charcoal: #0F172A;
 }
 
 @supports (height: 100dvh) {
@@ -20,193 +30,257 @@
 
 @layer base {
   html {
-    /* Prevent horizontal scroll on mobile */
     overflow-x: hidden;
-    /* Use dynamic viewport height where supported */
     min-height: 100%;
     min-height: 100dvh;
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-[#0A0A0C] text-[#E4E4E7] font-sans antialiased overflow-x-hidden transition-colors duration-300 selection:bg-indigo-500/30 selection:text-indigo-200;
+    background-color: var(--bg-dark);
+    color: var(--text-platinum);
+    @apply font-sans antialiased overflow-x-hidden transition-colors duration-300 selection:bg-indigo-500/30 selection:text-indigo-200;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    /* iOS Safari momentum scroll */
     -webkit-overflow-scrolling: touch;
-    /* Safe area insets for notched iPhones */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     min-height: 100vh;
     min-height: 100dvh;
   }
 
+  /* Warm Alabaster Light Mode Overrides */
   body.light-mode,
   [data-theme="light"] body,
   html[data-theme="light"] body {
-    @apply bg-[#F8F9FA] text-[#1E293B];
+    background-color: var(--bg-light);
+    color: var(--text-charcoal);
   }
 
-  /* iOS Safari: prevent fixed positioning bugs with overflow:hidden */
+  /* Safe scrolling container locks */
   body.sidebar-open {
-    /* Only on mobile to prevent scroll behind sidebar */
     overflow: hidden;
     position: fixed;
     width: 100%;
   }
 
   select option {
-    background-color: #16161D;
-    color: #E4E4E7;
+    background-color: #0A0A0E;
+    color: #E2E8F0;
   }
 
   body.light-mode select option {
     background-color: #FFFFFF;
-    color: #1E293B;
+    color: var(--text-charcoal);
   }
 
-  /* Fix iOS tap highlight */
   * {
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Better touch targets on mobile */
   button, a, [role="button"] {
     touch-action: manipulation;
   }
 }
 
 @layer utilities {
-  /* Premium Frosted Glassmorphism Styles */
+  /* Bespoke Frosted Glassmorphism Styles (Custom Human-made visual) */
   .glass-panel {
-    @apply backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.37)];
+    background: rgba(8, 8, 12, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.045);
+    backdrop-filter: blur(24px) saturate(130%);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
   }
   
   .light-mode .glass-panel {
-    @apply backdrop-blur-xl bg-slate-900/[0.03] border border-slate-900/[0.06] shadow-[0_8px_32px_0_rgba(15,23,42,0.06)];
+    background: rgba(240, 240, 243, 0.7);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    backdrop-filter: blur(24px) saturate(120%);
+    box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.04);
   }
 
   .glass-card {
-    @apply backdrop-blur-lg bg-[#16161D]/[0.4] border border-white/[0.05] rounded-2xl hover:border-indigo-500/30 hover:bg-[#16161D]/[0.6] transition-all duration-300;
+    background: rgba(10, 10, 16, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.035);
+    border-radius: 20px;
+    backdrop-filter: blur(16px);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .glass-card:hover {
+    background: rgba(12, 12, 20, 0.55);
+    border-color: rgba(0, 242, 254, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px -10px rgba(0, 242, 254, 0.08);
   }
   
   .light-mode .glass-card {
-    @apply backdrop-blur-lg bg-white/[0.6] border border-slate-900/[0.04] rounded-2xl hover:border-indigo-600/20 hover:bg-white/[0.8] transition-all duration-300 shadow-sm hover:shadow-md;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(15, 23, 42, 0.04);
+    border-radius: 20px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 4px 20px 0 rgba(15, 23, 42, 0.02);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .light-mode .glass-card:hover {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(79, 70, 229, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px -10px rgba(15, 23, 42, 0.06);
   }
 
   .glass-input {
-    @apply bg-white/[0.03] border border-white/[0.08] rounded-xl focus:border-indigo-500/50 focus:bg-white/[0.05] focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200 text-white placeholder-white/30;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    color: #E2E8F0;
+  }
+
+  .glass-input:focus {
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(0, 242, 254, 0.45);
+    box-shadow: 0 0 16px rgba(0, 242, 254, 0.08);
   }
 
   .light-mode .glass-input {
-    @apply bg-slate-900/[0.02] border border-slate-900/[0.08] rounded-xl focus:border-indigo-600/50 focus:bg-white focus:ring-1 focus:ring-indigo-600/20 outline-none transition-all duration-200 text-slate-800 placeholder-slate-400;
+    background: rgba(15, 23, 42, 0.02);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    color: var(--text-charcoal);
   }
 
-  /* Mobile-safe min-height utilities using dvh */
-  .min-h-screen-safe {
-    min-height: 100vh;
-    min-height: 100dvh;
+  .light-mode .glass-input:focus {
+    background: #FFFFFF;
+    border-color: rgba(79, 70, 229, 0.45);
+    box-shadow: 0 0 16px rgba(79, 70, 229, 0.05);
   }
 
-  .h-screen-safe {
-    height: 100vh;
-    height: 100dvh;
-  }
-
-  /* Glowing Radial Gradient Accents */
+  /* Custom Glow Accents */
   .glow-purple {
-    background: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.15) 0%, transparent 60%);
+    background: radial-gradient(circle at 50% 50%, rgba(127, 0, 255, 0.12) 0%, transparent 65%);
   }
 
   .glow-indigo {
-    background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 60%);
+    background: radial-gradient(circle at 50% 50%, rgba(0, 242, 254, 0.08) 0%, transparent 65%);
   }
 
   .glow-pink {
-    background: radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.1) 0%, transparent 60%);
+    background: radial-gradient(circle at 50% 50%, rgba(255, 0, 127, 0.06) 0%, transparent 65%);
   }
 
-  /* Text Gradients */
+  /* Custom Professional Text Gradient */
   .text-gradient-primary {
-    @apply bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 bg-clip-text text-transparent;
+    background: linear-gradient(135deg, #E2E8F0 10%, #00F2FE 50%, #7F00FF 90%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shineText 6s linear infinite;
   }
   
   .light-mode .text-gradient-primary {
-    @apply bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent;
+    background: linear-gradient(135deg, #0F172A 10%, #4F46E5 50%, #9333EA 90%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
-  /* Scrollbars */
+  /* Custom animations */
+  @keyframes shineText {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Sleek Scrollbars */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-white/[0.08] rounded-full border-2 border-transparent bg-clip-padding hover:bg-white/[0.16] transition-colors;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 99px;
+    transition: background 0.3s;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 242, 254, 0.2);
   }
 
   .light-mode ::-webkit-scrollbar-thumb {
-    @apply bg-slate-900/[0.08] rounded-full border-2 border-transparent bg-clip-padding hover:bg-slate-900/[0.16] transition-colors;
+    background: rgba(15, 23, 42, 0.06);
+  }
+
+  .light-mode ::-webkit-scrollbar-thumb:hover {
+    background: rgba(79, 70, 229, 0.2);
   }
 }
 
-/* Custom visual utilities */
-.animated-border-glow {
+/* Premium Animated Floating Vector border glow (pure CSS custom effect) */
+.premium-border-glow {
   position: relative;
-  border-radius: 1rem;
 }
 
-.animated-border-glow::before {
+.premium-border-glow::before {
   content: '';
   position: absolute;
   inset: -1px;
-  border-radius: 1rem;
+  border-radius: 20px;
   padding: 1px;
-  background: linear-gradient(to right, #6366f1, #a855f7, #ec4899);
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.1), rgba(127, 0, 255, 0.15), rgba(255, 0, 127, 0.1));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
-  opacity: 0.15;
-  transition: opacity 0.3s ease;
+  opacity: 0.5;
+  transition: opacity 0.4s;
 }
 
-.animated-border-glow:hover::before {
-  opacity: 0.7;
+.premium-border-glow:hover::before {
+  background: linear-gradient(135deg, #00F2FE, #7F00FF, #FF007F);
+  opacity: 1;
 }
 
-/* PDF Viewer page shadows */
+/* Light mode specific border glow */
+.light-mode .premium-border-glow::before {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(147, 51, 234, 0.1));
+}
+
+.light-mode .premium-border-glow:hover::before {
+  background: linear-gradient(135deg, #4F46E5, #9333EA);
+}
+
 .pdf-page-shadow {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
 }
 
 .light-mode .pdf-page-shadow {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
 }
 
-/* Mobile Layout Fixes */
 @media (max-width: 1024px) {
-  /* Fix iOS Safari 100vh including address bar */
   .min-h-screen {
     min-height: 100vh;
     min-height: 100dvh;
   }
 
-  /* Prevent bounce overscroll issues on iOS that break fixed elements */
   #root {
     overflow-x: hidden;
     position: relative;
   }
 }
 
-/* Light mode background override via data-theme (mobile reliable) */
 html[data-theme="light"] {
-  background-color: #F8F9FA;
+  background-color: var(--bg-light);
 }
 html[data-theme="light"] body {
-  background-color: #F8F9FA;
-  color: #1E293B;
+  background-color: var(--bg-light);
+  color: var(--text-charcoal);
 }
-

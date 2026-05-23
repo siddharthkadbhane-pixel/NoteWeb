@@ -45,8 +45,8 @@ const defaultBranches: BranchType[] = [
     name: 'Computer Science',
     description: 'Data Structures, Algorithms, Software Engineering, Web Dev, Databases, and operating systems.',
     icon: 'code',
-    color: 'from-blue-500 to-indigo-500',
-    shadowColor: 'rgba(59, 130, 246, 0.3)',
+    color: 'from-[#00F2FE] to-[#4FACFE]',
+    shadowColor: 'rgba(0, 242, 254, 0.25)',
     notesCount: 'CS'
   },
   {
@@ -54,8 +54,8 @@ const defaultBranches: BranchType[] = [
     name: 'Mathematics',
     description: 'Calculus, Linear Algebra, Discrete Math, Differential Equations, Probability, and Statistics.',
     icon: 'binary',
-    color: 'from-purple-500 to-pink-500',
-    shadowColor: 'rgba(168, 85, 247, 0.3)',
+    color: 'from-[#7F00FF] to-[#E100FF]',
+    shadowColor: 'rgba(127, 0, 255, 0.25)',
     notesCount: 'M'
   },
   {
@@ -63,8 +63,8 @@ const defaultBranches: BranchType[] = [
     name: 'Basic Science & Eng',
     description: 'Engineering Physics, Chemistry, Mechanics, Electrical circuits, Thermodynamics, and materials.',
     icon: 'atom',
-    color: 'from-amber-500 to-orange-500',
-    shadowColor: 'rgba(245, 158, 11, 0.3)',
+    color: 'from-[#FF0844] to-[#FFB199]',
+    shadowColor: 'rgba(255, 8, 68, 0.25)',
     notesCount: 'BSE'
   },
   {
@@ -72,8 +72,8 @@ const defaultBranches: BranchType[] = [
     name: 'Electronics & Comm',
     description: 'Microprocessors, VLSI design, Signal processing, Communication systems, and analog hardware.',
     icon: 'cpu',
-    color: 'from-emerald-500 to-teal-500',
-    shadowColor: 'rgba(16, 185, 129, 0.3)',
+    color: 'from-[#00FF87] to-[#60EFFF]',
+    shadowColor: 'rgba(0, 255, 135, 0.25)',
     notesCount: 'ECE'
   },
   {
@@ -81,8 +81,8 @@ const defaultBranches: BranchType[] = [
     name: 'Mechanical & Civil',
     description: 'Solid mechanics, Fluid dynamics, Kinematics, CAD design, Structural analysis, and geotech.',
     icon: 'settings',
-    color: 'from-rose-500 to-pink-500',
-    shadowColor: 'rgba(244, 63, 94, 0.3)',
+    color: 'from-[#F35555] to-[#FEB47B]',
+    shadowColor: 'rgba(243, 85, 85, 0.25)',
     notesCount: 'ME/CE'
   },
   {
@@ -90,8 +90,8 @@ const defaultBranches: BranchType[] = [
     name: 'Management & Humanities',
     description: 'Economics, Professional ethics, Business communication, Organizational behavior, and entrepreneurship.',
     icon: 'compass',
-    color: 'from-cyan-500 to-blue-500',
-    shadowColor: 'rgba(6, 182, 212, 0.3)',
+    color: 'from-[#FF007F] to-[#7F00FF]',
+    shadowColor: 'rgba(255, 0, 127, 0.25)',
     notesCount: 'MGT'
   }
 ];
@@ -488,7 +488,7 @@ export const Categories: React.FC = () => {
                   key={branch.id}
                   variants={itemVariants}
                   onClick={() => setSelectedBranch(branch)}
-                  className="group cursor-pointer text-left glass-card hover:scale-[1.02] hover:shadow-2xl duration-300 flex flex-col justify-between p-6 relative h-[240px] overflow-hidden"
+                  className="group cursor-pointer text-left glass-card premium-border-glow hover:scale-[1.02] hover:shadow-2xl duration-300 flex flex-col justify-between p-6 relative h-[240px] overflow-hidden"
                   style={{
                     boxShadow: `0 4px 30px ${branch.shadowColor || 'rgba(0,0,0,0.2)'}`
                   }}

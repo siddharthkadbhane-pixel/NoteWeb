@@ -190,7 +190,7 @@ const QUIZ_CATEGORIES: QuizCategory[] = [
     id: 'computers',
     name: 'Computer Science',
     icon: <Brain className="w-6 h-6" />,
-    color: 'from-indigo-500 to-cyan-500',
+    color: 'from-[#00F2FE] to-[#4FACFE]',
     description: 'Data Structures, Database Normalizations, and Operating Systems.',
     questions: CS_QUESTIONS
   },
@@ -198,7 +198,7 @@ const QUIZ_CATEGORIES: QuizCategory[] = [
     id: 'maths',
     name: 'Mathematics',
     icon: <BookOpen className="w-6 h-6" />,
-    color: 'from-purple-500 to-pink-500',
+    color: 'from-[#7F00FF] to-[#E100FF]',
     description: 'Calculus derivatives, Matrix Eigenvalues, and Standard Distributions.',
     questions: MATH_QUESTIONS
   },
@@ -206,7 +206,7 @@ const QUIZ_CATEGORIES: QuizCategory[] = [
     id: 'science',
     name: 'Physics & Engineering',
     icon: <GraduationCap className="w-6 h-6" />,
-    color: 'from-teal-500 to-emerald-500',
+    color: 'from-[#FF0844] to-[#FFB199]',
     description: 'Thermodynamics, Nuclear forces, and Inclined mechanics.',
     questions: SCIENCE_QUESTIONS
   },
@@ -214,7 +214,7 @@ const QUIZ_CATEGORIES: QuizCategory[] = [
     id: 'electronics',
     name: 'Electronics & Comm',
     icon: <Zap className="w-6 h-6" />,
-    color: 'from-amber-500 to-orange-500',
+    color: 'from-[#00FF87] to-[#60EFFF]',
     description: 'Transistor biasing junctions and RC filter frequencies.',
     questions: ELECTRONICS_QUESTIONS
   },
@@ -222,7 +222,7 @@ const QUIZ_CATEGORIES: QuizCategory[] = [
     id: 'management',
     name: 'Management & Econ',
     icon: <Trophy className="w-6 h-6" />,
-    color: 'from-rose-500 to-pink-600',
+    color: 'from-[#FF007F] to-[#7F00FF]',
     description: 'Scrum backlog roles, pricing inflation, and financial models.',
     questions: MANAGEMENT_QUESTIONS
   }
@@ -442,10 +442,9 @@ export const Quiz: React.FC = () => {
             {/* Categories Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {QUIZ_CATEGORIES.map((cat) => (
-                <GlassPanel
+                <div
                   key={cat.id}
-                  hoverEffect
-                  className="p-6 flex flex-col justify-between h-[180px] border border-white/[0.04] bg-[#16161D]/15 group cursor-pointer"
+                  className="p-6 glass-card premium-border-glow flex flex-col justify-between h-[180px] group cursor-pointer"
                   onClick={() => setSelectedCategory(cat)}
                 >
                   <div className="space-y-3">
@@ -468,7 +467,7 @@ export const Quiz: React.FC = () => {
                   <div className="flex items-center justify-end text-xs font-bold text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
                     Enter Arena <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </div>
-                </GlassPanel>
+                </div>
               ))}
             </div>
 
