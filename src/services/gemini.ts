@@ -307,3 +307,290 @@ Select the single best fitting category ID. Return ONLY the category ID itself a
     return getFallbackCategory();
   }
 };
+
+export interface Flashcard {
+  front: string;
+  back: string;
+}
+
+/**
+ * Generates study flashcards for a note based on the subject and description.
+ */
+export const generateFlashcards = async (
+  subject: string,
+  description: string,
+  summary?: string
+): Promise<Flashcard[]> => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+  if (!apiKey || apiKey === 'mock-gemini-api-key') {
+    // Return high-quality mock flashcards
+    return [
+      {
+        front: `What is the primary objective of studying "${subject}"?`,
+        back: `To master the foundational theories, methodologies, and practical applications outlined in: "${description}".`
+      },
+      {
+        front: `Name one critical core concept covered in "${subject}".`,
+        back: `The fundamental relation between theory constraints and optimal outputs, reducing errors in engineering/design.`
+      },
+      {
+        front: `How is this material applied practically?`,
+        back: `By solving real-world derivations, implementing step-by-step algorithms/workflows, and building structured systems.`
+      }
+    ];
+  }
+
+  const prompt = `You are NoteWeb's expert AI Study Companion. Generate exactly 3 highly helpful study flashcards for a student revising the subject "${subject}" (Description: "${description}", Summary: "${summary || ''}").
+  
+Return the output as a valid raw JSON array containing exactly 3 objects. Do NOT wrap the JSON in markdown formatting, code blocks (e.g. no \`\`\`json), or any explanations. Return only the raw JSON.
+Each object must have exactly these keys:
+- "front": A concise, critical revision question or term (max 80 chars).
+- "back": A clear, high-fidelity explanation/answer to that question (max 150 chars).
+
+Example format:
+[
+  {"front": "Question 1", "back": "Answer 1"},
+  {"front": "Question 2", "back": "Answer 2"},
+  {"front": "Question 3", "back": "Answer 3"}
+]`;
+
+  try {
+    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+
+    if (!response.ok) throw new Error("Failed to contact Gemini API.");
+    const data = await response.json();
+    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    // Clean text of markdown wrappers
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((fc: any) => ({
+          front: String(fc.front || ''),
+          back: String(fc.back || '')
+        }));
+      }
+    } catch (parseErr) {
+      console.warn("Gemini flashcards JSON parse failed, trying fallback", parseErr);
+    }
+  } catch (error) {
+    console.error("Gemini generateFlashcards error:", error);
+  }
+
+  // Fallback
+  return [
+    {
+      front: `Key Revision Question: What are the fundamental principles of ${subject}?`,
+      back: `It covers core rules, structures, and applications required for examinations and practical projects.`
+    },
+    {
+      front: `Concept Check: How does this subject impact modern engineering/studies?`,
+      back: `By defining system parameters, optimizing designs, and establishing stable operational workflows.`
+    },
+    {
+      front: `Practical Focus: What is the recommended way to practice these notes?`,
+      back: `By solving mathematical proofs, reviewing standard lecture summaries, and tackling study checklists.`
+    }
+  ];
+};
+
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  answerIndex: number;
+  rationale: string;
+}
+
+/**
+ * Generates interactive study quizzes based on the notes subject.
+ */
+export const generateQuiz = async (
+  subject: string,
+  description: string,
+  summary?: string
+): Promise<QuizQuestion[]> => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+  if (!apiKey || apiKey === 'mock-gemini-api-key') {
+    return [
+      {
+        question: `Which of the following best describes the core focus of "${subject}"?`,
+        options: [
+          `Fundamental principles and operational parameters`,
+          `Purely historical case studies with no technical context`,
+          `Unrelated general knowledge trivia questions`,
+          `Basic language learning syntax without logic`
+        ],
+        answerIndex: 0,
+        rationale: `The description "${description}" specifies the technical syllabus folder designed to master core principles.`
+      },
+      {
+        question: `How should a student optimize revision for "${subject}" notes?`,
+        options: [
+          `By skipping all formulas and active retrieval`,
+          `By utilizing AI study flashcards and active recall quizzes`,
+          `By copying the entire PDF manually multiple times`,
+          `By ignoring teacher lectures and study checklists`
+        ],
+        answerIndex: 1,
+        rationale: `Active recall and spaced repetition (e.g. quizzes/flashcards) are scientifically proven to maximize learning retention.`
+      },
+      {
+        question: `What is the secondary benefit of reviewing "${subject}" description and summaries?`,
+        options: [
+          `Memorizing irrelevant data sets`,
+          `Connecting theoretical parameters to real practical engineering scenarios`,
+          `Increasing browser page load latency`,
+          `Avoiding semester exams entirely`
+        ],
+        answerIndex: 1,
+        rationale: `Reviewing notes helps link classroom theory to practical implementations, enhancing technical problem-solving.`
+      }
+    ];
+  }
+
+  const prompt = `You are NoteWeb's expert AI Quiz Master. Generate exactly 3 highly helpful multiple-choice questions for a student testing their knowledge on the subject "${subject}" (Description: "${description}", Summary: "${summary || ''}").
+  
+Return the output as a valid raw JSON array containing exactly 3 objects. Do NOT wrap the JSON in markdown formatting, code blocks (e.g. no \`\`\`json), or any explanations. Return only the raw JSON.
+Each object must have exactly these keys:
+- "question": The revision question string (max 120 chars).
+- "options": An array of exactly 4 strings representing multi-choice options (max 60 chars each).
+- "answerIndex": The 0-based index of the correct option (0, 1, 2, or 3).
+- "rationale": A brief explanation of why this answer is correct (max 150 chars).
+
+Example format:
+[
+  {
+    "question": "Question text?",
+    "options": ["Opt 0", "Opt 1", "Opt 2", "Opt 3"],
+    "answerIndex": 1,
+    "rationale": "Explanation..."
+  }
+]`;
+
+  try {
+    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+
+    if (!response.ok) throw new Error("Failed to contact Gemini API.");
+    const data = await response.json();
+    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    // Clean text
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((q: any) => ({
+          question: String(q.question || ''),
+          options: Array.isArray(q.options) ? q.options.map(String).slice(0, 4) : ['A', 'B', 'C', 'D'],
+          answerIndex: typeof q.answerIndex === 'number' ? q.answerIndex : 0,
+          rationale: String(q.rationale || '')
+        }));
+      }
+    } catch (parseErr) {
+      console.warn("Gemini quiz JSON parse failed, trying fallback", parseErr);
+    }
+  } catch (error) {
+    console.error("Gemini generateQuiz error:", error);
+  }
+
+  // Fallback
+  return [
+    {
+      question: `Revision Practice: Which of the following is core to "${subject}"?`,
+      options: [
+        `Operational and theoretical parameters`,
+        `Non-technical standard templates`,
+        `Purely offline backup files`,
+        `Dynamic styling margins`
+      ],
+      answerIndex: 0,
+      rationale: `Understanding technical principles forms the cornerstone of studying this syllabus topic.`
+    }
+  ];
+};
+
+/**
+ * Sends a study question about the note to Gemini to get a premium academic answer.
+ */
+export const askGeminiQna = async (
+  subject: string,
+  description: string,
+  summary: string,
+  question: string,
+  chatHistory: Array<{ role: 'user' | 'model'; text: string }>
+): Promise<string> => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+  if (!apiKey || apiKey === 'mock-gemini-api-key') {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    return `### NoteWeb AI Chatbot (Mock Mode)
+    
+You asked: *"${question}"*
+
+Here is a structural academic answer based on the notes for **${subject}**:
+
+1. **Theoretical Context**: In this context, parameters must be evaluated systematically to avoid logical inconsistencies or errors in calculations.
+2. **Applied Recommendation**: You should review the details of this topic by sketching core diagrams or rewriting primary derivations manually.
+
+*Note: Please configure an active \`VITE_GEMINI_API_KEY\` to receive live responses from Gemini!*`;
+  }
+
+  // Map history to Google's format
+  const formattedHistory = chatHistory.map(h => ({
+    role: h.role,
+    parts: [{ text: h.text }]
+  }));
+
+  const systemInstructions = `You are NoteWeb's expert AI Academic Assistant. The student is asking questions about notes they are studying:
+- Subject: "${subject}"
+- Description: "${description}"
+- Summary: "${summary}"
+
+Provide a clear, helpful, academically rigorous answer. You can use markdown bullet points, bold text, lists, and code blocks. Make your answer extremely easy to understand, encouraging, and focused on helping them excel in their college exams.`;
+
+  const newParts = [
+    { text: `${systemInstructions}\n\nUser Question: ${question}` }
+  ];
+
+  try {
+    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          ...formattedHistory,
+          { role: 'user', parts: newParts }
+        ]
+      })
+    });
+
+    if (!response.ok) throw new Error("Failed to call Gemini API.");
+    const data = await response.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!reply) throw new Error("Empty reply.");
+    return reply;
+  } catch (error) {
+    console.error("Gemini QnA error:", error);
+    return `⚠️ Sorry, I encountered an error communicating with Gemini. Please check your network connection and API key.`;
+  }
+};

@@ -16,7 +16,15 @@ import {
   Lock,
   Trash2,
   Wifi,
-  WifiOff
+  WifiOff,
+  Sparkles,
+  HelpCircle,
+  Send,
+  Check,
+  X,
+  BookOpen,
+  MessageSquare,
+  Award
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -24,6 +32,12 @@ import { GlassPanel } from '../components/ui/GlassPanel';
 import { Skeleton } from '../components/ui/Skeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { openPdfDocument } from '../utils/pdfDb';
+import { 
+  generateFlashcards, 
+  generateQuiz, 
+  askGeminiQna 
+} from '../services/gemini';
+import type { Flashcard, QuizQuestion } from '../services/gemini';
 
 interface NoteDocument {
   id: string;
@@ -616,9 +630,152 @@ export const Feed: React.FC = () => {
     }
   };
 
-  const handleDeleteNote = async (noteId: string) => {
+  // AI Note Companion modal state
+  const [activeAiNote, setActiveAiNote] = useState<NoteDocument | null>(null);
+  const [aiCompanionTab, setAiCompanionTab] = useState<'flashcards' | 'quiz' | 'qna'>('flashcards');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // Flashcards state
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [flippedCards, setFlippedCards] = useState<Record<number, boolean>>({});
+
+  // Quiz state
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
+  const [submittedQuiz, setSubmittedQuiz] = useState(false);
+
+  // Q&A chat history state
+  const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'model'; text: string }>>([]);
+  const [chatInput, setChatInput] = useState('');
+
+  const handleOpenAiCompanion = async (note: NoteDocument) => {
+    setActiveAiNote(note);
+    setAiCompanionTab('flashcards');
+    setAiError(null);
+    setFlashcards([]);
+    setFlippedCards({});
+    setQuizQuestions([]);
+    setSelectedAnswers({});
+    setSubmittedQuiz(false);
+    setChatHistory([]);
+    setChatInput('');
+    
+    setAiLoading(true);
+    try {
+      const data = await generateFlashcards(note.subject, note.description, note.summary);
+      setFlashcards(data);
+    } catch (err: any) {
+      setAiError(err.message || 'Failed to load study flashcards.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleTabChange = async (tab: 'flashcards' | 'quiz' | 'qna') => {
+    setAiCompanionTab(tab);
+    setAiError(null);
+    
+    if (!activeAiNote) return;
+
+    if (tab === 'flashcards' && flashcards.length === 0) {
+      setAiLoading(true);
+      try {
+        const data = await generateFlashcards(activeAiNote.subject, activeAiNote.description, activeAiNote.summary);
+        setFlashcards(data);
+      } catch (err: any) {
+        setAiError(err.message || 'Failed to load study flashcards.');
+      } finally {
+        setAiLoading(false);
+      }
+    } else if (tab === 'quiz' && quizQuestions.length === 0) {
+      setAiLoading(true);
+      try {
+        const data = await generateQuiz(activeAiNote.subject, activeAiNote.description, activeAiNote.summary);
+        setQuizQuestions(data);
+        setSelectedAnswers({});
+        setSubmittedQuiz(false);
+      } catch (err: any) {
+        setAiError(err.message || 'Failed to load study quiz.');
+      } finally {
+        setAiLoading(false);
+      }
+    }
+  };
+
+  const handleToggleFlipCard = (index: number) => {
+    setFlippedCards(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  const handleSelectAnswer = (questionIndex: number, optionIndex: number) => {
+    if (submittedQuiz) return;
+    setSelectedAnswers(prev => ({
+      ...prev,
+      [questionIndex]: optionIndex
+    }));
+  };
+
+  const handleSendChat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !activeAiNote) return;
+
+    const userMsg = chatInput.trim();
+    setChatInput('');
+    
+    const nextHistory = [...chatHistory, { role: 'user' as const, text: userMsg }];
+    setChatHistory(nextHistory);
+    setAiLoading(true);
+
+    try {
+      const reply = await askGeminiQna(
+        activeAiNote.subject,
+        activeAiNote.description,
+        activeAiNote.summary || '',
+        userMsg,
+        chatHistory
+      );
+      setChatHistory(prev => [...prev, { role: 'model' as const, text: reply }]);
+    } catch (err: any) {
+      setAiError(err.message || 'Error getting AI response.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleDeleteCategory = async (catId: string, catName: string) => {
+    const isConfirmed = window.confirm(`Are you absolutely sure you want to permanently delete the subject category "${catName}"? This cannot be undone.`);
+    if (!isConfirmed) return;
+
+    try {
+      const { error: err } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', catId);
+
+      if (err) throw err;
+
+      setCategories((prev) => prev.filter((c) => c.id !== catId));
+      if (selectedCategory === catId) {
+        setSelectedCategory('all');
+      }
+      success(`Category "${catName}" has been successfully deleted.`);
+    } catch (e: any) {
+      console.error("Failed to delete category:", e);
+      error("Failed to delete category: " + e.message);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string, pdfPath: string) => {
     if (!window.confirm("Are you sure you want to permanently delete this note?")) return;
     try {
+      if (pdfPath) {
+        const { error: storageErr } = await supabase.storage.from('notes').remove([pdfPath]);
+        if (storageErr) console.warn("Storage PDF delete warning:", storageErr);
+      }
+
       const { error: err } = await supabase
         .from('notes')
         .delete()
@@ -764,18 +921,31 @@ export const Feed: React.FC = () => {
                   {categories
                     .filter((c) => selectedBranch === 'all' || c.branchId === selectedBranch)
                     .map((cat) => (
-                      <button
-                        key={cat.id}
-                        onClick={() => setSelectedCategory(cat.id)}
-                        className={`
-                          w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl border transition-all duration-200 flex-shrink-0
-                          ${selectedCategory === cat.id 
-                            ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400' 
-                            : 'border-white/[0.05] bg-white/[0.01] text-slate-400 hover:border-white/10 hover:text-slate-200 light-mode:border-slate-900/10 light-mode:hover:bg-slate-900/[0.02]'}
-                        `}
-                      >
-                        {cat.name}
-                      </button>
+                      <div key={cat.id} className="relative group/cat flex items-center justify-between w-full">
+                        <button
+                          onClick={() => setSelectedCategory(cat.id)}
+                          className={`
+                            w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl border transition-all duration-200 flex-shrink-0 pr-8
+                            ${selectedCategory === cat.id 
+                              ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400' 
+                              : 'border-white/[0.05] bg-white/[0.01] text-slate-400 hover:border-white/10 hover:text-slate-200 light-mode:border-slate-900/10 light-mode:hover:bg-slate-900/[0.02]'}
+                          `}
+                        >
+                          {cat.name}
+                        </button>
+                        {userProfile?.role === 'admin' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCategory(cat.id, cat.name);
+                            }}
+                            className="absolute right-2 p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-all cursor-pointer opacity-0 group-hover/cat:opacity-100 focus:opacity-100"
+                            title={`Delete Category "${cat.name}"`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     ))}
                 </div>
               </div>
@@ -910,7 +1080,7 @@ export const Feed: React.FC = () => {
                             </span>
                           </div>
 
-                          {/* Bottom Actions Row */}
+                                     {/* Bottom Actions Row */}
                           <div className="flex items-center justify-between gap-3 border-t border-white/[0.04] pt-3 z-10 relative">
                             <div className="flex items-center gap-1">
                               {/* Like toggle */}
@@ -941,6 +1111,16 @@ export const Feed: React.FC = () => {
                               >
                                 <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
                               </button>
+
+                              {/* AI Companion button */}
+                              <button
+                                onClick={() => handleOpenAiCompanion(note)}
+                                className="p-2 rounded-lg flex items-center gap-1 text-xs font-extrabold bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 transition-all duration-200 cursor-pointer active:scale-90 shadow-sm shadow-indigo-600/10"
+                                title="AI Note Companion"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">AI Study</span>
+                              </button>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -956,7 +1136,7 @@ export const Feed: React.FC = () => {
                               {/* Delete note button */}
                               {user && userProfile && (note.uploadedBy === user.uid || userProfile.role === 'admin') && (
                                 <button
-                                  onClick={() => handleDeleteNote(note.id)}
+                                  onClick={() => handleDeleteNote(note.id, note.pdfPath)}
                                   className="inline-flex items-center justify-center p-2 rounded-lg border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-all duration-200 cursor-pointer active:scale-95"
                                   title="Delete Note"
                                 >
@@ -1058,6 +1238,306 @@ export const Feed: React.FC = () => {
         </div>
       </div>
 
+      {/* SLIDING AI STUDY COMPANION PANEL (AnimatePresence) */}
+      <AnimatePresence>
+        {activeAiNote && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            {/* Backdrop overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveAiNote(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            {/* Sliding Panel */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="relative w-full max-w-xl h-full bg-[#0D0D10]/95 border-l border-white/[0.08] light-mode:bg-white light-mode:border-slate-200 shadow-2xl p-6 md:p-8 flex flex-col justify-between overflow-y-auto text-left z-10"
+            >
+              <div>
+                {/* Close Button */}
+                <button
+                  onClick={() => setActiveAiNote(null)}
+                  className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 light-mode:hover:bg-slate-900/5 transition-all active:scale-90"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                {/* Hero Header */}
+                <div className="flex items-start gap-4 mb-6 pr-8">
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-600/5 flex-shrink-0 animate-pulse">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-white light-mode:text-slate-900 tracking-tight leading-tight mb-1">
+                      {activeAiNote.subject}
+                    </h3>
+                    <p className="text-[10px] font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 inline-block uppercase">
+                      Gemini 2.5 Study Companion
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tab selections */}
+                <div className="flex items-center gap-1.5 p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl mb-6 light-mode:bg-slate-900/[0.02]">
+                  <button
+                    onClick={() => handleTabChange('flashcards')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      aiCompanionTab === 'flashcards'
+                        ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    Flashcards
+                  </button>
+                  <button
+                    onClick={() => handleTabChange('quiz')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      aiCompanionTab === 'quiz'
+                        ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    Recall Quiz
+                  </button>
+                  <button
+                    onClick={() => handleTabChange('qna')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      aiCompanionTab === 'qna'
+                        ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Ask AI
+                  </button>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="min-h-[400px]">
+                  {aiLoading && (
+                    <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
+                      <div className="relative w-12 h-12">
+                        <div className="absolute inset-0 rounded-full border-2 border-indigo-500/20" />
+                        <div className="absolute inset-0 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+                      </div>
+                      <p className="text-xs font-bold text-indigo-400 animate-pulse uppercase tracking-wider">
+                        Gemini is thinking...
+                      </p>
+                    </div>
+                  )}
+
+                  {!aiLoading && aiError && (
+                    <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-400 text-xs font-medium text-center">
+                      ⚠️ {aiError}
+                    </div>
+                  )}
+
+                  {!aiLoading && !aiError && (
+                    <div>
+                      {/* FLASHCARDS TAB */}
+                      {aiCompanionTab === 'flashcards' && (
+                        <div className="space-y-4">
+                          <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider text-left pl-1">
+                            💡 Click on any card below to flip it and view the study answer!
+                          </p>
+                          <div className="grid grid-cols-1 gap-4">
+                            {flashcards.map((fc, idx) => {
+                              const isFlipped = !!flippedCards[idx];
+                              return (
+                                <motion.div
+                                  key={idx}
+                                  layout
+                                  onClick={() => handleToggleFlipCard(idx)}
+                                  className={`p-6 rounded-2xl border cursor-pointer transition-all duration-300 text-left relative overflow-hidden select-none min-h-[120px] flex flex-col justify-center ${
+                                    isFlipped
+                                      ? 'bg-purple-600/10 border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.1)] light-mode:bg-purple-50 light-mode:border-purple-200'
+                                      : 'bg-indigo-600/10 border-indigo-500/20 hover:border-indigo-500/40 shadow-[0_0_10px_rgba(99,102,241,0.05)] light-mode:bg-indigo-50 light-mode:border-indigo-200'
+                                  }`}
+                                >
+                                  {/* Background Glow */}
+                                  <div className={`absolute top-0 right-0 w-24 h-24 rounded-full filter blur-xl opacity-20 transition-all ${
+                                    isFlipped ? 'bg-purple-400' : 'bg-indigo-400'
+                                  }`} />
+
+                                  <div className="z-10 relative">
+                                    <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                                      isFlipped
+                                        ? 'bg-purple-500/20 text-purple-400'
+                                        : 'bg-indigo-500/20 text-indigo-400'
+                                    }`}>
+                                      {isFlipped ? 'Answer/Explanation' : `Question ${idx + 1}`}
+                                    </span>
+
+                                    <h4 className={`text-sm font-extrabold mt-3 leading-relaxed transition-all ${
+                                      isFlipped
+                                        ? 'text-purple-300 light-mode:text-purple-900'
+                                        : 'text-white light-mode:text-slate-900'
+                                    }`}>
+                                      {isFlipped ? fc.back : fc.front}
+                                    </h4>
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* PRACTICE QUIZ TAB */}
+                      {aiCompanionTab === 'quiz' && (
+                        <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-1">
+                          <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider text-left pl-1">
+                            ❓ Answer the questions below to test your understanding!
+                          </p>
+                          {quizQuestions.map((q, qIdx) => {
+                            const selectedOpt = selectedAnswers[qIdx];
+                            const hasAnswered = selectedOpt !== undefined;
+
+                            return (
+                              <GlassPanel key={qIdx} className="p-5 flex flex-col gap-4 bg-[#141419]/50 border border-white/5">
+                                <h4 className="text-sm font-extrabold text-white light-mode:text-slate-900 leading-relaxed text-left flex items-start gap-2">
+                                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-[10px] font-extrabold mt-0.5">
+                                    {qIdx + 1}
+                                  </span>
+                                  {q.question}
+                                </h4>
+
+                                <div className="grid grid-cols-1 gap-2">
+                                  {q.options.map((opt, oIdx) => {
+                                    const isSelected = selectedOpt === oIdx;
+                                    const isCorrect = q.answerIndex === oIdx;
+                                    
+                                    let optionStyle = 'border-white/5 bg-white/[0.01] hover:border-white/10 hover:bg-white/[0.02] text-slate-300 light-mode:border-slate-200 light-mode:bg-slate-50/50 light-mode:text-slate-800';
+                                    if (hasAnswered) {
+                                      if (isSelected) {
+                                        optionStyle = isCorrect
+                                          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 shadow-md shadow-emerald-500/5'
+                                          : 'border-rose-500/40 bg-rose-500/10 text-rose-400 shadow-md shadow-rose-500/5';
+                                      } else if (isCorrect) {
+                                        optionStyle = 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400';
+                                      } else {
+                                        optionStyle = 'border-white/5 bg-white/[0.01] opacity-40 text-slate-500';
+                                      }
+                                    }
+
+                                    return (
+                                      <button
+                                        key={oIdx}
+                                        disabled={hasAnswered}
+                                        onClick={() => handleSelectAnswer(qIdx, oIdx)}
+                                        className={`w-full text-left px-4 py-3 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all active:scale-[0.99] ${optionStyle}`}
+                                      >
+                                        <span>{opt}</span>
+                                        {hasAnswered && isCorrect && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 ml-2" />}
+                                        {hasAnswered && isSelected && !isCorrect && <X className="w-4 h-4 text-rose-400 flex-shrink-0 ml-2" />}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+
+                                {hasAnswered && (
+                                  <div className={`p-3.5 rounded-xl border text-left text-[11px] leading-relaxed ${
+                                    selectedOpt === q.answerIndex
+                                      ? 'bg-emerald-500/5 border-emerald-500/15 text-emerald-400/90'
+                                      : 'bg-rose-500/5 border-rose-500/15 text-rose-400/90'
+                                  }`}>
+                                    <span className="font-extrabold uppercase text-[9px] tracking-wider block mb-1">
+                                      {selectedOpt === q.answerIndex ? '🎉 Correct Answer!' : '❌ Incorrect Answer'}
+                                    </span>
+                                    <strong>Explanation:</strong> {q.rationale}
+                                  </div>
+                                )}
+                              </GlassPanel>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* ASK GEMINI Q&A CHAT */}
+                      {aiCompanionTab === 'qna' && (
+                        <div className="flex flex-col gap-4 h-[55vh] justify-between">
+                          <div className="flex-grow overflow-y-auto space-y-3.5 pr-1 max-h-[42vh] scrollbar-thin">
+                            {chatHistory.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center h-48 text-center gap-3">
+                                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                                  <MessageSquare className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <h5 className="text-xs font-bold text-white light-mode:text-slate-800">Ask anything about this note!</h5>
+                                  <p className="text-[10px] text-slate-500 max-w-[280px] mt-1 mx-auto leading-relaxed">
+                                    Gemini 2.5 Flash will analyze the note title, description, and summary to answer any doubts.
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              chatHistory.map((msg, mIdx) => (
+                                <div
+                                  key={mIdx}
+                                  className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                >
+                                  <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed text-left border ${
+                                    msg.role === 'user'
+                                      ? 'bg-indigo-600 border-indigo-500 text-white shadow shadow-indigo-600/10'
+                                      : 'bg-white/[0.03] border-white/5 text-slate-200 light-mode:bg-slate-100 light-mode:border-slate-200 light-mode:text-slate-800'
+                                  }`}>
+                                    {/* Handle formatted output */}
+                                    <div className="whitespace-pre-line font-medium">{msg.text}</div>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+
+                          {/* Input Bar */}
+                          <form onSubmit={handleSendChat} className="flex gap-2 border-t border-white/[0.06] pt-3">
+                            <input
+                              type="text"
+                              value={chatInput}
+                              onChange={(e) => setChatInput(e.target.value)}
+                              placeholder="Ask Gemini a study question..."
+                              className="flex-grow py-2.5 px-4 glass-input text-xs bg-slate-950/80 text-white rounded-xl focus:border-indigo-500 focus:outline-none transition-colors border border-white/[0.08]"
+                            />
+                            <button
+                              type="submit"
+                              disabled={!chatInput.trim()}
+                              className="p-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-900 disabled:text-slate-600 text-white rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 flex-shrink-0"
+                            >
+                              <Send className="w-4 h-4" />
+                            </button>
+                          </form>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Slider Footer Panel */}
+              <div className="mt-8 pt-4 border-t border-white/[0.06] light-mode:border-slate-200 flex flex-col gap-3 flex-shrink-0">
+                <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500 uppercase tracking-wider pl-1">
+                  <span>Note Study Mode</span>
+                  <Award className="w-4 h-4 text-yellow-500" />
+                </div>
+                <button
+                  onClick={() => openPdfDocument(activeAiNote.pdfUrl || 'db-base64-fetch', activeAiNote.pdfPath || '', activeAiNote.id)}
+                  className="w-full h-11 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 text-white flex items-center justify-center font-extrabold text-xs gap-1.5 shadow-lg shadow-indigo-600/10 active:scale-[0.98] transition-all"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Open Full PDF Document
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
