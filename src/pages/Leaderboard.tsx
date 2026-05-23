@@ -188,19 +188,19 @@ export const Leaderboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full py-12 px-4 md:px-8 relative overflow-hidden bg-[#0A0A0C]">
+    <div className="w-full py-8 px-4 md:px-8 relative overflow-hidden">
       {/* Background visual accents */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" />
 
-      <div className="max-w-5xl mx-auto z-10 relative flex flex-col gap-8">
+      <div className="max-w-5xl w-full mx-auto z-10 relative flex flex-col gap-8">
         
         {/* Title Header */}
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-4 shadow-lg shadow-indigo-500/5">
             <Trophy className="w-6 h-6 animate-bounce-slow" />
           </div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-white flex items-center justify-center gap-2">
+          <h2 className="text-3xl font-extrabold tracking-tight text-white light-mode:text-slate-800 flex items-center justify-center gap-2">
             Campus Leaderboard
             <Sparkles className="w-5 h-5 text-amber-400" />
           </h2>
@@ -221,7 +221,7 @@ export const Leaderboard: React.FC = () => {
                 transition={{ duration: 0.5, delay: 0.1 }}
                 className="order-2 md:order-1 flex flex-col items-center w-full"
               >
-                <GlassPanel className="w-full bg-[#121218]/40 border-slate-400/20 p-5 rounded-2xl flex flex-col items-center relative overflow-hidden">
+                <GlassPanel className="w-full bg-[#121218]/40 light-mode:bg-white/70 border border-white/[0.05] light-mode:border-slate-200/50 p-5 rounded-2xl flex flex-col items-center relative overflow-hidden">
                   <div className="absolute top-2 right-2 text-slate-400 font-extrabold text-sm">#2</div>
                   <div 
                     onClick={() => podiumTop3[1]?.uid && navigate(`/profile/${podiumTop3[1].uid}`)} 
@@ -231,10 +231,10 @@ export const Leaderboard: React.FC = () => {
                       {renderAvatar(podiumTop3[1].photoURL, "w-16 h-16 text-3xl")}
                       <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-slate-400 border border-white text-white rounded-full text-xs font-bold shadow">🥈</span>
                     </div>
-                    <h4 className="font-extrabold text-white text-sm mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[1].displayName}</h4>
+                    <h4 className="font-extrabold text-white light-mode:text-slate-805 text-sm mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[1].displayName}</h4>
                   </div>
                   <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[1].branch]}</span>
-                  <span className="text-sm font-bold text-slate-300 mt-2 bg-slate-400/10 px-3 py-1 rounded-full border border-slate-400/20">
+                  <span className="text-sm font-bold text-slate-300 light-mode:text-slate-600 mt-2 bg-slate-400/10 light-mode:bg-slate-500/10 px-3 py-1 rounded-full border border-slate-400/20 light-mode:border-slate-200/50">
                     {getMetricString(podiumTop3[1])}
                   </span>
                 </GlassPanel>
@@ -250,7 +250,7 @@ export const Leaderboard: React.FC = () => {
                 transition={{ duration: 0.5 }}
                 className="order-1 md:order-2 flex flex-col items-center scale-105 w-full"
               >
-                <GlassPanel className="w-full bg-[#121218]/50 border-amber-400/30 p-6 rounded-3xl flex flex-col items-center relative overflow-hidden shadow-xl shadow-amber-400/5">
+                <GlassPanel className="w-full bg-[#121218]/50 light-mode:bg-white/80 border border-amber-400/30 light-mode:border-amber-500/50 p-6 rounded-3xl flex flex-col items-center relative overflow-hidden shadow-xl shadow-amber-400/5">
                   <div className="absolute top-2 right-2 text-amber-400 font-extrabold text-sm">#1</div>
                   <div 
                     onClick={() => podiumTop3[0]?.uid && navigate(`/profile/${podiumTop3[0].uid}`)} 
@@ -260,10 +260,10 @@ export const Leaderboard: React.FC = () => {
                       {renderAvatar(podiumTop3[0].photoURL, "w-20 h-20 text-4xl")}
                       <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 bg-amber-400 border border-white text-white rounded-full text-sm font-bold shadow">👑</span>
                     </div>
-                    <h4 className="font-extrabold text-white text-base mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[0].displayName}</h4>
+                    <h4 className="font-extrabold text-white light-mode:text-slate-805 text-base mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[0].displayName}</h4>
                   </div>
                   <span className="text-[10px] text-amber-300 font-semibold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[0].branch]}</span>
-                  <span className="text-base font-black text-amber-400 mt-3 bg-amber-400/10 px-4 py-1.5 rounded-full border border-amber-400/20">
+                  <span className="text-base font-black text-amber-400 light-mode:text-amber-600 mt-3 bg-amber-400/10 light-mode:bg-amber-500/10 px-4 py-1.5 rounded-full border border-amber-400/20 light-mode:border-amber-300/40">
                     {getMetricString(podiumTop3[0])}
                   </span>
                 </GlassPanel>
@@ -279,7 +279,7 @@ export const Leaderboard: React.FC = () => {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="order-3 flex flex-col items-center w-full"
               >
-                <GlassPanel className="w-full bg-[#121218]/40 border-amber-700/20 p-5 rounded-2xl flex flex-col items-center relative overflow-hidden">
+                <GlassPanel className="w-full bg-[#121218]/40 light-mode:bg-white/70 border border-amber-700/20 light-mode:border-amber-700/40 p-5 rounded-2xl flex flex-col items-center relative overflow-hidden">
                   <div className="absolute top-2 right-2 text-amber-700 font-extrabold text-sm">#3</div>
                   <div 
                     onClick={() => podiumTop3[2]?.uid && navigate(`/profile/${podiumTop3[2].uid}`)} 
@@ -289,10 +289,10 @@ export const Leaderboard: React.FC = () => {
                       {renderAvatar(podiumTop3[2].photoURL, "w-16 h-16 text-3xl")}
                       <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-amber-700 border border-white text-white rounded-full text-xs font-bold shadow">🥉</span>
                     </div>
-                    <h4 className="font-extrabold text-white text-sm mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[2].displayName}</h4>
+                    <h4 className="font-extrabold text-white light-mode:text-slate-805 text-sm mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[2].displayName}</h4>
                   </div>
                   <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[2].branch]}</span>
-                  <span className="text-sm font-bold text-amber-700 mt-2 bg-amber-700/10 px-3 py-1 rounded-full border border-amber-700/20">
+                  <span className="text-sm font-bold text-amber-700 light-mode:text-amber-800 mt-2 bg-amber-700/10 light-mode:bg-amber-600/10 px-3 py-1 rounded-full border border-amber-700/20 light-mode:border-amber-600/30">
                     {getMetricString(podiumTop3[2])}
                   </span>
                 </GlassPanel>
@@ -304,7 +304,7 @@ export const Leaderboard: React.FC = () => {
         )}
 
         {/* Filter Controls Panel */}
-        <GlassPanel className="bg-[#121218]/30 border border-white/[0.08] p-5 rounded-2xl flex flex-col md:flex-row items-center gap-4 text-left">
+        <GlassPanel className="bg-[#121218]/30 light-mode:bg-white/60 border border-white/[0.08] light-mode:border-slate-200/50 p-5 rounded-2xl flex flex-col md:flex-row items-center gap-4 text-left">
           
           {/* Metric Sort Tabs */}
           <div className="flex-1 w-full flex items-center gap-1 p-1 bg-white/[0.02] border border-white/[0.04] rounded-xl">
@@ -342,10 +342,10 @@ export const Leaderboard: React.FC = () => {
             <select
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full md:w-44 bg-slate-900 border border-white/[0.08] text-white rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold"
+              className="w-full md:w-44 bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-800 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold"
             >
               <option value="all">🌐 All Departments</option>
-              <option value="computers">💻CSE CSE</option>
+              <option value="computers">💻 CSE</option>
               <option value="electronics">🔌 ECE</option>
               <option value="mechanical">⚙️ Mech/Civil</option>
               <option value="maths">📐 Maths</option>
@@ -361,7 +361,7 @@ export const Leaderboard: React.FC = () => {
                 placeholder="Search peers by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#1A1A24]/60 border border-white/[0.08] text-white rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold placeholder:text-slate-500"
+                className="w-full bg-[#1A1A24]/60 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-800 rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold placeholder:text-slate-500"
               />
             </div>
           </div>
@@ -400,10 +400,10 @@ export const Leaderboard: React.FC = () => {
                 return (
                   <GlassPanel
                     key={peer.uid}
-                    className={`px-5 py-3.5 flex items-center border hover:border-white/10 ${
+                    className={`px-5 py-3.5 flex items-center border hover:border-white/10 light-mode:hover:border-slate-300 ${
                       isMe 
-                        ? 'bg-indigo-600/10 border-indigo-500/30 shadow shadow-indigo-600/5' 
-                        : 'bg-[#121218]/30 border-white/[0.04]'
+                        ? 'bg-indigo-600/10 light-mode:bg-indigo-50/60 border-indigo-500/30 light-mode:border-indigo-300/60 shadow shadow-indigo-600/5' 
+                        : 'bg-[#121218]/30 light-mode:bg-white/60 border-white/[0.04] light-mode:border-slate-200/50'
                     }`}
                   >
                     {/* Rank Badge */}
@@ -418,7 +418,7 @@ export const Leaderboard: React.FC = () => {
                     >
                       {renderAvatar(peer.photoURL, "w-9 h-9 text-lg")}
                       <div className="min-w-0 text-left">
-                        <span className="font-extrabold text-white text-xs leading-none flex items-center gap-1.5 group-hover:text-indigo-400 transition-colors">
+                        <span className="font-extrabold text-white light-mode:text-slate-800 text-xs leading-none flex items-center gap-1.5 group-hover:text-indigo-400 transition-colors">
                           {peer.displayName}
                           {isMe && <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">YOU</span>}
                         </span>
@@ -445,7 +445,7 @@ export const Leaderboard: React.FC = () => {
 
                     {/* Sorted score metric */}
                     <div className="w-24 text-right">
-                      <span className="text-xs font-extrabold text-white flex items-center justify-end gap-1.5">
+                      <span className="text-xs font-extrabold text-white light-mode:text-slate-800 flex items-center justify-end gap-1.5">
                         {sortBy === 'points' && <Award className="w-3.5 h-3.5 text-indigo-400" />}
                         {sortBy === 'uploads' && <BookOpen className="w-3.5 h-3.5 text-indigo-400" />}
                         {sortBy === 'cgpa' && <ArrowUp className="w-3.5 h-3.5 text-indigo-400" />}

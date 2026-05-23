@@ -131,10 +131,10 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center px-4 relative overflow-hidden py-12 bg-[#0B0B0F]">
+    <div className="w-full flex items-center justify-center px-4 relative overflow-hidden py-12">
       {/* Decorative background glows */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl animate-pulse pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -150,14 +150,14 @@ export const Login: React.FC = () => {
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">NoteWeb</span>
           </div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-white">Campus Portal</h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <h2 className="text-3xl font-extrabold tracking-tight text-white light-mode:text-slate-800">Campus Portal</h2>
+          <p className="mt-2 text-sm text-slate-400 light-mode:text-slate-500">
             Share resources, earn XP points, and connect with peer engineers
           </p>
         </div>
 
         {/* Card */}
-        <GlassPanel glowBorder className="bg-[#12121A]/50 p-8 shadow-2xl backdrop-blur-xl border-white/[0.08]">
+        <GlassPanel glowBorder className="bg-[#12121A]/50 light-mode:bg-white/80 p-8 shadow-2xl backdrop-blur-xl border border-white/[0.08] light-mode:border-slate-200/50">
           <AnimatePresence mode="wait">
             {!isRegistering ? (
               /* USERNAME LOGIN FORM */
@@ -194,8 +194,8 @@ export const Login: React.FC = () => {
                 </Button>
 
                 <div className="relative flex items-center justify-center my-4">
-                  <span className="absolute px-3 bg-[#12121A] text-xs text-slate-500 font-bold">OR</span>
-                  <hr className="w-full border-white/[0.06]" />
+                  <span className="absolute px-3 bg-[#12121A] light-mode:bg-white text-xs text-slate-500 font-bold">OR</span>
+                  <hr className="w-full border-white/[0.06] light-mode:border-slate-200" />
                 </div>
 
                 <button
@@ -218,8 +218,8 @@ export const Login: React.FC = () => {
               >
                 <div className="flex items-center gap-3 p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl mb-4">
                   <Info className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-                  <p className="text-xs text-indigo-200">
-                    Setting up a new student profile for: <code className="text-white bg-indigo-600/30 px-1.5 py-0.5 rounded">{username}</code>
+                  <p className="text-xs text-indigo-200 light-mode:text-indigo-700">
+                    Setting up a new student profile for: <code className="text-white light-mode:text-slate-800 bg-indigo-600/30 light-mode:bg-indigo-500/10 px-1.5 py-0.5 rounded">{username}</code>
                   </p>
                 </div>
 
@@ -247,11 +247,11 @@ export const Login: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">Engineering Branch</label>
+                    <label className="block text-xs font-bold text-slate-300 light-mode:text-slate-600 mb-1.5 uppercase tracking-wider">Engineering Branch</label>
                     <select
                       value={regBranch}
                       onChange={(e) => setRegBranch(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/[0.08] text-white rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                      className="w-full bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-800 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
                     >
                       <option value="computers">💻 Computer Science (CSE)</option>
                       <option value="electronics">🔌 Electronics & Comm (ECE)</option>
@@ -263,11 +263,11 @@ export const Login: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">Class Year</label>
+                    <label className="block text-xs font-bold text-slate-300 light-mode:text-slate-600 mb-1.5 uppercase tracking-wider">Class Year</label>
                     <select
                       value={regYear}
                       onChange={(e) => setRegYear(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/[0.08] text-white rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                      className="w-full bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-800 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
                     >
                       <option value="1">🎓 1st Year (Freshman)</option>
                       <option value="2">🎓 2nd Year (Sophomore)</option>
@@ -298,8 +298,8 @@ export const Login: React.FC = () => {
                 </div>
 
                 {/* Avatar Builder Panel */}
-                <div className="border border-white/[0.08] rounded-2xl p-4 bg-slate-950/30">
-                  <h4 className="text-xs font-bold text-slate-200 mb-3 flex items-center gap-1.5 uppercase tracking-wider">
+                <div className="border border-white/[0.08] light-mode:border-slate-200/60 rounded-2xl p-4 bg-slate-950/30 light-mode:bg-slate-100/50">
+                  <h4 className="text-xs font-bold text-slate-200 light-mode:text-slate-700 mb-3 flex items-center gap-1.5 uppercase tracking-wider">
                     <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                     Anime & Cartoon Avatar Builder
                   </h4>
@@ -321,7 +321,9 @@ export const Login: React.FC = () => {
                               type="button"
                               onClick={() => setSelectedEmoji(emoji)}
                               className={`w-7 h-7 flex items-center justify-center rounded-lg text-lg transition-transform active:scale-95 ${
-                                selectedEmoji === emoji ? 'bg-indigo-600/30 border border-indigo-500 scale-110' : 'bg-slate-900 border border-white/[0.04] hover:bg-slate-800'
+                                selectedEmoji === emoji 
+                                  ? 'bg-indigo-600/30 border border-indigo-500 scale-110' 
+                                  : 'bg-slate-900 light-mode:bg-white border border-white/[0.04] light-mode:border-slate-200 hover:bg-slate-800 light-mode:hover:bg-slate-50 text-slate-300 light-mode:text-slate-700'
                               }`}
                             >
                               {emoji}

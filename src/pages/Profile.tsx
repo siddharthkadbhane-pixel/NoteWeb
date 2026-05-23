@@ -524,15 +524,15 @@ export const Profile: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen w-full py-12 px-4 md:px-8 relative overflow-hidden bg-[#0A0A0C]">
+    <div className="w-full py-8 px-4 md:px-8 relative overflow-hidden">
       {/* Background glow effects */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" />
 
-      <div className="max-w-6xl mx-auto z-10 relative flex flex-col gap-8">
+      <div className="max-w-6xl w-full mx-auto z-10 relative flex flex-col gap-8">
         
         {/* User profile card banner */}
-        <GlassPanel className="bg-[#121218]/40 p-8 shadow-2xl relative overflow-hidden border border-white/[0.08] rounded-3xl flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <GlassPanel className="bg-[#121218]/45 light-mode:bg-white/70 p-8 shadow-2xl relative overflow-hidden border border-white/[0.08] light-mode:border-slate-200/50 rounded-3xl flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-transparent pointer-events-none" />
           
           <div className="flex flex-col sm:flex-row sm:items-center gap-6 text-left z-10 relative">
@@ -540,7 +540,7 @@ export const Profile: React.FC = () => {
             
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-3xl font-extrabold text-white tracking-tight">
+                <h2 className="text-3xl font-extrabold text-white light-mode:text-slate-800 tracking-tight">
                   {viewedProfile?.displayName || 'Student'}
                 </h2>
                 {viewedProfile?.role === 'admin' ? (
@@ -553,9 +553,9 @@ export const Profile: React.FC = () => {
                   </span>
                 )}
               </div>
-              <p className="text-sm font-semibold text-slate-400">@{viewedProfile?.username}</p>
+              <p className="text-sm font-semibold text-slate-400 light-mode:text-slate-500">@{viewedProfile?.username}</p>
               
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs font-semibold text-slate-500">
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs font-semibold text-slate-500 light-mode:text-slate-600">
                 <span>📚 Branch: {BRANCH_LABELS[viewedProfile?.branch || ''] || 'General'}</span>
                 <span>🎓 Class: {YEAR_LABELS[viewedProfile?.year || ''] || 'N/A'}</span>
                 {viewedProfile?.cgpa && <span>📐 CGPA: {viewedProfile.cgpa}</span>}
@@ -578,9 +578,9 @@ export const Profile: React.FC = () => {
 
         {/* Live profile edit sheet with avatar builder */}
         {isEditing && (
-          <GlassPanel glowBorder className="bg-slate-950/40 p-6 text-left w-full border border-white/[0.08] rounded-2xl">
+          <GlassPanel glowBorder className="bg-slate-950/40 light-mode:bg-white/80 p-6 text-left w-full border border-white/[0.08] light-mode:border-slate-200/50 rounded-2xl animate-fade-in">
             <form onSubmit={handleUpdateProfile} className="space-y-5">
-              <h3 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <h3 className="text-base font-bold text-white light-mode:text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-indigo-400" /> Edit Profile Details
               </h3>
               
@@ -612,11 +612,11 @@ export const Profile: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">Branch</label>
+                  <label className="block text-xs font-bold text-slate-300 light-mode:text-slate-600 mb-1.5 uppercase tracking-wider">Branch</label>
                   <select
                     value={editBranch}
                     onChange={(e) => setEditBranch(e.target.value)}
-                    className="w-full bg-slate-900 border border-white/[0.08] text-white rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                    className="w-full bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-850 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
                   >
                     <option value="computers">💻 CSE</option>
                     <option value="electronics">🔌 ECE</option>
@@ -628,11 +628,11 @@ export const Profile: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">Year</label>
+                  <label className="block text-xs font-bold text-slate-300 light-mode:text-slate-600 mb-1.5 uppercase tracking-wider">Year</label>
                   <select
                     value={editYear}
                     onChange={(e) => setEditYear(e.target.value)}
-                    className="w-full bg-slate-900 border border-white/[0.08] text-white rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                    className="w-full bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-855 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
                   >
                     <option value="1">1st Year</option>
                     <option value="2">2nd Year</option>
@@ -650,8 +650,8 @@ export const Profile: React.FC = () => {
               </div>
 
               {/* LIVE AVATAR BUILDER */}
-              <div className="border border-white/[0.06] rounded-xl p-4 bg-slate-950/20">
-                <span className="block text-xs font-bold text-slate-200 mb-3 uppercase tracking-wider">Update Profile Picture Style</span>
+              <div className="border border-white/[0.06] light-mode:border-slate-200/50 rounded-xl p-4 bg-slate-950/20 light-mode:bg-slate-100/50">
+                <span className="block text-xs font-bold text-slate-200 light-mode:text-slate-700 mb-3 uppercase tracking-wider">Update Profile Picture Style</span>
                 <div className="flex flex-col md:flex-row items-center gap-6">
                   {renderAvatar(customPhotoBase64 || `${selectedEmoji}|${selectedGradient}`, "w-20 h-20 text-4xl")}
                   
@@ -704,7 +704,9 @@ export const Profile: React.FC = () => {
                                   setCustomPhotoBase64(null); // Clear custom photo when emoji is chosen
                                 }}
                                 className={`w-7 h-7 flex items-center justify-center rounded-lg text-base transition-transform active:scale-95 ${
-                                  selectedEmoji === emoji && !customPhotoBase64 ? 'bg-indigo-600/30 border border-indigo-500 scale-105' : 'bg-slate-900 border border-white/[0.04]'
+                                  selectedEmoji === emoji && !customPhotoBase64 
+                                    ? 'bg-indigo-600/30 border border-indigo-500 scale-105' 
+                                    : 'bg-slate-900 light-mode:bg-white border border-white/[0.04] light-mode:border-slate-200 text-slate-300 light-mode:text-slate-700'
                                 }`}
                               >
                                 {emoji}
@@ -761,7 +763,7 @@ export const Profile: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Gamified Points XP Dashboard */}
-          <GlassPanel className="p-6 bg-gradient-to-br from-indigo-900/10 via-slate-900/30 to-purple-900/10 border-indigo-500/10 text-left flex flex-col justify-between h-full">
+          <GlassPanel className="p-6 bg-gradient-to-br from-indigo-900/10 via-slate-900/30 to-purple-900/10 light-mode:from-indigo-50/40 light-mode:via-slate-50/40 light-mode:to-purple-50/40 border border-[#7F00FF]/10 light-mode:border-[#7F00FF]/15 text-left flex flex-col justify-between h-full">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-1.5 text-indigo-400">
@@ -772,20 +774,20 @@ export const Profile: React.FC = () => {
               </div>
               
               <div className="mt-4">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Balance</span>
+                <span className="text-[10px] font-bold text-slate-400 light-mode:text-slate-500 uppercase tracking-widest">Current Balance</span>
                 <div className="flex items-baseline gap-2 mt-1">
-                  <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-300">
+                  <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500 light-mode:from-amber-600 light-mode:to-rose-600">
                     {viewedProfile?.points || 0}
                   </h3>
                   <span className="text-sm font-extrabold text-amber-400">XP</span>
                 </div>
               </div>
 
-              <div className="mt-4 p-3 bg-white/[0.02] border border-white/[0.04] rounded-2xl">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+              <div className="mt-4 p-3 bg-white/[0.02] light-mode:bg-slate-100/50 border border-white/[0.04] light-mode:border-slate-200/50 rounded-2xl">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 light-mode:text-slate-600">
                   <Trophy className="w-4 h-4 text-yellow-500" />
                   <span>College Standing:</span>
-                  <span className="text-white ml-auto">
+                  <span className="text-white light-mode:text-slate-800 ml-auto">
                     {(viewedProfile?.points || 0) > 300 ? '⭐ Elite Scholar' : (viewedProfile?.points || 0) > 100 ? '📘 Active Member' : '🌱 New Contributor'}
                   </span>
                 </div>
@@ -793,16 +795,16 @@ export const Profile: React.FC = () => {
             </div>
 
             {isViewingSelf ? (
-              <div className="mt-6 pt-4 border-t border-white/[0.05]">
+              <div className="mt-6 pt-4 border-t border-white/[0.05] light-mode:border-slate-200/60">
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <h4 className="text-xs font-bold text-white">Daily Check-In</h4>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Claim +20 XP once every 24 hours</p>
+                    <h4 className="text-xs font-bold text-white light-mode:text-slate-800">Daily Check-In</h4>
+                    <p className="text-[10px] text-slate-400 light-mode:text-slate-500 mt-0.5">Claim +20 XP once every 24 hours</p>
                   </div>
                   {checkinCooldown ? (
                     <button
                       disabled
-                      className="px-3.5 py-1.5 rounded-xl border border-white/[0.06] bg-slate-900 text-slate-500 font-extrabold text-xs"
+                      className="px-3.5 py-1.5 rounded-xl border border-white/[0.06] light-mode:border-slate-200/60 bg-slate-900 light-mode:bg-slate-200 text-slate-500 font-extrabold text-xs"
                     >
                       Cooldown: {checkinCooldown}
                     </button>
@@ -826,7 +828,7 @@ export const Profile: React.FC = () => {
           </GlassPanel>
 
           {/* Gamified Mini Quests & Tasks Hub */}
-          <GlassPanel className="p-6 bg-slate-900/25 border-white/[0.06] lg:col-span-2 text-left flex flex-col justify-between">
+          <GlassPanel className="p-6 bg-slate-900/25 light-mode:bg-white/70 border border-white/[0.06] light-mode:border-slate-200/50 lg:col-span-2 text-left flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 text-indigo-400 mb-4">
                 <Trophy className="w-5 h-5 text-indigo-400" />
@@ -844,12 +846,12 @@ export const Profile: React.FC = () => {
                           ? 'bg-slate-950/20 border-white/[0.03] opacity-60' 
                           : quest.isMet 
                             ? 'bg-emerald-500/[0.03] border-emerald-500/20 shadow-md' 
-                            : 'bg-white/[0.01] border-white/[0.05]'
+                            : 'bg-white/[0.01] light-mode:bg-slate-50/50 border-white/[0.05] light-mode:border-slate-100'
                       }`}
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <h4 className={`text-xs font-bold ${claimed ? 'text-slate-500 line-through' : 'text-white'}`}>
+                          <h4 className={`text-xs font-bold ${claimed ? 'text-slate-500 line-through' : 'text-white light-mode:text-slate-800'}`}>
                             {quest.title}
                           </h4>
                           <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/15">
@@ -893,14 +895,14 @@ export const Profile: React.FC = () => {
         </div>
 
         {/* Contributions and Bookmarks section */}
-        <div className="flex items-center gap-3 border-b border-white/[0.05] pb-1 mt-4">
+        <div className="flex items-center gap-3 border-b border-white/[0.05] light-mode:border-slate-200 pb-1 mt-4">
           <button
             onClick={() => setActiveTab('uploads')}
             className={`
               px-5 py-3 text-sm font-bold border-b-2 transition-all relative flex items-center gap-2
               ${activeTab === 'uploads' 
-                ? 'border-indigo-500 text-white' 
-                : 'border-transparent text-slate-400 hover:text-slate-200'}
+                ? 'border-indigo-500 text-white light-mode:text-slate-800' 
+                : 'border-transparent text-slate-400 hover:text-slate-200 light-mode:hover:text-slate-700'}
             `}
           >
             <BookOpen className="w-4 h-4" /> {isViewingSelf ? 'My Contributions' : 'Contributions'} ({myUploads.length})
@@ -910,8 +912,8 @@ export const Profile: React.FC = () => {
             className={`
               px-5 py-3 text-sm font-bold border-b-2 transition-all relative flex items-center gap-2
               ${activeTab === 'bookmarks' 
-                ? 'border-indigo-500 text-white' 
-                : 'border-transparent text-slate-400 hover:text-slate-200'}
+                ? 'border-indigo-500 text-white light-mode:text-slate-800' 
+                : 'border-transparent text-slate-400 hover:text-slate-200 light-mode:hover:text-slate-700'}
             `}
           >
             <Bookmark className="w-4 h-4" /> Bookmarks ({myBookmarks.length})
@@ -932,14 +934,14 @@ export const Profile: React.FC = () => {
                 {myUploads.map((note) => (
                   <GlassPanel 
                     key={note.id} 
-                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-white/[0.05] bg-[#121218]/30 hover:border-white/10"
+                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-white/[0.05] light-mode:border-slate-200/50 bg-[#121218]/30 light-mode:bg-white/60 hover:border-white/10 light-mode:hover:border-slate-300"
                   >
                     <div className="flex items-start gap-4 min-w-0">
                       <div className="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/10 mt-1 flex-shrink-0">
                         <FileText className="w-5 h-5" />
                       </div>
                       <div className="min-w-0 text-left">
-                        <h4 className="font-bold text-white leading-snug truncate">
+                        <h4 className="font-bold text-white light-mode:text-slate-800 leading-snug truncate">
                           {note.subject}
                         </h4>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 text-[11px] mt-1.5 font-medium">
