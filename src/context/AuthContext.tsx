@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, isMockMode } from '../supabase/config';
+import { joinPresence, leavePresence } from '../services/presence';
 
 export interface UserProfile {
   uid: string;
@@ -278,6 +279,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           photoURL: profile.photoURL,
         });
         setUserProfile(profile);
+
+        // Register online presence across all devices/browsers
+        try {
+          await joinPresence({
+            uid: profile.uid,
+            displayName: profile.displayName,
+            email: profile.email,
+            role: profile.role,
+            photoURL: profile.photoURL,
+          });
+        } catch (presenceErr) {
+          console.warn('[AuthContext] Presence join failed (non-critical):', presenceErr);
+        }
       } else {
         // Double check if a mock user is logged in
         const mockUid = localStorage.getItem('noteweb-mock-uid');
@@ -291,10 +305,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               photoURL: profile.photoURL
             });
             setUserProfile(profile);
+            // Register mock user presence
+            try {
+              await joinPresence({
+                uid: profile.uid,
+                displayName: profile.displayName,
+                email: profile.email,
+                role: profile.role,
+                photoURL: profile.photoURL,
+              });
+            } catch (presenceErr) {
+              console.warn('[AuthContext] Mock presence join failed (non-critical):', presenceErr);
+            }
             setLoading(false);
             return;
           }
         }
+        // Clear presence on sign-out
+        try { await leavePresence(); } catch (_) {}
         setUser(null);
         setUserProfile(null);
       }
@@ -551,6 +579,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setLoading(true);
     setIsGuest(false);
+
+    // Remove presence before sign-out
+    try { await leavePresence(); } catch (_) {}
     
     // Clear all cached local storage keys for profiles to avoid session/role contamination
     try {

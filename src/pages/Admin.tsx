@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { subscribeToPresenceChanges } from '../services/presence';
+import type { OnlineUser } from '../services/presence';
 import { 
   ShieldAlert, 
   Check, 
@@ -12,7 +14,15 @@ import {
   ShieldCheck, 
   Users, 
   FileSearch, 
-  BookOpen
+  BookOpen,
+  Wifi,
+  WifiOff,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Clock,
+  RefreshCw,
+  Activity
 } from 'lucide-react';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -76,15 +86,49 @@ const getTime = (val: any) => {
   return new Date(val).getTime();
 };
 
+const getDeviceIcon = (deviceInfo: string) => {
+  if (deviceInfo.toLowerCase().includes('mobile')) return <Smartphone className="w-4 h-4" />;
+  if (deviceInfo.toLowerCase().includes('tablet')) return <Tablet className="w-4 h-4" />;
+  return <Monitor className="w-4 h-4" />;
+};
+
+const getRelativeTime = (iso: string) => {
+  const diff = Date.now() - new Date(iso).getTime();
+  const secs = Math.floor(diff / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ago`;
+};
+
 export const Admin: React.FC = () => {
   const { user: currentAuthUser } = useAuth();
   const { success, error, info } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'moderation' | 'notes' | 'users'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'notes' | 'users' | 'online'>('moderation');
   const [pendingNotes, setPendingNotes] = useState<NoteDocument[]>([]);
   const [allNotes, setAllNotes] = useState<NoteDocument[]>([]);
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+
+  // Subscribe to presence changes
+  useEffect(() => {
+    const unsubscribe = subscribeToPresenceChanges((users) => {
+      setOnlineUsers(users);
+      setRealtimeConnected(true);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Force re-render every 30s for relative time displays
+  useEffect(() => {
+    const interval = setInterval(() => setRealtimeConnected(c => c), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchModerationData = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -122,8 +166,9 @@ export const Admin: React.FC = () => {
       
       const users = (usersData || []).map(mapDbProfileToUserProfile);
       setUsersList(users);
+      setLastRefresh(new Date());
 
-      console.log(`[NoteWeb Admin Log] Dashboard data loaded successfully. Pending notes: ${pending.length}, Total notes: ${all.length}, Users: ${users.length}`);
+      console.log(`[NoteWeb Admin Log] Dashboard data loaded. Pending: ${pending.length}, Total: ${all.length}, Users: ${users.length}`);
     } catch (e: any) {
       console.error("[NoteWeb Admin Log] Failed to load dashboard data:", e);
       error("Failed to load admin panel data: " + e.message);
@@ -135,7 +180,6 @@ export const Admin: React.FC = () => {
   useEffect(() => {
     fetchModerationData();
 
-    // 1. Set up Realtime subscriptions for profiles and notes
     let channelProfiles: any = null;
     let channelNotes: any = null;
 
@@ -149,12 +193,14 @@ export const Admin: React.FC = () => {
             'postgres_changes',
             { event: '*', schema: 'public', table: 'profiles' },
             (payload: any) => {
-              console.log('[NoteWeb Admin Realtime] profiles table change detected across session:', payload);
+              console.log('[NoteWeb Admin Realtime] profiles table change detected:', payload);
               fetchModerationData(true);
+              setRealtimeConnected(true);
             }
           )
           .subscribe((status: any) => {
             console.log('[NoteWeb Admin Realtime] profiles channel status:', status);
+            if (status === 'SUBSCRIBED') setRealtimeConnected(true);
           });
 
         channelNotes = supabase
@@ -163,35 +209,30 @@ export const Admin: React.FC = () => {
             'postgres_changes',
             { event: '*', schema: 'public', table: 'notes' },
             (payload: any) => {
-              console.log('[NoteWeb Admin Realtime] notes table change detected across session:', payload);
+              console.log('[NoteWeb Admin Realtime] notes table change detected:', payload);
               fetchModerationData(true);
+              setRealtimeConnected(true);
             }
           )
           .subscribe((status: any) => {
             console.log('[NoteWeb Admin Realtime] notes channel status:', status);
+            if (status === 'SUBSCRIBED') setRealtimeConnected(true);
           });
-      } else {
-        console.warn('[NoteWeb Admin Realtime] Supabase channel is not a function');
       }
     } catch (err) {
-      console.warn("[NoteWeb Admin Realtime] Realtime subscriptions failed on Admin Panel:", err);
+      console.warn("[NoteWeb Admin Realtime] Realtime subscriptions failed:", err);
     }
 
+    // Auto-refresh every 15 seconds silently
+    const refreshInterval = setInterval(() => fetchModerationData(true), 15000);
+
     return () => {
-      console.log('[NoteWeb Admin Realtime] Cleaning up Realtime subscriptions...');
+      clearInterval(refreshInterval);
       if (channelProfiles) {
-        try {
-          channelProfiles.unsubscribe();
-        } catch (e) {
-          console.warn("Failed to unsubscribe profiles admin channel:", e);
-        }
+        try { channelProfiles.unsubscribe(); } catch (e) {}
       }
       if (channelNotes) {
-        try {
-          channelNotes.unsubscribe();
-        } catch (e) {
-          console.warn("Failed to unsubscribe notes admin channel:", e);
-        }
+        try { channelNotes.unsubscribe(); } catch (e) {}
       }
     };
   }, []);
@@ -208,7 +249,6 @@ export const Admin: React.FC = () => {
       
       success(action === 'approved' ? "Notes published to feed!" : "Notes submission rejected.");
       
-      // Hot update states
       setPendingNotes((prev) => prev.filter((n) => n.id !== noteId));
       setAllNotes((prev) => prev.map((n) => n.id === noteId ? { ...n, status: action } : n));
     } catch (e: any) {
@@ -217,21 +257,16 @@ export const Admin: React.FC = () => {
     }
   };
 
-  // Delete Note Admin side
   const handleDeleteNote = async (noteId: string, pdfPath: string) => {
     const isConfirmed = window.confirm("Are you absolutely sure you want to delete this notes document? This cannot be undone.");
     if (!isConfirmed) return;
 
     try {
-      // 1. Delete PDF from Storage
       if (pdfPath) {
         const { error: storageErr } = await supabase.storage.from('notes').remove([pdfPath]);
-        if (storageErr) {
-          console.warn("Storage PDF delete returned warning/error: ", storageErr);
-        }
+        if (storageErr) console.warn("Storage PDF delete warning:", storageErr);
       }
 
-      // 2. Delete Supabase Database Row
       const { error: deleteErr } = await supabase
         .from('notes')
         .delete()
@@ -240,8 +275,6 @@ export const Admin: React.FC = () => {
       if (deleteErr) throw deleteErr;
       
       success("Notes document permanently deleted.");
-      
-      // Update local states
       setAllNotes((prev) => prev.filter((n) => n.id !== noteId));
       setPendingNotes((prev) => prev.filter((n) => n.id !== noteId));
     } catch (e: any) {
@@ -250,7 +283,6 @@ export const Admin: React.FC = () => {
     }
   };
 
-  // Update User Role Toggle
   const handleRoleToggle = async (targetUid: string, currentRole: 'student' | 'admin') => {
     if (targetUid === currentAuthUser?.uid) {
       info("Self-demotion safeguard: You cannot modify your own administrative role!");
@@ -287,7 +319,6 @@ export const Admin: React.FC = () => {
     if (!isConfirmed) return;
 
     try {
-      // 1. Fetch notes uploaded by the user to optionally purge from storage if they have pdfPath
       const { data: userNotes, error: fetchNotesErr } = await supabase
         .from('notes')
         .select('*')
@@ -302,7 +333,6 @@ export const Admin: React.FC = () => {
         }
       }
 
-      // 2. Delete notes uploaded by user
       const { error: deleteNotesErr } = await supabase
         .from('notes')
         .delete()
@@ -310,7 +340,6 @@ export const Admin: React.FC = () => {
 
       if (deleteNotesErr) throw deleteNotesErr;
 
-      // 3. Delete user profile
       const { error: deleteProfileErr } = await supabase
         .from('profiles')
         .delete()
@@ -320,7 +349,6 @@ export const Admin: React.FC = () => {
 
       success(`User "${displayName}" and their uploads have been permanently removed!`);
 
-      // Update local states
       setUsersList((prev) => prev.filter((u) => u.uid !== targetUid));
       setAllNotes((prev) => prev.filter((n) => n.uploadedBy !== targetUid));
       setPendingNotes((prev) => prev.filter((n) => n.uploadedBy !== targetUid));
@@ -336,6 +364,15 @@ export const Admin: React.FC = () => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  // Group online users by uid (same user on multiple devices)
+  const onlineByUid = onlineUsers.reduce<Record<string, OnlineUser[]>>((acc, u) => {
+    if (!acc[u.uid]) acc[u.uid] = [];
+    acc[u.uid].push(u);
+    return acc;
+  }, {});
+
+  const uniqueOnlineCount = Object.keys(onlineByUid).length;
+
   return (
     <div className="min-h-screen w-full py-12 px-4 md:px-8 relative overflow-hidden">
       {/* Glows */}
@@ -346,48 +383,93 @@ export const Admin: React.FC = () => {
         
         {/* Banner */}
         <div className="text-left border-b border-white/[0.05] pb-6">
-          <h1 className="text-4xl font-extrabold tracking-tight text-white light-mode:text-slate-900 flex items-center gap-3">
-            <ShieldAlert className="w-9 h-9 text-indigo-500 flex-shrink-0 animate-pulse" /> NoteWeb Control Center
-          </h1>
-          <p className="text-slate-400 light-mode:text-slate-500 font-medium text-sm mt-2">
-            Secure admin workspace to moderate uploads, purge spams, and manage student privileges.
-          </p>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <h1 className="text-4xl font-extrabold tracking-tight text-white light-mode:text-slate-900 flex items-center gap-3">
+              <ShieldAlert className="w-9 h-9 text-indigo-500 flex-shrink-0 animate-pulse" /> NoteWeb Control Center
+            </h1>
+            {/* Live connection status indicator */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold ${
+              realtimeConnected 
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                : 'bg-slate-500/10 border-white/10 text-slate-500'
+            }`}>
+              {realtimeConnected ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                  <Wifi className="w-3.5 h-3.5" /> Live Sync Active
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3.5 h-3.5" /> Connecting...
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-4 mt-2 flex-wrap">
+            <p className="text-slate-400 light-mode:text-slate-500 font-medium text-sm">
+              Secure admin workspace to moderate uploads, purge spams, and manage student privileges.
+            </p>
+            <button
+              onClick={() => fetchModerationData(true)}
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-400 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refreshed {getRelativeTime(lastRefresh.toISOString())}
+            </button>
+          </div>
         </div>
 
         {/* Admin Navigation Tabs */}
-        <div className="flex items-center gap-3 border-b border-white/[0.05] pb-1">
+        <div className="flex items-center gap-1 border-b border-white/[0.05] pb-1 overflow-x-auto">
           <button
             onClick={() => setActiveTab('moderation')}
             className={`
-              px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2
+              px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 flex-shrink-0
               ${activeTab === 'moderation' 
                 ? 'border-indigo-500 text-white light-mode:text-indigo-600' 
                 : 'border-transparent text-slate-400 hover:text-slate-200'}
             `}
           >
-            <FileSearch className="w-4 h-4" /> Moderation Pool ({pendingNotes.length})
+            <FileSearch className="w-4 h-4" /> Moderation ({pendingNotes.length})
           </button>
           <button
             onClick={() => setActiveTab('notes')}
             className={`
-              px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2
+              px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 flex-shrink-0
               ${activeTab === 'notes' 
                 ? 'border-indigo-500 text-white light-mode:text-indigo-600' 
                 : 'border-transparent text-slate-400 hover:text-slate-200'}
             `}
           >
-            <BookOpen className="w-4 h-4" /> Manage Library ({allNotes.length})
+            <BookOpen className="w-4 h-4" /> Library ({allNotes.length})
           </button>
           <button
             onClick={() => setActiveTab('users')}
             className={`
-              px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2
+              px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 flex-shrink-0
               ${activeTab === 'users' 
                 ? 'border-indigo-500 text-white light-mode:text-indigo-600' 
                 : 'border-transparent text-slate-400 hover:text-slate-200'}
             `}
           >
-            <Users className="w-4 h-4" /> Users Directory ({usersList.length})
+            <Users className="w-4 h-4" /> All Users ({usersList.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('online')}
+            className={`
+              px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 flex-shrink-0
+              ${activeTab === 'online' 
+                ? 'border-emerald-500 text-emerald-400' 
+                : 'border-transparent text-slate-400 hover:text-slate-200'}
+            `}
+          >
+            <Activity className="w-4 h-4" />
+            Online Now
+            {uniqueOnlineCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold animate-pulse">
+                {onlineUsers.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -398,6 +480,124 @@ export const Admin: React.FC = () => {
               {[1, 2].map((i) => (
                 <Skeleton key={i} height={80} className="w-full" />
               ))}
+            </div>
+          ) : activeTab === 'online' ? (
+            /* ===== ONLINE NOW TAB ===== */
+            <div className="flex flex-col gap-6">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <GlassPanel className="p-5 text-center bg-emerald-500/5 border border-emerald-500/10">
+                  <div className="text-3xl font-extrabold text-emerald-400">{uniqueOnlineCount}</div>
+                  <div className="text-xs font-semibold text-slate-400 mt-1">Users Online</div>
+                </GlassPanel>
+                <GlassPanel className="p-5 text-center bg-indigo-500/5 border border-indigo-500/10">
+                  <div className="text-3xl font-extrabold text-indigo-400">{onlineUsers.length}</div>
+                  <div className="text-xs font-semibold text-slate-400 mt-1">Active Sessions</div>
+                </GlassPanel>
+                <GlassPanel className="p-5 text-center bg-purple-500/5 border border-purple-500/10">
+                  <div className="text-3xl font-extrabold text-purple-400">
+                    {onlineUsers.filter(u => u.role === 'admin').length}
+                  </div>
+                  <div className="text-xs font-semibold text-slate-400 mt-1">Admins Online</div>
+                </GlassPanel>
+              </div>
+
+              {uniqueOnlineCount === 0 ? (
+                <GlassPanel className="h-64 flex flex-col items-center justify-center text-center gap-4 bg-[#16161D]/10">
+                  <div className="w-12 h-12 rounded-full bg-slate-900 border border-white/5 flex items-center justify-center text-slate-400">
+                    <Wifi className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white light-mode:text-slate-800">Presence Initializing...</h4>
+                    <p className="text-xs text-slate-500 max-w-xs mt-1">
+                      Connecting to live presence channel. Users will appear here as they log in across devices and browsers.
+                    </p>
+                  </div>
+                </GlassPanel>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {Object.entries(onlineByUid).map(([uid, sessions]) => {
+                    const primary = sessions[0];
+                    const isCurrentUser = uid === currentAuthUser?.uid;
+                    return (
+                      <GlassPanel
+                        key={uid}
+                        className={`p-5 flex flex-col md:flex-row md:items-start justify-between gap-4 border ${
+                          primary.role === 'admin' 
+                            ? 'border-amber-500/20 bg-amber-500/[0.03]' 
+                            : 'border-white/[0.05] bg-[#16161D]/20'
+                        } hover:border-white/10`}
+                      >
+                        <div className="flex items-start gap-4 min-w-0">
+                          {/* Avatar */}
+                          <div className="relative flex-shrink-0">
+                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
+                              primary.role === 'admin' 
+                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
+                                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                            }`}>
+                              <User className="w-5 h-5" />
+                            </div>
+                            {/* Online pulse dot */}
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#0A0A0C] animate-pulse" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-bold text-white leading-snug light-mode:text-slate-900">
+                                {primary.displayName || 'Anonymous'}
+                              </h4>
+                              {isCurrentUser && (
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400">
+                                  You
+                                </span>
+                              )}
+                              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                                primary.role === 'admin' 
+                                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
+                                  : 'bg-slate-500/10 border-white/5 text-slate-400'
+                              }`}>
+                                {primary.role.toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="text-slate-500 text-xs mt-0.5 truncate max-w-xs">{primary.email}</div>
+                            
+                            {/* Active sessions list */}
+                            <div className="flex flex-col gap-1.5 mt-2.5">
+                              {sessions.map((session) => (
+                                <div key={session.deviceId} className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+                                  <span className="flex items-center gap-1.5 text-indigo-400">
+                                    {getDeviceIcon(session.deviceInfo)}
+                                    {session.deviceInfo}
+                                  </span>
+                                  <span className="text-slate-600">·</span>
+                                  <Clock className="w-3 h-3 text-slate-600" />
+                                  <span>Online {getRelativeTime(session.onlineSince)}</span>
+                                  <span className="text-slate-600">·</span>
+                                  <span className="text-slate-500">Seen {getRelativeTime(session.lastSeen)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Session count badge */}
+                        <div className="flex items-center gap-2 self-start md:self-auto flex-shrink-0">
+                          {sessions.length > 1 && (
+                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center gap-1">
+                              <Monitor className="w-3 h-3" />
+                              {sessions.length} devices
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                            Live
+                          </span>
+                        </div>
+                      </GlassPanel>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ) : activeTab === 'moderation' ? (
             // Moderation panel
@@ -541,59 +741,78 @@ export const Admin: React.FC = () => {
             // Users list tab
             usersList.length > 0 ? (
               <div className="flex flex-col gap-4">
-                {usersList.map((usr) => (
-                  <GlassPanel 
-                    key={usr.uid} 
-                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-white/[0.05] bg-[#16161D]/20 hover:border-white/10"
-                  >
-                    <div className="flex items-start gap-4 min-w-0">
-                      <div className="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/10 mt-1 flex-shrink-0">
-                        <User className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0 text-left">
-                        <h4 className="font-bold text-white leading-snug truncate light-mode:text-slate-900">
-                          {usr.displayName}
-                        </h4>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 text-xs mt-1.5 font-medium">
-                          <span>Email: {usr.email}</span>
-                          <span>•</span>
-                          <span>Registered {getFormatDate(usr.createdAt)}</span>
+                {usersList.map((usr) => {
+                  const isOnline = onlineUsers.some(o => o.uid === usr.uid);
+                  const userSessions = onlineByUid[usr.uid] || [];
+                  return (
+                    <GlassPanel 
+                      key={usr.uid} 
+                      className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-white/[0.05] bg-[#16161D]/20 hover:border-white/10"
+                    >
+                      <div className="flex items-start gap-4 min-w-0">
+                        <div className="relative flex-shrink-0">
+                          <div className="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/10 mt-1">
+                            <User className="w-5 h-5" />
+                          </div>
+                          {/* Online indicator */}
+                          {isOnline && (
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#0A0A0C] animate-pulse" />
+                          )}
+                        </div>
+                        <div className="min-w-0 text-left">
+                          <h4 className="font-bold text-white leading-snug truncate light-mode:text-slate-900">
+                            {usr.displayName}
+                          </h4>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 text-xs mt-1.5 font-medium">
+                            <span>Email: {usr.email}</span>
+                            <span>•</span>
+                            <span>Registered {getFormatDate(usr.createdAt)}</span>
+                            {isOnline && (
+                              <>
+                                <span>•</span>
+                                <span className="text-emerald-400 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                                  Online on {userSessions.length} {userSessions.length === 1 ? 'device' : 'devices'}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-3.5 self-start md:self-auto ml-[60px] md:ml-0">
-                      <span className={`
-                        text-[10px] font-extrabold tracking-wider px-2.5 py-1 rounded-full border
-                        ${usr.role === 'admin' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-slate-500/10 border-white/5 text-slate-400'}
-                      `}>
-                        {usr.role.toUpperCase()}
-                      </span>
+                      <div className="flex items-center gap-3.5 self-start md:self-auto ml-[60px] md:ml-0">
+                        <span className={`
+                          text-[10px] font-extrabold tracking-wider px-2.5 py-1 rounded-full border
+                          ${usr.role === 'admin' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-slate-500/10 border-white/5 text-slate-400'}
+                        `}>
+                          {usr.role.toUpperCase()}
+                        </span>
 
-                      <button
-                        onClick={() => handleRoleToggle(usr.uid, usr.role)}
-                        className={`
-                          px-4 py-2 rounded-lg text-xs font-bold transition-all active:scale-95
-                          ${usr.role === 'admin' 
-                            ? 'border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white' 
-                            : 'border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-white'}
-                        `}
-                      >
-                        {usr.role === 'admin' ? 'Demote to Student' : 'Elevate to Admin'}
-                      </button>
-
-                      {usr.uid !== currentAuthUser?.uid && (
                         <button
-                          onClick={() => handleRemoveUser(usr.uid, usr.displayName)}
-                          className="p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center"
-                          title="Remove Student Profile"
+                          onClick={() => handleRoleToggle(usr.uid, usr.role)}
+                          className={`
+                            px-4 py-2 rounded-lg text-xs font-bold transition-all active:scale-95
+                            ${usr.role === 'admin' 
+                              ? 'border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white' 
+                              : 'border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-white'}
+                          `}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {usr.role === 'admin' ? 'Demote to Student' : 'Elevate to Admin'}
                         </button>
-                      )}
-                    </div>
-                  </GlassPanel>
-                ))}
+
+                        {usr.uid !== currentAuthUser?.uid && (
+                          <button
+                            onClick={() => handleRemoveUser(usr.uid, usr.displayName)}
+                            className="p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center"
+                            title="Remove Student Profile"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </GlassPanel>
+                  );
+                })}
               </div>
             ) : (
               <GlassPanel className="h-64 flex flex-col items-center justify-center text-center gap-4">

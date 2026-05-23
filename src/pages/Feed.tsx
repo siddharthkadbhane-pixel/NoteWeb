@@ -15,7 +15,9 @@ import {
   User,
   GraduationCap,
   Lock,
-  Trash2
+  Trash2,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { AISummary } from '../components/Notes/AISummary';
 import { Button } from '../components/ui/Button';
@@ -93,6 +95,7 @@ export const Feed: React.FC = () => {
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
+  const [realtimeSynced, setRealtimeSynced] = useState(false);
 
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [categories, setCategories] = useState<{ id: string; branchId: string; name: string; description?: string }[]>([]);
@@ -298,25 +301,50 @@ export const Feed: React.FC = () => {
   useEffect(() => {
     fetchNotes();
 
-    // 1. Set up Realtime subscription for notes table postgres events and broadcast events
+    // 1. Set up Realtime subscription for notes table — separate INSERT/UPDATE/DELETE handlers
     let channel: any = null;
     try {
       if (typeof supabase.channel === 'function') {
         channel = supabase
-          .channel('public:notes')
+          .channel('public:notes-feed-v2')
           .on(
             'postgres_changes',
-            { event: '*', schema: 'public', table: 'notes' },
-            () => {
-              console.log('Realtime change in notes table, refetching silently...');
+            { event: 'INSERT', schema: 'public', table: 'notes' },
+            (payload: any) => {
+              console.log('[NoteWeb Realtime] New note inserted:', payload.new?.subject);
+              setRealtimeSynced(true);
               fetchNotes(true);
+              // Toast for new approved notes from other users
+              if (payload.new && payload.new.uploaded_by !== user?.uid && payload.new.status === 'approved') {
+                info(`📄 New note: "${payload.new.subject}" just appeared!`);
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'notes' },
+            (payload: any) => {
+              console.log('[NoteWeb Realtime] Note updated:', payload.new?.id);
+              setRealtimeSynced(true);
+              fetchNotes(true);
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: 'DELETE', schema: 'public', table: 'notes' },
+            (payload: any) => {
+              console.log('[NoteWeb Realtime] Note deleted:', payload.old?.id);
+              setRealtimeSynced(true);
+              if (payload.old?.id) {
+                setNotes(prev => prev.filter(n => n.id !== payload.old.id));
+              }
             }
           )
           .on(
             'broadcast',
             { event: 'new-note' },
             (response: any) => {
-              console.log('Broadcast received in notes channel:', response);
+              console.log('[NoteWeb Broadcast] New note broadcast received:', response);
               if (response?.payload) {
                 const newNote = response.payload;
                 
@@ -324,9 +352,7 @@ export const Feed: React.FC = () => {
                 const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
                 let storedNotes: any[] = [];
                 if (storedNotesStr) {
-                  try {
-                    storedNotes = JSON.parse(storedNotesStr);
-                  } catch {}
+                  try { storedNotes = JSON.parse(storedNotesStr); } catch {}
                 }
                 if (!storedNotes.some((n: any) => n.id === newNote.id)) {
                   storedNotes.push(newNote);
@@ -337,7 +363,6 @@ export const Feed: React.FC = () => {
                 setNotes((prev) => {
                   if (prev.some((n) => n.id === mappedNote.id)) return prev;
                   const updated = [mappedNote, ...prev];
-                  // Sort dynamically
                   const sorted = [...updated];
                   sortNotes(sorted, sortBy);
                   return sorted;
@@ -345,39 +370,39 @@ export const Feed: React.FC = () => {
               }
             }
           )
-          .subscribe();
+          .subscribe((status: string) => {
+            console.log('[NoteWeb Realtime] Feed channel status:', status);
+            if (status === 'SUBSCRIBED') setRealtimeSynced(true);
+          });
       }
     } catch (err) {
       console.warn("Realtime subscription failed on Feed:", err);
     }
 
-    // 2. Listen for upload signal from Upload.tsx via localStorage
-    // This immediately triggers a refetch when any tab/device uploads a new note
+    // 2. Listen for upload signal from Upload.tsx via localStorage — cross-tab sync
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'noteweb-last-upload') {
-        console.log('Upload signal detected, refetching notes immediately...');
+        console.log('[NoteWeb] Upload signal detected via localStorage, refetching...');
         fetchNotes(true);
       }
     };
     window.addEventListener('storage', handleStorageChange);
 
-    // 3. Keep a passive 10-second silent background polling safety net for bulletproof cross-device sync
+    // 3. Passive 5-second polling as bulletproof cross-device sync safety net
     const interval = setInterval(() => {
       fetchNotes(true);
-    }, 10000);
+    }, 5000);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('storage', handleStorageChange);
       if (channel) {
-        try {
-          channel.unsubscribe();
-        } catch (e) {
+        try { channel.unsubscribe(); } catch (e) {
           console.warn("Failed to unsubscribe notes channel:", e);
         }
       }
     };
-  }, []);
+  }, [user?.uid]);
 
   // Handle Sort triggers
   const sortNotes = (items: NoteDocument[], criteria: 'recent' | 'popular') => {
@@ -573,9 +598,23 @@ export const Feed: React.FC = () => {
             <h1 className="text-4xl font-extrabold tracking-tight text-white light-mode:text-slate-900">
               Browse Notes Feed
             </h1>
-            <p className="text-slate-400 light-mode:text-slate-500 font-medium text-sm mt-1">
-              Explore college lecture summaries, formulas, and resources shared by peers.
-            </p>
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
+              <p className="text-slate-400 light-mode:text-slate-500 font-medium text-sm">
+                Explore college lecture summaries, formulas, and resources shared by peers.
+              </p>
+              {/* Live Sync Indicator */}
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold flex-shrink-0 ${
+                realtimeSynced
+                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                  : 'bg-slate-500/10 border-white/10 text-slate-500'
+              }`}>
+                {realtimeSynced ? (
+                  <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" /><Wifi className="w-3 h-3" /> Live</>
+                ) : (
+                  <><WifiOff className="w-3 h-3" /> Syncing...</>
+                )}
+              </div>
+            </div>
           </div>
           
           {/* Sorting controls */}
