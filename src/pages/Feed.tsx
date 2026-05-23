@@ -264,16 +264,36 @@ export const Feed: React.FC = () => {
         try { storedNotes = JSON.parse(storedNotesStr); } catch {}
       }
       
+      // Auto-pruning self-healing cache: If we successfully fetched approved notes from the database,
+      // any stored note in broadcast cache that has been approved but is no longer in the DB approved list
+      // has been permanently deleted or unapproved by the admin. We should prune it to prevent old data from lingering.
+      let finalStoredNotes = [...storedNotes];
+      if (fetched.length > 0 && storedNotes.length > 0) {
+        const activeApprovedIds = new Set(fetched.map((n) => n.id));
+        finalStoredNotes = storedNotes.filter((sn: any) => {
+          // If it was already approved but isn't in DB's approved list, it was deleted
+          if (sn.status === 'approved') {
+            return activeApprovedIds.has(sn.id);
+          }
+          return true; // Keep pending ones for local uploader preview
+        });
+
+        if (finalStoredNotes.length !== storedNotes.length) {
+          localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(finalStoredNotes));
+          console.log(`[NoteWeb Feed] Cleaned up ${storedNotes.length - finalStoredNotes.length} deleted/stale notes from local broadcast cache`);
+        }
+      }
+
       const merged = [...fetched];
-      for (const sn of storedNotes) {
+      for (const sn of finalStoredNotes) {
         const mappedSn = mapDbNoteToNoteDocument(sn);
         if (!merged.some((n) => n.id === mappedSn.id)) {
           merged.push(mappedSn);
         }
       }
 
-      if (storedNotes.length > 0) {
-        console.log(`[NoteWeb Feed] Merged ${storedNotes.length} broadcasted notes from localStorage`);
+      if (finalStoredNotes.length > 0) {
+        console.log(`[NoteWeb Feed] Merged ${finalStoredNotes.length} broadcasted notes from localStorage`);
       }
 
       console.log(`[NoteWeb Feed] Total after merge: ${merged.length} notes`);
@@ -359,6 +379,20 @@ export const Feed: React.FC = () => {
               setRealtimeSynced(true);
               if (payload.old?.id) {
                 setNotes(prev => prev.filter(n => n.id !== payload.old.id));
+                
+                // Remove from local broadcast cache
+                try {
+                  const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
+                  if (storedNotesStr) {
+                    const storedNotes = JSON.parse(storedNotesStr);
+                    if (Array.isArray(storedNotes)) {
+                      const filtered = storedNotes.filter((n: any) => n.id !== payload.old.id);
+                      localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
+                    }
+                  }
+                } catch (e) {
+                  console.warn('[NoteWeb Realtime] Failed to remove deleted note from broadcast cache:', e);
+                }
               }
             }
           )
@@ -591,6 +625,20 @@ export const Feed: React.FC = () => {
         .eq('id', noteId);
 
       if (err) throw err;
+
+      // Remove from local broadcast cache
+      try {
+        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
+        if (storedNotesStr) {
+          const storedNotes = JSON.parse(storedNotesStr);
+          if (Array.isArray(storedNotes)) {
+            const filtered = storedNotes.filter((n: any) => n.id !== noteId);
+            localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to clear note from local broadcast cache:", cacheErr);
+      }
 
       setNotes((prev) => prev.filter((n) => n.id !== noteId));
       success("Note deleted successfully!");

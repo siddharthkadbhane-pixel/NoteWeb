@@ -274,6 +274,20 @@ export const Admin: React.FC = () => {
         
       if (deleteErr) throw deleteErr;
       
+      // Remove from local broadcast cache
+      try {
+        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
+        if (storedNotesStr) {
+          const storedNotes = JSON.parse(storedNotesStr);
+          if (Array.isArray(storedNotes)) {
+            const filtered = storedNotes.filter((n: any) => n.id !== noteId);
+            localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to clear note from local broadcast cache:", cacheErr);
+      }
+
       success("Notes document permanently deleted.");
       setAllNotes((prev) => prev.filter((n) => n.id !== noteId));
       setPendingNotes((prev) => prev.filter((n) => n.id !== noteId));
@@ -346,6 +360,20 @@ export const Admin: React.FC = () => {
         .eq('id', targetUid);
 
       if (deleteProfileErr) throw deleteProfileErr;
+
+      // Remove all user's notes from local broadcast cache
+      try {
+        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
+        if (storedNotesStr) {
+          const storedNotes = JSON.parse(storedNotesStr);
+          if (Array.isArray(storedNotes)) {
+            const filtered = storedNotes.filter((n: any) => n.uploaded_by !== targetUid && n.uploadedBy !== targetUid);
+            localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to clear user notes from local broadcast cache:", cacheErr);
+      }
 
       success(`User "${displayName}" and their uploads have been permanently removed!`);
 

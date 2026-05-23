@@ -469,6 +469,20 @@ export const Profile: React.FC = () => {
       const { error: dbErr } = await supabase.from('notes').delete().eq('id', noteId);
       if (dbErr) throw dbErr;
       
+      // Remove from local broadcast cache
+      try {
+        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
+        if (storedNotesStr) {
+          const storedNotes = JSON.parse(storedNotesStr);
+          if (Array.isArray(storedNotes)) {
+            const filtered = storedNotes.filter((n: any) => n.id !== noteId);
+            localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to clear note from local broadcast cache:", cacheErr);
+      }
+
       setMyUploads((prev) => prev.filter((n) => n.id !== noteId));
       success("Notes document purged successfully!");
     } catch (e: any) {
