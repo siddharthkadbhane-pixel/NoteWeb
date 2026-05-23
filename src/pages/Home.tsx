@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { 
-  Gamepad2, 
   Trophy, 
   ArrowRight,
   Sparkles,
@@ -21,45 +20,12 @@ import {
   ChevronRight,
   Smile
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '../components/ui/Button';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { supabase } from '../supabase/config';
 
-interface TriviaQuestion {
-  question: string;
-  options: string[];
-  answer: number;
-  explanation: string;
-}
-
-const ACADEMIC_TRIVIA: TriviaQuestion[] = [
-  {
-    question: "Which scheduling algorithm is non-preemptive and selects the process with the shortest execution time first?",
-    options: ["Round Robin (RR)", "Shortest Job First (SJF)", "First Come First Served (FCFS)", "Priority Scheduling"],
-    answer: 1,
-    explanation: "Shortest Job First (SJF) can be preemptive or non-preemptive. In its non-preemptive version, once a process gets CPU execution, it does not release it until it completes, choosing the one with the shortest burst time first."
-  },
-  {
-    question: "What is the primary objective of Database Normalization?",
-    options: ["To increase storage size", "To eliminate data redundancy and prevent anomalies", "To speed up search times exclusively", "To create foreign keys automatically"],
-    answer: 1,
-    explanation: "Normalization organizes columns and tables to ensure database dependencies are properly enforced. This eliminates duplicate data (redundancy) and avoids update, insertion, and deletion anomalies."
-  },
-  {
-    question: "Which theorem state that the path integral of a magnetic field around any closed loop is equal to μ₀ times the total current passing through the loop?",
-    options: ["Gauss's Law", "Faraday's Law of Induction", "Ampere's Circuital Law", "Lenz's Law"],
-    answer: 2,
-    explanation: "Ampere's Law relates the integrated magnetic field around a closed loop to the electric current passing through the loop, formulated as ∮B·dl = μ₀I."
-  },
-  {
-    question: "What is the complexity of searching for an element in a perfectly balanced Binary Search Tree (BST)?",
-    options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
-    answer: 1,
-    explanation: "In a perfectly balanced BST, search cuts the search space in half at each node step. Thus, the time complexity is proportional to the tree height, which is O(log n)."
-  }
-];
+// Academic trivia was successfully removed to make room for our premium AI Study Planner roadmap widget.
 
 const HANDCRAFTED_QUOTES = [
   { text: "First, solve the problem. Then, write the code.", author: "John Johnson" },
@@ -71,7 +37,7 @@ const HANDCRAFTED_QUOTES = [
 ];
 
 export const Home: React.FC = () => {
-  const { user, userProfile, isGuest } = useAuth();
+  const { user, userProfile, isGuest, updatePoints } = useAuth();
   const { success, error, info } = useToast();
   const { isDark } = useTheme();
   const navigate = useNavigate();
@@ -95,11 +61,29 @@ export const Home: React.FC = () => {
   const [completedPomodoros, setCompletedPomodoros] = useState(0);
   const [audioEnabled, setAudioEnabled] = useState(true);
 
-  // Daily Trivia Arena States
-  const [triviaIndex, setTriviaIndex] = useState(0);
-  const [selectedTriviaOption, setSelectedTriviaOption] = useState<number | null>(null);
-  const [triviaAnswered, setTriviaAnswered] = useState(false);
-  const [triviaPointsEarned, setTriviaPointsEarned] = useState(0);
+  // AI Exam Study Planner States
+  const [plannerSubj, setPlannerSubj] = useState('');
+  const [plannerTime, setPlannerTime] = useState('3 Days');
+  const [plannerGoal, setPlannerGoal] = useState('Score A+');
+  const [plannerLoading, setPlannerLoading] = useState(false);
+  
+  const [activePlanSubj, setActivePlanSubj] = useState(() => {
+    return localStorage.getItem('noteweb-study-plan-subject') || '';
+  });
+  const [studyPlan, setStudyPlan] = useState<any[] | null>(() => {
+    const saved = localStorage.getItem('noteweb-study-plan');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return null;
+  });
+  const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem('noteweb-study-plan-progress');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return {};
+  });
 
   // 1. Fetch Dynamic Note Stats
   useEffect(() => {
@@ -286,27 +270,148 @@ export const Home: React.FC = () => {
   const percentageCompleted = ((timerDuration - timeRemaining) / timerDuration) * 100;
   const strokeDashoffset = 282.6 - (282.6 * percentageCompleted) / 100;
 
-  // 5. Daily Trivia Click Handler
-  const handleTriviaAnswer = (optIdx: number) => {
-    if (triviaAnswered) return;
-    setSelectedTriviaOption(optIdx);
-    setTriviaAnswered(true);
+  // AI Study Plan Helpers
+  const generateMockPlan = (subj: string, time: string) => {
+    return [
+      {
+        title: "Foundations & High-Yield Analysis",
+        duration: "Phase 1 (Preparation)",
+        tasks: [
+          `Summarize core formulas, theorems, and definitions in ${subj}`,
+          `Find the top 3 highest-weight notes in NoteWeb's curriculum library`,
+          `Draft a 1-page visual cheatsheet mapping out weak concepts`
+        ]
+      },
+      {
+        title: "Practice & Active Recall Review",
+        duration: "Phase 2 (Problem Solving)",
+        tasks: [
+          `Solve 5 standard university past-exam questions on ${subj}`,
+          `Explain the core mechanism of the most complex topic to a peer`,
+          `Join a Study Room in the NoteWeb Chat to ask fellow students for feedback`
+        ]
+      },
+      {
+        title: "Simulated Exam & Mental Polish",
+        duration: "Phase 3 (Final Polish)",
+        tasks: [
+          `Run a ${time} mock exam timer using the Focus Commander widget`,
+          `Complete a deep self-review of mistakes using AI academic summaries`,
+          `Claim your quests in NoteWeb Profile and take a deep breath before the exam!`
+        ]
+      }
+    ];
+  };
+
+  const generateAiStudyPlan = async (subject: string, timeframe: string, goal: string): Promise<any[]> => {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey || apiKey === 'mock-gemini-api-key') {
+      throw new Error('API_KEY_MISSING');
+    }
+
+    const prompt = `You are NoteWeb's expert AI Study Planner. Generate a customized exam preparation study roadmap for the subject: "${subject}", with a timeframe of "${timeframe}" and a target goal of "${goal}".
+Format your response as a strict JSON array of 3 phases. Do not wrap in markdown \`\`\`json blocks.
+Each phase object MUST have exactly these keys:
+- "title": Short title of the study phase (e.g. "Phase 1: Concepts & Core Formulas")
+- "duration": Duration or timeframe chunk (e.g. "Day 1" or "First 4 Hours")
+- "tasks": Array of exactly 3 specific, checkable, action-oriented task strings (e.g. ["Revise AVL tree balancing", "Solve 5 past equations on calculus", "Summarize Lecture 3 notes"]).
+
+Response must be pure valid JSON:`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('API_CALL_FAILED');
+    }
+
+    const data = await response.json();
+    let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    generatedText = generatedText.replace(/```json/g, '').replace(/```/g, '').trim();
     
-    const activeQ = ACADEMIC_TRIVIA[triviaIndex]!;
-    if (optIdx === activeQ.answer) {
-      synthSound('bell');
-      setTriviaPointsEarned(prev => prev + 10);
-      success('Correct! You gained +10 Study Points!');
-    } else {
-      synthSound('tick');
-      error('Incorrect answer. Review explanation!');
+    const parsed = JSON.parse(generatedText);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    throw new Error('INVALID_JSON');
+  };
+
+  // AI Study Plan Generation Handler
+  const handleGenerateStudyPlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!plannerSubj.trim()) {
+      info("Please enter a subject name first!");
+      return;
+    }
+
+    setPlannerLoading(true);
+    try {
+      let plan: any[] = [];
+      try {
+        plan = await generateAiStudyPlan(plannerSubj, plannerTime, plannerGoal);
+      } catch (err) {
+        console.warn("[NoteWeb AI Planner] API call failed or missing key, generating fallback mockup...", err);
+        // Quick 1000ms delay to make the AI animation feel organic
+        await new Promise(r => setTimeout(r, 1000));
+        plan = generateMockPlan(plannerSubj, plannerTime);
+      }
+
+      setStudyPlan(plan);
+      setActivePlanSubj(plannerSubj);
+      setCompletedTasks({});
+      
+      localStorage.setItem('noteweb-study-plan', JSON.stringify(plan));
+      localStorage.setItem('noteweb-study-plan-subject', plannerSubj);
+      localStorage.setItem('noteweb-study-plan-progress', JSON.stringify({}));
+      
+      success(`AI Study Roadmap generated for ${plannerSubj}!`);
+    } catch (err: any) {
+      console.error(err);
+      error("Failed to generate study plan: " + err.message);
+    } finally {
+      setPlannerLoading(false);
     }
   };
 
-  const nextTriviaQuestion = () => {
-    setSelectedTriviaOption(null);
-    setTriviaAnswered(false);
-    setTriviaIndex(prev => (prev + 1) % ACADEMIC_TRIVIA.length);
+  const handleToggleTask = (phaseIdx: number, taskIdx: number) => {
+    const taskKey = `${phaseIdx}-${taskIdx}`;
+    const nextCompleted = {
+      ...completedTasks,
+      [taskKey]: !completedTasks[taskKey]
+    };
+    setCompletedTasks(nextCompleted);
+    localStorage.setItem('noteweb-study-plan-progress', JSON.stringify(nextCompleted));
+
+    // Award minor point bonus for completing tasks!
+    if (!completedTasks[taskKey]) {
+      synthSound('bell');
+      success("Task Completed! +5 study points awarded!");
+      if (!isGuest && userProfile) {
+        try {
+          updatePoints(5);
+        } catch (e) {}
+      }
+    } else {
+      synthSound('tick');
+    }
+  };
+
+  const handleClearStudyPlan = () => {
+    if (!window.confirm("Are you sure you want to delete your active study plan?")) return;
+    setStudyPlan(null);
+    setActivePlanSubj('');
+    setCompletedTasks({});
+    localStorage.removeItem('noteweb-study-plan');
+    localStorage.removeItem('noteweb-study-plan-subject');
+    localStorage.removeItem('noteweb-study-plan-progress');
+    info("Study plan cleared.");
   };
 
   // Profile metadata display
@@ -665,7 +770,7 @@ export const Home: React.FC = () => {
                 <div className="text-left sm:text-center">
                   <span className="text-[9px] font-black tracking-wider uppercase text-slate-500 block">Total points</span>
                   <span className="text-2xl font-black text-white tracking-tight mt-0.5 block">
-                    {stats.score + triviaPointsEarned + (isGuest ? 0 : (userProfile?.points || 0))} Pts
+                    {stats.score + (isGuest ? 0 : (userProfile?.points || 0))} Pts
                   </span>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-lg flex-shrink-0 animate-pulse">
@@ -675,104 +780,238 @@ export const Home: React.FC = () => {
 
             </div>
 
-            {/* WIDGET 4: CAMPUS ACADEMIC TRIVIA ARENA (FULLY INTERACTIVE) */}
-            <div className={`rounded-3xl border p-6 shadow-xl backdrop-blur-2xl flex flex-col gap-4 relative overflow-hidden premium-border-glow ${isDark ? 'border-white/5 bg-[#05050A]/60' : 'border-slate-200/80 bg-white/90'}`}>
+            {/* WIDGET 4: CAMPUS AI STUDY ROADMAP & EXAM PLANNER (AI-POWERED NEW FEATURE) */}
+            <div className={`rounded-3xl border p-6 shadow-xl backdrop-blur-2xl flex flex-col gap-5 relative overflow-hidden premium-border-glow ${isDark ? 'border-white/5 bg-[#05050A]/60' : 'border-slate-200/80 bg-white/90'}`}>
               
               {/* Backlit background glow */}
-              <div className="absolute top-0 right-0 w-44 h-44 bg-gradient-to-tr from-[#00FF87]/5 to-[#60EFFF]/5 blur-3xl pointer-events-none" />
+              <div className="absolute top-0 right-0 w-44 h-44 bg-gradient-to-tr from-purple-500/5 to-indigo-500/5 blur-3xl pointer-events-none" />
 
-              {/* Trivia Header */}
-              <div className={`flex items-center justify-between border-b pb-3 z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                    <Gamepad2 className="w-4 h-4 text-emerald-400 animate-pulse" />
+              {/* Header */}
+              <div className={`flex items-center justify-between border-b pb-3.5 z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
                   </div>
                   <div>
-                    <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Daily Brain Teaser</h3>
-                    <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Solve trivia to earn points</p>
+                    <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>AI Study Planner</h3>
+                    <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Custom roadmaps generated by Gemini</p>
                   </div>
                 </div>
 
-                <span className="text-[9px] font-black tracking-wider uppercase text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
-                  TRIVIA ARENA
+                <span className="text-[9px] font-black tracking-wider uppercase text-purple-500 bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded-lg">
+                  AI POWERED
                 </span>
               </div>
 
-              {/* Game Question Block */}
-              <div className="space-y-4 py-1 z-10">
-                
-                {/* Question */}
-                <div>
-                  <span className={`text-[9px] font-black tracking-widest block uppercase ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Question #{triviaIndex + 1}</span>
-                  <h4 className={`text-sm sm:text-base font-extrabold leading-relaxed mt-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                    {ACADEMIC_TRIVIA[triviaIndex]!.question}
-                  </h4>
-                </div>
+              {/* Main Panel Content */}
+              <div className="z-10">
+                {!studyPlan ? (
+                  /* ================= FORM MODE ================= */
+                  <form onSubmit={handleGenerateStudyPlan} className="flex flex-col gap-4 text-left">
+                    <div className="flex flex-col gap-1.5">
+                      <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-450' : 'text-slate-500'}`}>
+                        What exam are you studying for?
+                      </label>
+                      <input
+                        type="text"
+                        value={plannerSubj}
+                        onChange={(e) => setPlannerSubj(e.target.value)}
+                        placeholder="e.g. Data Structures, Linear Algebra, Basic Sciences..."
+                        maxLength={50}
+                        className={`w-full px-4 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none focus:scale-[1.01] ${
+                          isDark 
+                            ? 'bg-white/[0.01] border-white/[0.04] text-white placeholder-slate-650 focus:border-purple-500/40 focus:bg-[#08080E]' 
+                            : 'bg-slate-50/80 border-slate-250 text-slate-800 placeholder-slate-400 focus:border-purple-500/50 focus:bg-white'
+                        }`}
+                      />
+                    </div>
 
-                {/* Interactive Options list */}
-                <div className="flex flex-col gap-2.5">
-                  {ACADEMIC_TRIVIA[triviaIndex]!.options.map((opt, idx) => {
-                    const isSelected = selectedTriviaOption === idx;
-                    const isCorrect = idx === ACADEMIC_TRIVIA[triviaIndex]!.answer;
+                    <div className="grid grid-cols-2 gap-3.5">
+                      {/* Timeframe Selector */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-450' : 'text-slate-500'}`}>
+                          Preparation Timeframe
+                        </label>
+                        <select
+                          value={plannerTime}
+                          onChange={(e) => setPlannerTime(e.target.value)}
+                          className={`w-full px-3.5 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none cursor-pointer ${
+                            isDark 
+                              ? 'bg-[#0A0A0F] border-white/[0.04] text-white focus:border-purple-500/40' 
+                              : 'bg-slate-50/80 border-slate-250 text-slate-700 focus:border-purple-500/50'
+                          }`}
+                        >
+                          <option value="1 Day">1 Day (Cramming)</option>
+                          <option value="3 Days">3 Days (Sprint)</option>
+                          <option value="1 Week">1 Week (Paced)</option>
+                          <option value="2 Weeks">2 Weeks (Deep Dive)</option>
+                        </select>
+                      </div>
+
+                      {/* Goal Selector */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-450' : 'text-slate-500'}`}>
+                          Preparation Goal
+                        </label>
+                        <select
+                          value={plannerGoal}
+                          onChange={(e) => setPlannerGoal(e.target.value)}
+                          className={`w-full px-3.5 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none cursor-pointer ${
+                            isDark 
+                              ? 'bg-[#0A0A0F] border-white/[0.04] text-white focus:border-purple-500/40' 
+                              : 'bg-slate-50/80 border-slate-250 text-slate-700 focus:border-purple-500/50'
+                          }`}
+                        >
+                          <option value="Score A+">Aiming for top grade (A+)</option>
+                          <option value="Pass Exam">Secure passing grade</option>
+                          <option value="Quick Review">Just a quick syllabus recap</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={plannerLoading}
+                      className={`w-full py-3.5 px-4 rounded-2xl font-black text-xs transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
+                        plannerLoading 
+                          ? 'bg-purple-600/30 text-purple-400 border border-purple-500/20 cursor-wait' 
+                          : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-500/10'
+                      }`}
+                    >
+                      {plannerLoading ? (
+                        <>
+                          <Clock className="w-4 h-4 animate-spin text-purple-400" /> Consult Gemini AI...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 text-purple-200 animate-pulse" /> Generate Study Roadmap
+                        </>
+                      )}
+                    </button>
+                  </form>
+                ) : (
+                  /* ================= STUDY PLAN ACTIVE MODE ================= */
+                  <div className="flex flex-col gap-4 text-left">
                     
-                    let buttonStyle = "bg-white/[0.01] border-white/[0.04] text-slate-300 hover:bg-white/[0.03] hover:text-slate-100";
-                    if (triviaAnswered) {
-                      if (isCorrect) {
-                        buttonStyle = "bg-[#00FF87]/5 border-[#00FF87]/30 text-[#00FF87] shadow-[0_0_12px_rgba(0,255,135,0.06)]";
-                      } else if (isSelected) {
-                        buttonStyle = "bg-rose-500/5 border-rose-500/30 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.06)]";
-                      } else {
-                        buttonStyle = "bg-white/[0.01] border-white/[0.04] text-slate-500 opacity-60";
-                      }
-                    } else if (isSelected) {
-                      buttonStyle = "bg-[#00F2FE]/10 border-[#00F2FE]/40 text-[#00F2FE] scale-[1.01]";
-                    }
+                    {/* Roadmap Summary Banner */}
+                    <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${
+                      isDark 
+                        ? 'bg-white/[0.01] border-white/[0.04]' 
+                        : 'bg-slate-50 border-slate-200'
+                    }`}>
+                      <div className="min-w-0">
+                        <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Active Study Roadmap</span>
+                        <h4 className={`text-sm font-extrabold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{activePlanSubj}</h4>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <span className="text-[10px] font-black text-purple-500 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md uppercase tracking-wide">
+                          {plannerTime}
+                        </span>
+                      </div>
+                    </div>
 
-                    return (
+                    {/* Progress Bar */}
+                    <div>
+                      <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 mb-1.5">
+                        <span>PLAN COMPLETION PROGRESS</span>
+                        <span className="text-purple-400 font-black">
+                          {Math.round(
+                            (Object.values(completedTasks).filter(Boolean).length / (studyPlan.length * 3)) * 100
+                          )}%
+                        </span>
+                      </div>
+                      <div className={`h-2.5 rounded-full overflow-hidden w-full ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500"
+                          initial={{ width: 0 }}
+                          animate={{ 
+                            width: `${(Object.values(completedTasks).filter(Boolean).length / (studyPlan.length * 3)) * 100}%` 
+                          }}
+                          transition={{ duration: 0.4 }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Interactive Phases Timeline */}
+                    <div className="flex flex-col gap-4 mt-1 relative pl-3.5 border-l border-purple-500/20">
+                      {studyPlan.map((phase: any, phaseIdx: number) => (
+                        <div key={phaseIdx} className="relative flex flex-col gap-2">
+                          
+                          {/* Circle timeline bullet */}
+                          <span className={`absolute -left-[20px] top-1 w-2.5 h-2.5 rounded-full border-2 border-purple-500 ${
+                            isDark ? 'bg-[#05050A]' : 'bg-white'
+                          }`} />
+
+                          {/* Phase Header */}
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <h5 className={`text-xs font-black tracking-wide ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                              {phase.title}
+                            </h5>
+                            <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded ${
+                              isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {phase.duration}
+                            </span>
+                          </div>
+
+                          {/* Phase Task Checkboxes */}
+                          <div className="flex flex-col gap-1.5 ml-0.5">
+                            {phase.tasks.map((task: string, taskIdx: number) => {
+                              const isChecked = !!completedTasks[`${phaseIdx}-${taskIdx}`];
+                              return (
+                                <div 
+                                  key={taskIdx}
+                                  onClick={() => handleToggleTask(phaseIdx, taskIdx)}
+                                  className={`flex items-start gap-2.5 p-2 rounded-xl border transition-all duration-300 cursor-pointer ${
+                                    isChecked 
+                                      ? 'opacity-55 border-emerald-500/20 bg-emerald-500/[0.01]' 
+                                      : (isDark 
+                                          ? 'border-transparent bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/5' 
+                                          : 'border-transparent bg-slate-50/50 hover:bg-slate-100 hover:border-slate-200'
+                                        )
+                                  }`}
+                                >
+                                  {/* Custom Checkbox circle */}
+                                  <span className={`w-3.5 h-3.5 rounded-full flex-shrink-0 border flex items-center justify-center text-[8px] transition-all mt-0.5 ${
+                                    isChecked 
+                                      ? 'bg-emerald-500 border-emerald-500 text-white font-extrabold shadow-[0_0_8px_rgba(16,185,129,0.3)]' 
+                                      : 'border-slate-400/50 hover:border-purple-500'
+                                  }`}>
+                                    {isChecked && "✔"}
+                                  </span>
+                                  <span className={`text-xs font-bold leading-snug transition-all ${
+                                    isChecked 
+                                      ? 'line-through text-slate-500' 
+                                      : (isDark ? 'text-slate-300' : 'text-slate-700')
+                                  }`}>
+                                    {task}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Bottom Reset action */}
+                    <div className="flex items-center justify-between gap-4 mt-1.5 pt-3.5 border-t border-dashed border-slate-500/20">
+                      <span className={`text-[9px] font-bold ${isDark ? 'text-slate-500' : 'text-slate-450'}`}>
+                        Completing tasks awards +5 Study Points!
+                      </span>
                       <button
-                        key={idx}
-                        onClick={() => handleTriviaAnswer(idx)}
-                        disabled={triviaAnswered}
-                        className={`w-full text-left p-3.5 rounded-2xl border text-xs font-bold leading-normal transition-all duration-300 active:scale-[0.99] flex items-center justify-between gap-3 ${buttonStyle}`}
+                        onClick={handleClearStudyPlan}
+                        className={`text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1 ${
+                          isDark ? 'text-slate-500 hover:text-rose-400' : 'text-slate-400 hover:text-rose-500'
+                        }`}
                       >
-                        <span className="flex-1">{opt}</span>
-                        {/* Status checks */}
-                        {triviaAnswered && isCorrect && <span className="text-[10px] font-black uppercase text-emerald-400 flex items-center gap-0.5">✔ Correct</span>}
-                        {triviaAnswered && isSelected && !isCorrect && <span className="text-[10px] font-black uppercase text-rose-400 flex items-center gap-0.5">✘ Wrong</span>}
+                        <Trash2 className="w-3.5 h-3.5" /> Clear Plan
                       </button>
-                    );
-                  })}
-                </div>
+                    </div>
 
-                {/* Explanation block visible on answered */}
-                <AnimatePresence>
-                  {triviaAnswered && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] text-[11px] leading-relaxed text-slate-400"
-                    >
-                      <strong className="text-slate-300 block mb-1">Concepts Explanation:</strong>
-                      {ACADEMIC_TRIVIA[triviaIndex]!.explanation}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Next button */}
-                {triviaAnswered && (
-                  <div className="flex items-center justify-end pt-2">
-                    <Button
-                      onClick={nextTriviaQuestion}
-                      variant="primary"
-                      size="sm"
-                      rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                    >
-                      Next Question
-                    </Button>
                   </div>
                 )}
-
               </div>
 
             </div>
