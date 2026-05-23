@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { 
   Search, 
-  Sparkles, 
   ThumbsUp, 
   Bookmark, 
   FileText, 
@@ -19,7 +18,6 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import { AISummary } from '../components/Notes/AISummary';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { GlassPanel } from '../components/ui/GlassPanel';
@@ -181,8 +179,7 @@ export const Feed: React.FC = () => {
     setSelectedCategory('all');
   };
 
-  // AI Drawer state
-  const [activeNoteForSummary, setActiveNoteForSummary] = useState<NoteDocument | null>(null);
+  // Diagnostics
 
   // Diagnostic: tracks last fetch error for display in empty state
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -835,11 +832,7 @@ export const Feed: React.FC = () => {
                                     Rejected
                                   </span>
                                 )}
-                                {note.summary && (
-                                  <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center gap-1">
-                                    <Sparkles className="w-3 h-3 animate-pulse" /> AI Summary
-                                  </span>
-                                )}
+
                               </div>
                             </div>
 
@@ -903,16 +896,6 @@ export const Feed: React.FC = () => {
                             </div>
 
                             <div className="flex items-center gap-2">
-                              {/* AI summary button */}
-                              <Button
-                                onClick={() => setActiveNoteForSummary(note)}
-                                variant="ghost"
-                                className="px-2 py-1.5 h-8 text-[11px] font-bold text-purple-400 border border-purple-500/20 hover:bg-purple-500 hover:text-white"
-                                leftIcon={<Sparkles className="w-3 h-3 animate-pulse" />}
-                              >
-                                AI Summary
-                              </Button>
-
                               {/* View PDF download */}
                               <button
                                 onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
@@ -1027,27 +1010,6 @@ export const Feed: React.FC = () => {
         </div>
       </div>
 
-      {/* Embedded Drawer portal for AI Summaries */}
-      {activeNoteForSummary && (
-        <AISummary
-          noteId={activeNoteForSummary.id}
-          pdfUrl={activeNoteForSummary.pdfUrl}
-          existingSummary={activeNoteForSummary.summary}
-          isOpen={!!activeNoteForSummary}
-          onClose={() => setActiveNoteForSummary(null)}
-          onSummaryUpdated={(newSummary) => {
-            // Hot update local feeds list with the generated summary to cache it instantly in state!
-            setNotes((prev) =>
-              prev.map((n) =>
-                n.id === activeNoteForSummary.id
-                  ? { ...n, summary: newSummary }
-                  : n
-              )
-            );
-            setActiveNoteForSummary((prev) => prev ? { ...prev, summary: newSummary } : null);
-          }}
-        />
-      )}
     </div>
   );
 };

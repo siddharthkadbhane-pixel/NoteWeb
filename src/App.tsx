@@ -16,6 +16,8 @@ import { Profile } from './pages/Profile';
 import { Admin } from './pages/Admin';
 import { Chat } from './pages/Chat';
 import { Leaderboard } from './pages/Leaderboard';
+import { Quiz } from './pages/Quiz';
+import { InteractiveBackground } from './components/ui/InteractiveBackground';
 import { ScreenshotProtection } from './components/ScreenshotProtection';
 
 function App() {
@@ -25,12 +27,15 @@ function App() {
         <AuthProvider>
           <ScreenshotProtection>
             <Router>
-              <div className="min-h-screen min-h-[100dvh] bg-[#0A0A0C] text-[#E4E4E7] light-mode:bg-[#F8F9FA] light-mode:text-[#1E293B] transition-colors duration-300 flex overscroll-y-none">
+              <div className="min-h-screen min-h-[100dvh] bg-[#0A0A0C] text-[#E4E4E7] light-mode:bg-[#F8F9FA] light-mode:text-[#1E293B] transition-colors duration-300 flex overscroll-y-none relative overflow-hidden">
+                {/* 3D Geometric Floating Particle Network Background */}
+                <InteractiveBackground />
+
                 {/* Collapsible, responsive Frosted glass sidebar */}
                 <Sidebar />
                 
                 {/* Main Content Area: Responsive offsets for mobile topbar and desktop sidebar */}
-                <main className="flex-1 min-w-0 pt-16 lg:pt-0 pl-0 lg:pl-64 transition-all duration-300 pb-safe">
+                <main className="flex-1 min-w-0 pt-16 lg:pt-0 pl-0 lg:pl-64 transition-all duration-300 pb-safe z-10 relative">
                   <Routes>
                     {/* Publicly Accessible Routes */}
                     <Route path="/" element={<Home />} />
@@ -38,6 +43,7 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/categories" element={<Categories />} />
                     <Route path="/feed" element={<Feed />} />
+                    <Route path="/quiz" element={<Quiz />} />
 
                     {/* Protected Student Features */}
                     <Route 

@@ -16,7 +16,8 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageSquare,
-  Trophy
+  Trophy,
+  Gamepad2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -47,6 +48,7 @@ export const Sidebar: React.FC = () => {
     { to: '/feed', label: 'Browse Notes', icon: <BookOpen className="w-5 h-5" /> },
     { to: '/categories', label: 'Branches', icon: <Grid className="w-5 h-5" /> },
     { to: '/upload', label: 'Upload Notes', icon: <UploadCloud className="w-5 h-5" /> },
+    { to: '/quiz', label: 'Quiz Arena', icon: <Gamepad2 className="w-5 h-5 text-purple-400" /> },
     { to: '/chat', label: 'Campus Chat', icon: <MessageSquare className="w-5 h-5 text-indigo-400" />, protected: true },
     { to: '/leaderboard', label: 'Rankings', icon: <Trophy className="w-5 h-5 text-amber-400" />, protected: true },
     { to: '/profile', label: 'My Dashboard', icon: <User className="w-5 h-5" />, protected: true },
