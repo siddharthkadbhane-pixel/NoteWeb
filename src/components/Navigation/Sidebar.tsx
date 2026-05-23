@@ -65,20 +65,20 @@ export const Sidebar: React.FC = () => {
       {/* ─────────────────────────────────────────────────────────────
          DESKTOP NAV: RETRACTABLE LEFT COMMANDER DOCK (lg and up)
          ───────────────────────────────────────────────────────────── */}
-      <aside className="hidden lg:flex fixed left-5 top-1/2 -translate-y-1/2 w-16 hover:w-60 h-[85vh] rounded-3xl glass-panel border border-white/5 bg-[#05050A]/80 z-50 flex flex-col justify-between py-6 px-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] premium-border-glow select-none group transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
+      <aside className="hidden lg:flex fixed left-5 top-6 bottom-6 w-16 hover:w-60 rounded-3xl glass-panel border border-white/5 light-mode:border-slate-200/60 bg-[#05050A]/80 light-mode:bg-white/80 z-50 flex flex-col justify-between py-5 px-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] light-mode:shadow-[0_20px_50px_rgba(15,23,42,0.06)] premium-border-glow select-none group transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
         
         {/* Brand Logo & Icon Pod */}
-        <div className="w-full flex items-center justify-start pl-2 gap-3.5 border-b border-white/[0.04] pb-5">
+        <div className="w-full flex items-center justify-start pl-2 gap-3.5 border-b border-white/[0.04] light-mode:border-slate-200/40 pb-4 flex-shrink-0">
           <Link to="/" className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] flex items-center justify-center shadow-lg shadow-purple-600/20 flex-shrink-0 cursor-pointer active:scale-95 transition-all">
             <span className="font-extrabold text-white text-xs">N</span>
           </Link>
-          <span className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 text-base font-black bg-gradient-to-r from-white via-[#E2E8F0] to-slate-400 bg-clip-text text-transparent tracking-tight">
+          <span className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 text-base font-black bg-gradient-to-r from-white via-[#E2E8F0] to-slate-400 light-mode:from-slate-800 light-mode:to-slate-600 bg-clip-text text-transparent tracking-tight">
             NoteWeb
           </span>
         </div>
 
-        {/* Nav Items List */}
-        <nav className="flex-1 flex flex-col gap-2 py-6 px-0.5 overflow-y-auto overflow-x-hidden scrollbar-none items-center group-hover:items-stretch">
+        {/* Nav Items List - Scrollable when links overflow screen height */}
+        <nav className="flex-1 flex flex-col gap-1.5 py-4 px-0.5 overflow-y-auto overflow-x-hidden scrollbar-none items-center group-hover:items-stretch">
           {visibleItems.map((item) => (
             <NavLink
               key={item.to}
@@ -86,8 +86,8 @@ export const Sidebar: React.FC = () => {
               className={({ isActive }) => `
                 flex items-center w-10 group-hover:w-full h-10 rounded-2xl font-bold transition-all duration-300 relative group/item
                 ${isActive 
-                  ? 'bg-gradient-to-r from-[#00F2FE]/15 to-[#7F00FF]/5 text-white border border-white/10 shadow-[0_4px_12px_rgba(0,242,254,0.06)]' 
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] border border-transparent'}
+                  ? 'bg-gradient-to-r from-[#00F2FE]/15 to-[#7F00FF]/5 light-mode:from-[#00F2FE]/20 light-mode:to-[#7F00FF]/10 text-white light-mode:text-[#7F00FF] border border-white/10 light-mode:border-slate-200/50 shadow-[0_4px_12px_rgba(0,242,254,0.06)]' 
+                  : 'text-slate-400 light-mode:text-slate-500 hover:text-slate-100 light-mode:hover:text-slate-850 hover:bg-white/[0.02] light-mode:hover:bg-slate-900/[0.02] border border-transparent'}
               `}
             >
               <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 group-hover/item:scale-110 transition-transform duration-300">
@@ -97,58 +97,58 @@ export const Sidebar: React.FC = () => {
                 {item.label}
               </span>
               
-              {/* Subtle hover point */}
+              {/* Subtle hover indicator dot */}
               <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-[#00F2FE] opacity-0 group-hover/item:opacity-100 transition-all duration-300 pointer-events-none shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
             </NavLink>
           ))}
         </nav>
 
         {/* System Controls Panel */}
-        <div className="w-full flex flex-col gap-3.5 items-center justify-center border-t border-white/[0.04] pt-5">
+        <div className="w-full flex flex-col gap-3 items-center justify-center border-t border-white/[0.04] light-mode:border-slate-200/40 pt-4 flex-shrink-0">
           {/* Theme Toggler Button */}
           <button
             onClick={toggleTheme}
-            className="w-10 group-hover:w-full h-10 rounded-2xl border border-white/[0.04] bg-white/[0.01] flex items-center justify-start pl-[12px] group-hover:px-3 text-slate-400 hover:text-white hover:bg-white/5 hover:border-white/10 transition-all cursor-pointer active:scale-95 gap-3.5 flex-shrink-0"
+            className="w-10 group-hover:w-full h-10 rounded-2xl border border-white/[0.04] light-mode:border-slate-200/50 bg-white/[0.01] light-mode:bg-slate-500/5 flex items-center justify-start pl-[12px] group-hover:px-3 text-slate-400 light-mode:text-slate-500 hover:text-white light-mode:hover:text-slate-900 hover:bg-white/5 light-mode:hover:bg-slate-900/5 hover:border-white/10 light-mode:hover:border-slate-300 transition-all cursor-pointer active:scale-95 gap-3.5 flex-shrink-0"
             title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             <div className="flex-shrink-0">
               {isDark ? <Sun className="w-4 h-4 text-amber-400 animate-spin-slow" /> : <Moon className="w-4 h-4 text-indigo-400" />}
             </div>
-            <span className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 text-[10px] font-bold text-slate-300 truncate tracking-wide">
+            <span className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 text-[10px] font-bold text-slate-300 light-mode:text-slate-700 truncate tracking-wide">
               {isDark ? 'Light Desk' : 'Dark Desk'}
             </span>
           </button>
 
-          {/* Sync badge pill */}
+          {/* Sync status badge */}
           <div 
-            className="w-10 group-hover:w-full h-8 rounded-2xl border border-white/[0.04] bg-white/[0.01] flex items-center justify-start pl-[17px] group-hover:px-3.5 gap-3.5 text-slate-400 transition-all duration-300 flex-shrink-0 select-none cursor-default"
+            className="w-10 group-hover:w-full h-8 rounded-2xl border border-white/[0.04] light-mode:border-slate-200/50 bg-white/[0.01] light-mode:bg-slate-500/5 flex items-center justify-start pl-[17px] group-hover:px-3.5 gap-3.5 text-slate-400 light-mode:text-slate-500 transition-all duration-300 flex-shrink-0 select-none cursor-default"
             title={!isMockMode ? 'Sync Status: Live Synced' : 'Sync Status: Local Cache'}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${!isMockMode ? 'bg-[#00FF87]' : 'bg-[#F59E0B]'} animate-pulse flex-shrink-0`} />
-            <span className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 text-[8px] font-black tracking-wider uppercase text-slate-400 truncate">
+            <span className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 text-[8px] font-black tracking-wider uppercase text-slate-400 light-mode:text-slate-500 truncate">
               {!isMockMode ? 'LIVE' : 'CACHE'}
             </span>
           </div>
 
-          {/* User Badge Capsule */}
+          {/* User Profile Capsule */}
           {user || isGuest ? (
-            <div className="w-10 group-hover:w-full rounded-2xl border border-white/[0.05] bg-white/[0.01] p-1 flex items-center gap-2.5 overflow-hidden transition-all duration-300">
+            <div className="w-10 group-hover:w-full rounded-2xl border border-white/[0.05] light-mode:border-slate-200/60 bg-white/[0.01] light-mode:bg-slate-500/5 p-1 flex items-center gap-2.5 overflow-hidden transition-all duration-300">
               <div 
-                className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center bg-white/[0.03] active:scale-95 transition-transform cursor-pointer" 
+                className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center bg-white/[0.03] light-mode:bg-slate-900/5 active:scale-95 transition-transform cursor-pointer" 
                 onClick={() => navigate('/profile')}
               >
                 {isGuest ? (
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#7F00FF] to-[#FF007F] flex items-center justify-center text-white font-extrabold text-[9px]">GS</div>
                 ) : (
-                  renderAvatar(userProfile?.photoURL || '', "w-8 h-8 text-xs rounded-xl border border-white/10")
+                  renderAvatar(userProfile?.photoURL || '', "w-8 h-8 text-xs rounded-xl border border-white/10 light-mode:border-slate-200/50")
                 )}
               </div>
               <div className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 min-w-0 flex-1 flex items-center justify-between">
                 <div className="min-w-0 flex flex-col text-left">
-                  <span className="text-[10px] font-black text-slate-200 truncate">
+                  <span className="text-[10px] font-black text-slate-200 light-mode:text-slate-800 truncate">
                     {isGuest ? 'Guest' : (userProfile?.displayName || user?.displayName || 'Student')}
                   </span>
-                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+                  <span className="text-[8px] text-slate-500 light-mode:text-slate-400 font-bold uppercase tracking-wider mt-0.5">
                     {isGuest ? 'Guest' : (userProfile?.role || 'Student')}
                   </span>
                 </div>
@@ -181,19 +181,19 @@ export const Sidebar: React.FC = () => {
          ───────────────────────────────────────────────────────────── */}
       
       {/* Brand logo Top Bar - Fixed mini banner */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 glass-panel border-b border-white/[0.08] px-5 flex items-center justify-between z-40 bg-[#05050A]/90 select-none">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 glass-panel border-b border-white/[0.08] light-mode:border-slate-200/60 px-5 flex items-center justify-between z-40 bg-[#05050A]/90 light-mode:bg-white/90 select-none">
         <Link to="/" className="flex items-center gap-2.5 active:scale-95 transition-transform">
           <div className="w-7.5 h-7.5 rounded-xl bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] flex items-center justify-center shadow">
             <span className="font-extrabold text-white text-[10px]">N</span>
           </div>
-          <span className="text-base font-black text-white tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">NoteWeb</span>
+          <span className="text-base font-black text-white light-mode:text-slate-800 tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">NoteWeb</span>
         </Link>
         
         <div className="flex items-center gap-2">
           {/* Active status light */}
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-white/[0.05] bg-white/[0.02]">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-white/[0.05] light-mode:border-slate-200 bg-white/[0.02] light-mode:bg-slate-500/5">
             <span className={`w-1.5 h-1.5 rounded-full ${!isMockMode ? 'bg-[#00FF87]' : 'bg-[#F59E0B]'} animate-pulse`} />
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">
+            <span className="text-[8px] font-black text-slate-400 light-mode:text-slate-500 uppercase tracking-wider">
               {!isMockMode ? 'LIVE' : 'CACHE'}
             </span>
           </div>
@@ -201,20 +201,20 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Mobile Floating Bottom Navigation capsule pill */}
-      <nav className="lg:hidden fixed bottom-5 left-4 right-4 h-16 rounded-2xl border border-white/10 bg-[#05050A]/85 backdrop-blur-xl z-45 flex items-center justify-around px-2 shadow-[0_15px_30px_rgba(0,0,0,0.55)] select-none">
+      <nav className="lg:hidden fixed bottom-5 left-4 right-4 h-16 rounded-2xl border border-white/10 light-mode:border-slate-200 bg-[#05050A]/85 light-mode:bg-white/90 backdrop-blur-xl z-45 flex items-center justify-around px-2 shadow-[0_15px_30px_rgba(0,0,0,0.55)] light-mode:shadow-[0_15px_30px_rgba(15,23,42,0.06)] select-none">
         
         {/* Home tab link */}
         <NavLink 
           to="/" 
           className={({ isActive }) => `
             flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 relative
-            ${isActive ? 'text-[#00F2FE] scale-110' : 'text-slate-400 active:scale-90'}
+            ${isActive ? 'text-[#00F2FE] light-mode:text-[#7F00FF] scale-110' : 'text-slate-400 light-mode:text-slate-500 active:scale-90'}
           `}
         >
           <HomeIcon className="w-5 h-5" />
           <span className="text-[8px] font-extrabold tracking-wider mt-0.5">Home</span>
           {location.pathname === '/' && (
-            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-[#00F2FE] shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
+            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-[#00F2FE] light-mode:bg-[#7F00FF] shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
           )}
         </NavLink>
 
@@ -223,13 +223,13 @@ export const Sidebar: React.FC = () => {
           to="/feed" 
           className={({ isActive }) => `
             flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 relative
-            ${isActive ? 'text-[#00F2FE] scale-110' : 'text-slate-400 active:scale-90'}
+            ${isActive ? 'text-[#00F2FE] light-mode:text-[#7F00FF] scale-110' : 'text-slate-400 light-mode:text-slate-500 active:scale-90'}
           `}
         >
           <BookOpen className="w-5 h-5" />
           <span className="text-[8px] font-extrabold tracking-wider mt-0.5">Library</span>
           {location.pathname === '/feed' && (
-            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-[#00F2FE] shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
+            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-[#00F2FE] light-mode:bg-[#7F00FF] shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
           )}
         </NavLink>
 
@@ -238,13 +238,13 @@ export const Sidebar: React.FC = () => {
           to="/upload" 
           className={({ isActive }) => `
             flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 relative
-            ${isActive ? 'text-[#00F2FE] scale-110' : 'text-slate-400 active:scale-90'}
+            ${isActive ? 'text-[#00F2FE] light-mode:text-[#7F00FF] scale-110' : 'text-slate-400 light-mode:text-slate-500 active:scale-90'}
           `}
         >
           <UploadCloud className="w-5 h-5" />
           <span className="text-[8px] font-extrabold tracking-wider mt-0.5">Upload</span>
           {location.pathname === '/upload' && (
-            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-[#00F2FE] shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
+            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-[#00F2FE] light-mode:bg-[#7F00FF] shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
           )}
         </NavLink>
 
@@ -253,13 +253,13 @@ export const Sidebar: React.FC = () => {
           to="/quiz" 
           className={({ isActive }) => `
             flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 relative
-            ${isActive ? 'text-purple-400 scale-110' : 'text-slate-400 active:scale-90'}
+            ${isActive ? 'text-purple-400 light-mode:text-[#7F00FF] scale-110' : 'text-slate-400 light-mode:text-slate-500 active:scale-90'}
           `}
         >
-          <Gamepad2 className="w-5 h-5" />
-          <span className="text-[8px] font-extrabold tracking-wider mt-0.5 text-purple-400">Quiz</span>
+          <Gamepad2 className="w-5 h-5 animate-pulse" />
+          <span className="text-[8px] font-extrabold tracking-wider mt-0.5 text-purple-400 light-mode:text-[#7F00FF]">Quiz</span>
           {location.pathname === '/quiz' && (
-            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-purple-400 light-mode:bg-[#7F00FF] shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
           )}
         </NavLink>
 
@@ -268,11 +268,11 @@ export const Sidebar: React.FC = () => {
           onClick={() => setIsLauncherOpen(!isLauncherOpen)}
           className={`
             flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 relative
-            ${isLauncherOpen ? 'text-[#FF007F] scale-110 animate-pulse' : 'text-slate-400 active:scale-90'}
+            ${isLauncherOpen ? 'text-[#FF007F] light-mode:text-[#7F00FF] scale-110 animate-pulse' : 'text-slate-400 light-mode:text-slate-500 active:scale-90'}
           `}
         >
           {isLauncherOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          <span className="text-[8px] font-extrabold tracking-wider mt-0.5">More</span>
+          <span className="text-[8px] font-extrabold tracking-wider mt-0.5 text-[#FF007F] light-mode:text-slate-500">More</span>
         </button>
       </nav>
 
@@ -294,19 +294,19 @@ export const Sidebar: React.FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 30 }}
               transition={{ type: 'spring', damping: 25, stiffness: 260 }}
-              className="lg:hidden fixed bottom-24 left-4 right-4 max-h-[70vh] rounded-3xl border border-white/10 bg-[#0A0A0F]/95 backdrop-blur-2xl z-50 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.65)] overflow-y-auto flex flex-col gap-6"
+              className="lg:hidden fixed bottom-24 left-4 right-4 max-h-[70vh] rounded-3xl border border-white/10 light-mode:border-slate-200 bg-[#0A0A0F]/95 light-mode:bg-white/95 backdrop-blur-2xl z-50 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.65)] light-mode:shadow-[0_20px_50px_rgba(15,23,42,0.06)] overflow-y-auto flex flex-col gap-6"
             >
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-white/[0.05] pb-4">
+              <div className="flex items-center justify-between border-b border-white/[0.05] light-mode:border-slate-200 pb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] flex items-center justify-center shadow">
                     <span className="font-extrabold text-white text-[9px]">N</span>
                   </div>
-                  <span className="text-sm font-black text-white">Commander Panel</span>
+                  <span className="text-sm font-black text-white light-mode:text-slate-800">Commander Panel</span>
                 </div>
                 <button
                   onClick={() => setIsLauncherOpen(false)}
-                  className="p-1.5 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white"
+                  className="p-1.5 rounded-lg border border-white/[0.08] light-mode:border-slate-200 text-slate-400 light-mode:text-slate-600 hover:text-white"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -317,7 +317,7 @@ export const Sidebar: React.FC = () => {
                 {/* Branches */}
                 <button 
                   onClick={() => { navigate('/categories'); setIsLauncherOpen(false); }}
-                  className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300"
+                  className="p-4 rounded-2xl bg-white/[0.02] light-mode:bg-slate-100 border border-white/[0.04] light-mode:border-slate-200/80 active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300 light-mode:text-slate-700"
                 >
                   <Grid className="w-5 h-5 text-sky-400" />
                   <span className="text-[9px] font-black uppercase tracking-wider">Branches</span>
@@ -327,7 +327,7 @@ export const Sidebar: React.FC = () => {
                 {user && !isGuest && (
                   <button 
                     onClick={() => { navigate('/chat'); setIsLauncherOpen(false); }}
-                    className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300"
+                    className="p-4 rounded-2xl bg-white/[0.02] light-mode:bg-slate-100 border border-white/[0.04] light-mode:border-slate-200/80 active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300 light-mode:text-slate-700"
                   >
                     <MessageSquare className="w-5 h-5 text-indigo-400" />
                     <span className="text-[9px] font-black uppercase tracking-wider">Lounge</span>
@@ -338,7 +338,7 @@ export const Sidebar: React.FC = () => {
                 {user && !isGuest && (
                   <button 
                     onClick={() => { navigate('/leaderboard'); setIsLauncherOpen(false); }}
-                    className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300"
+                    className="p-4 rounded-2xl bg-white/[0.02] light-mode:bg-slate-100 border border-white/[0.04] light-mode:border-slate-200/80 active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300 light-mode:text-slate-700"
                   >
                     <Trophy className="w-5 h-5 text-amber-400" />
                     <span className="text-[9px] font-black uppercase tracking-wider">Rankings</span>
@@ -349,7 +349,7 @@ export const Sidebar: React.FC = () => {
                 {user && !isGuest && (
                   <button 
                     onClick={() => { navigate('/profile'); setIsLauncherOpen(false); }}
-                    className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300"
+                    className="p-4 rounded-2xl bg-white/[0.02] light-mode:bg-slate-100 border border-white/[0.04] light-mode:border-slate-200/80 active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300 light-mode:text-slate-700"
                   >
                     <User className="w-5 h-5 text-teal-400" />
                     <span className="text-[9px] font-black uppercase tracking-wider">Profile</span>
@@ -360,7 +360,7 @@ export const Sidebar: React.FC = () => {
                 {isAdmin && !isGuest && (
                   <button 
                     onClick={() => { navigate('/admin'); setIsLauncherOpen(false); }}
-                    className="p-4 rounded-2xl bg-white/[0.02] border border-[#FF007F]/20 bg-[#FF007F]/5 active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-rose-300"
+                    className="p-4 rounded-2xl bg-[#FF007F]/5 light-mode:bg-[#FF007F]/10 border border-[#FF007F]/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-rose-300 light-mode:text-rose-700"
                   >
                     <ShieldAlert className="w-5 h-5 text-[#FF007F]" />
                     <span className="text-[9px] font-black uppercase tracking-wider">Admin</span>
@@ -370,7 +370,7 @@ export const Sidebar: React.FC = () => {
                 {/* About Stack */}
                 <button 
                   onClick={() => { navigate('/about'); setIsLauncherOpen(false); }}
-                  className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300"
+                  className="p-4 rounded-2xl bg-white/[0.02] light-mode:bg-slate-100 border border-white/[0.04] light-mode:border-slate-200/80 active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300 light-mode:text-slate-700"
                 >
                   <Info className="w-5 h-5 text-slate-400" />
                   <span className="text-[9px] font-black uppercase tracking-wider">About</span>
@@ -378,12 +378,12 @@ export const Sidebar: React.FC = () => {
               </div>
 
               {/* Quick Actions Panel */}
-              <div className="flex flex-col gap-3.5 border-t border-white/[0.05] pt-4">
+              <div className="flex flex-col gap-3.5 border-t border-white/[0.05] light-mode:border-slate-200 pt-4">
                 <div className="flex items-center justify-between">
                   {/* Theme Switcher Toggle button */}
                   <button
                     onClick={toggleTheme}
-                    className="flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[11px] font-bold text-slate-300 active:scale-98 transition-transform cursor-pointer"
+                    className="flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl bg-white/[0.02] light-mode:bg-slate-100 border border-white/[0.04] light-mode:border-slate-200 text-[11px] font-bold text-slate-300 light-mode:text-slate-700 active:scale-98 transition-transform cursor-pointer"
                   >
                     {isDark ? (
                       <>
@@ -401,7 +401,7 @@ export const Sidebar: React.FC = () => {
                   <div className="w-3" />
 
                   {/* Sync status label */}
-                  <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[10px] font-bold text-slate-400 select-none">
+                  <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/[0.02] light-mode:bg-slate-100 border border-white/[0.04] light-mode:border-slate-200 text-[10px] font-bold text-slate-400 light-mode:text-slate-500 select-none">
                     <span className={`w-1.5 h-1.5 rounded-full ${!isMockMode ? 'bg-[#00FF87]' : 'bg-[#F59E0B]'} animate-pulse`} />
                     <span className="uppercase tracking-wider">
                       {!isMockMode ? 'LIVE SYNCED' : 'LOCAL CACHE'}
@@ -411,7 +411,7 @@ export const Sidebar: React.FC = () => {
 
                 {/* User section or Sign in button */}
                 {user || isGuest ? (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] light-mode:bg-slate-100 border border-white/[0.05] light-mode:border-slate-200">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
                         {isGuest ? (
@@ -421,17 +421,17 @@ export const Sidebar: React.FC = () => {
                         )}
                       </div>
                       <div className="min-w-0 flex flex-col text-left">
-                        <span className="text-xs font-black text-slate-200 truncate">
+                        <span className="text-xs font-black text-slate-200 light-mode:text-slate-800 truncate">
                           {isGuest ? 'Guest Student' : (userProfile?.displayName || user?.displayName || 'Student')}
                         </span>
-                        <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+                        <span className="text-[8px] text-slate-500 light-mode:text-slate-500 font-bold uppercase tracking-wider mt-0.5">
                           {isGuest ? 'Guest' : (userProfile?.role || 'Student')}
                         </span>
                       </div>
                     </div>
                     <button
                       onClick={() => { handleLogout(); setIsLauncherOpen(false); }}
-                      className="p-2 px-3 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider"
+                      className="p-2 px-3 rounded-lg text-slate-400 light-mode:text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>Log out</span>
