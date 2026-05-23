@@ -34,8 +34,8 @@ function App() {
                 {/* Collapsible, responsive Frosted glass sidebar */}
                 <Sidebar />
                 
-                {/* Main Content Area: Responsive offsets for mobile topbar and desktop sidebar */}
-                <main className="flex-1 min-w-0 pt-16 lg:pt-0 pl-0 lg:pl-64 transition-all duration-300 pb-safe z-10 relative">
+                {/* Main Content Area: Adjusted spacing for floating left dock (desktop) & bottom nav pill (mobile) */}
+                <main className="flex-1 min-w-0 pt-20 lg:pt-8 pb-28 lg:pb-8 lg:pl-28 px-4 md:px-8 transition-all duration-300 pb-safe z-10 relative">
                   <Routes>
                     {/* Publicly Accessible Routes */}
                     <Route path="/" element={<Home />} />

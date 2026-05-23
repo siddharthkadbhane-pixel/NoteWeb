@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Home, 
+  Home as HomeIcon, 
   BookOpen, 
   Grid, 
   UploadCloud, 
@@ -13,12 +13,11 @@ import {
   Sun, 
   Menu, 
   X,
-  ChevronLeft,
-  ChevronRight,
   MessageSquare,
   Trophy,
   Gamepad2
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -29,9 +28,9 @@ export const Sidebar: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
   const { success, error } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isLauncherOpen, setIsLauncherOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -44,16 +43,15 @@ export const Sidebar: React.FC = () => {
   };
 
   const navItems = [
-    { to: '/', label: 'Home', icon: <Home className="w-5 h-5" /> },
-    { to: '/feed', label: 'Browse Notes', icon: <BookOpen className="w-5 h-5" /> },
-    { to: '/categories', label: 'Branches', icon: <Grid className="w-5 h-5" /> },
-    { to: '/upload', label: 'Upload Notes', icon: <UploadCloud className="w-5 h-5" /> },
-    { to: '/quiz', label: 'Quiz Arena', icon: <Gamepad2 className="w-5 h-5 text-purple-400" /> },
-    { to: '/chat', label: 'Campus Chat', icon: <MessageSquare className="w-5 h-5 text-indigo-400" />, protected: true },
-    { to: '/leaderboard', label: 'Rankings', icon: <Trophy className="w-5 h-5 text-amber-400" />, protected: true },
-    { to: '/profile', label: 'My Dashboard', icon: <User className="w-5 h-5" />, protected: true },
-    { to: '/admin', label: 'Admin Panel', icon: <ShieldAlert className="w-5 h-5 animate-pulse text-rose-400" />, protected: true, adminOnly: true },
-    { to: '/about', label: 'About', icon: <Info className="w-5 h-5" /> },
+    { to: '/', label: 'Home', icon: <HomeIcon className="w-4 h-4" /> },
+    { to: '/feed', label: 'Library', icon: <BookOpen className="w-4 h-4" /> },
+    { to: '/categories', label: 'Branches', icon: <Grid className="w-4 h-4" /> },
+    { to: '/upload', label: 'Upload', icon: <UploadCloud className="w-4 h-4" /> },
+    { to: '/quiz', label: 'Quiz Arena', icon: <Gamepad2 className="w-4 h-4 text-purple-400" /> },
+    { to: '/chat', label: 'Campus Chat', icon: <MessageSquare className="w-4 h-4 text-indigo-400" />, protected: true },
+    { to: '/leaderboard', label: 'Rankings', icon: <Trophy className="w-4 h-4 text-amber-400" />, protected: true },
+    { to: '/profile', label: 'Dashboard', icon: <User className="w-4 h-4" />, protected: true },
+    { to: '/admin', label: 'Admin', icon: <ShieldAlert className="w-4 h-4 text-rose-400" />, protected: true, adminOnly: true },
   ];
 
   const visibleItems = navItems.filter(item => {
@@ -64,196 +62,397 @@ export const Sidebar: React.FC = () => {
 
   return (
     <>
-      {/* Mobile Topbar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 glass-panel border-b border-white/[0.08] px-4 flex items-center justify-between z-40 bg-slate-950/80 light-mode:bg-white/90">
-        <Link to="/" className="flex items-center gap-2">
-          <span className="text-xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">NoteWeb</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={toggleTheme}
-            className="p-2 rounded-xl text-slate-400 hover:text-white light-mode:hover:text-slate-900 transition-colors"
-          >
-            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
-          <button 
-            onClick={() => setIsMobileOpen(!isMobileOpen)}
-            className="p-2 rounded-xl text-slate-400 hover:text-white light-mode:hover:text-slate-900 transition-colors"
-          >
-            {isMobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Drawer Overlay */}
-      {isMobileOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
-
-      {/* Main Sidebar */}
-      <aside className={`
-        fixed top-0 bottom-0 left-0 z-50
-        glass-panel border-r border-white/[0.08] bg-[#0A0A0C]/90 light-mode:bg-white/95
-        flex flex-col transition-all duration-300
-        lg:translate-x-0
-        ${isCollapsed ? 'w-20' : 'w-64'}
-        ${isMobileOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'}
-        ${isMobileOpen ? 'pt-6' : 'pt-0'}
-      `}>
-        {/* Sidebar Header */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-white/[0.05]">
-          <Link 
-            to="/" 
-            onClick={() => setIsMobileOpen(false)}
-            className="flex items-center gap-3 select-none"
-          >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-600/30">
-              <span className="font-extrabold text-white text-base">N</span>
-            </div>
-            {!isCollapsed && (
-              <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent transition-all duration-200">
-                NoteWeb
-              </span>
-            )}
+      {/* ─────────────────────────────────────────────────────────────
+         DESKTOP NAV: RETRACTABLE LEFT COMMANDER DOCK (lg and up)
+         ───────────────────────────────────────────────────────────── */}
+      <aside className="hidden lg:flex fixed left-5 top-1/2 -translate-y-1/2 w-16 hover:w-60 h-[85vh] rounded-3xl glass-panel border border-white/5 bg-[#05050A]/80 z-50 flex flex-col justify-between py-6 px-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] premium-border-glow select-none group transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
+        
+        {/* Brand Logo & Icon Pod */}
+        <div className="w-full flex items-center justify-start pl-2 gap-3.5 border-b border-white/[0.04] pb-5">
+          <Link to="/" className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] flex items-center justify-center shadow-lg shadow-purple-600/20 flex-shrink-0 cursor-pointer active:scale-95 transition-all">
+            <span className="font-extrabold text-white text-xs">N</span>
           </Link>
-          
-          {/* Collapse Button (Desktop Only) */}
-          <button 
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden lg:flex p-1.5 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 light-mode:text-slate-600 light-mode:hover:text-slate-900 transition-all active:scale-95"
-          >
-            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          </button>
+          <span className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 text-base font-black bg-gradient-to-r from-white via-[#E2E8F0] to-slate-400 bg-clip-text text-transparent tracking-tight">
+            NoteWeb
+          </span>
         </div>
 
-        {/* Sidebar Nav Links */}
-        <nav className="flex-1 px-4 py-6 flex flex-col gap-1.5 overflow-y-auto">
+        {/* Nav Items List */}
+        <nav className="flex-1 flex flex-col gap-2 py-6 px-0.5 overflow-y-auto overflow-x-hidden scrollbar-none items-center group-hover:items-stretch">
           {visibleItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              onClick={() => setIsMobileOpen(false)}
               className={({ isActive }) => `
-                flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 group relative
+                flex items-center w-10 group-hover:w-full h-10 rounded-2xl font-bold transition-all duration-300 relative group/item
                 ${isActive 
-                  ? 'bg-gradient-to-r from-indigo-500/15 via-purple-500/15 to-pink-500/5 text-white border-l-4 border-indigo-500 shadow-[inset_0_0_12px_rgba(99,102,241,0.08)] light-mode:text-indigo-600 light-mode:from-indigo-50/70 light-mode:to-indigo-50/30' 
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.03] pl-[18px] light-mode:text-slate-500 light-mode:hover:text-slate-800 light-mode:hover:bg-slate-900/[0.03]'}
+                  ? 'bg-gradient-to-r from-[#00F2FE]/15 to-[#7F00FF]/5 text-white border border-white/10 shadow-[0_4px_12px_rgba(0,242,254,0.06)]' 
+                  : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] border border-transparent'}
               `}
             >
-              <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 group-hover/item:scale-110 transition-transform duration-300">
                 {item.icon}
               </div>
-              {(!isCollapsed || isMobileOpen) && (
-                <span className="font-medium text-sm tracking-wide">{item.label}</span>
-              )}
-              {isCollapsed && !isMobileOpen && (
-                <div className="absolute left-20 bg-[#16161D] border border-white/10 text-white rounded-lg px-2 py-1 text-xs opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50">
-                  {item.label}
-                </div>
-              )}
+              <span className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 text-[11px] tracking-wide truncate pr-4">
+                {item.label}
+              </span>
+              
+              {/* Subtle hover point */}
+              <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-[#00F2FE] opacity-0 group-hover/item:opacity-100 transition-all duration-300 pointer-events-none shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
             </NavLink>
           ))}
         </nav>
 
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-white/[0.05] flex flex-col gap-3">
-          {/* Theme Toggle (Desktop Only) */}
+        {/* System Controls Panel */}
+        <div className="w-full flex flex-col gap-3.5 items-center justify-center border-t border-white/[0.04] pt-5">
+          {/* Theme Toggler Button */}
           <button
             onClick={toggleTheme}
-            className={`
-              w-full hidden lg:flex items-center gap-4 px-4 py-3 rounded-xl
-              text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]
-              light-mode:text-slate-500 light-mode:hover:text-slate-800 light-mode:hover:bg-slate-900/[0.03]
-              transition-all duration-200
-            `}
+            className="w-10 group-hover:w-full h-10 rounded-2xl border border-white/[0.04] bg-white/[0.01] flex items-center justify-start pl-[12px] group-hover:px-3 text-slate-400 hover:text-white hover:bg-white/5 hover:border-white/10 transition-all cursor-pointer active:scale-95 gap-3.5 flex-shrink-0"
+            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
-            {isDark ? (
-              <>
-                <Sun className="w-5 h-5 text-amber-400 flex-shrink-0 animate-spin-slow" />
-                {!isCollapsed && <span className="text-sm font-medium">Light Mode</span>}
-              </>
-            ) : (
-              <>
-                <Moon className="w-5 h-5 text-indigo-400 flex-shrink-0" />
-                {!isCollapsed && <span className="text-sm font-medium">Dark Mode</span>}
-              </>
-            )}
+            <div className="flex-shrink-0">
+              {isDark ? <Sun className="w-4 h-4 text-amber-400 animate-spin-slow" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+            </div>
+            <span className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 text-[10px] font-bold text-slate-300 truncate tracking-wide">
+              {isDark ? 'Light Desk' : 'Dark Desk'}
+            </span>
           </button>
 
-          {/* Connection Status Pill */}
-          {(!isCollapsed || isMobileOpen) ? (
-            <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[10px] font-bold tracking-wider uppercase select-none light-mode:bg-slate-900/[0.02] light-mode:border-slate-900/[0.04]">
-              <span className="text-slate-500 light-mode:text-slate-400">Sync Status</span>
-              <div className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${!isMockMode ? 'bg-[#10B981] shadow-[0_0_8px_#10B981]' : 'bg-[#F59E0B] shadow-[0_0_8px_#F59E0B]'} animate-pulse`} />
-                <span className={!isMockMode ? 'text-[#10B981]' : 'text-[#F59E0B]'}>
-                  {!isMockMode ? 'LIVE SYNCED' : 'LOCAL CACHE'}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center py-1 select-none">
-              <span 
-                className={`w-2.5 h-2.5 rounded-full ${!isMockMode ? 'bg-[#10B981] shadow-[0_0_8px_#10B981]' : 'bg-[#F59E0B] shadow-[0_0_8px_#F59E0B]'} animate-pulse`} 
-                title={!isMockMode ? 'Sync Status: Live Synced' : 'Sync Status: Local Cache'}
-              />
-            </div>
-          )}
+          {/* Sync badge pill */}
+          <div 
+            className="w-10 group-hover:w-full h-8 rounded-2xl border border-white/[0.04] bg-white/[0.01] flex items-center justify-start pl-[17px] group-hover:px-3.5 gap-3.5 text-slate-400 transition-all duration-300 flex-shrink-0 select-none cursor-default"
+            title={!isMockMode ? 'Sync Status: Live Synced' : 'Sync Status: Local Cache'}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${!isMockMode ? 'bg-[#00FF87]' : 'bg-[#F59E0B]'} animate-pulse flex-shrink-0`} />
+            <span className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 text-[8px] font-black tracking-wider uppercase text-slate-400 truncate">
+              {!isMockMode ? 'LIVE' : 'CACHE'}
+            </span>
+          </div>
 
-          {/* User Account / Login State */}
+          {/* User Badge Capsule */}
           {user || isGuest ? (
-            <div className={`
-              flex items-center gap-3 p-2 rounded-xl bg-white/[0.02] border border-white/[0.05]
-              ${isCollapsed ? 'justify-center' : 'justify-between'}
-            `}>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
-                  {isGuest ? (
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-extrabold text-xs shadow-md">GS</div>
-                  ) : (
-                    renderAvatar(userProfile?.photoURL || '', "w-10 h-10 text-xl")
-                  )}
-                </div>
-                {!isCollapsed && (
-                  <div className="min-w-0 flex flex-col text-left">
-                    <span className="text-sm font-semibold text-slate-200 truncate light-mode:text-slate-800">
-                      {isGuest ? 'Guest Student' : (userProfile?.displayName || user?.displayName || 'Student')}
-                    </span>
-                    <span className="text-xs text-slate-500 truncate lowercase font-medium">
-                      {isGuest ? 'Guest Mode' : (userProfile?.role || 'Student')}
-                    </span>
-                  </div>
+            <div className="w-10 group-hover:w-full rounded-2xl border border-white/[0.05] bg-white/[0.01] p-1 flex items-center gap-2.5 overflow-hidden transition-all duration-300">
+              <div 
+                className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center bg-white/[0.03] active:scale-95 transition-transform cursor-pointer" 
+                onClick={() => navigate('/profile')}
+              >
+                {isGuest ? (
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#7F00FF] to-[#FF007F] flex items-center justify-center text-white font-extrabold text-[9px]">GS</div>
+                ) : (
+                  renderAvatar(userProfile?.photoURL || '', "w-8 h-8 text-xs rounded-xl border border-white/10")
                 )}
               </div>
-              {!isCollapsed && (
+              <div className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 min-w-0 flex-1 flex items-center justify-between">
+                <div className="min-w-0 flex flex-col text-left">
+                  <span className="text-[10px] font-black text-slate-200 truncate">
+                    {isGuest ? 'Guest' : (userProfile?.displayName || user?.displayName || 'Student')}
+                  </span>
+                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+                    {isGuest ? 'Guest' : (userProfile?.role || 'Student')}
+                  </span>
+                </div>
                 <button
                   onClick={handleLogout}
-                  className="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all duration-200 active:scale-95 flex-shrink-0"
-                  title={isGuest ? 'Exit Guest' : 'Logout'}
+                  className="p-1.5 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90 flex-shrink-0 mr-1"
+                  title={isGuest ? 'Exit Guest Session' : 'Sign Out'}
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5" />
                 </button>
-              )}
+              </div>
             </div>
           ) : (
             <Link
               to="/login"
-              onClick={() => setIsMobileOpen(false)}
-              className={`
-                w-full inline-flex items-center justify-center p-3 rounded-xl font-semibold
-                bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg text-sm
-                hover:shadow-indigo-500/20 active:scale-[0.98] transition-all duration-300
-                ${isCollapsed ? 'h-10 w-10 p-0 overflow-hidden' : ''}
-              `}
+              className="w-10 group-hover:w-full h-10 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 text-white flex items-center justify-center px-3 text-xs active:scale-95 transition-all flex-shrink-0"
+              title="Sign In"
             >
-              {isCollapsed ? <User className="w-5 h-5" /> : 'Sign In'}
+              <User className="w-4 h-4 flex-shrink-0 text-white" />
+              <span className="opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 delay-75 font-bold tracking-wide truncate ml-2">
+                Sign In
+              </span>
             </Link>
           )}
         </div>
       </aside>
+
+      {/* ─────────────────────────────────────────────────────────────
+         MOBILE NAV: FLOATING BOTTOM PILL BAR & LAUNCHER (lg and under)
+         ───────────────────────────────────────────────────────────── */}
+      
+      {/* Brand logo Top Bar - Fixed mini banner */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 glass-panel border-b border-white/[0.08] px-5 flex items-center justify-between z-40 bg-[#05050A]/90 select-none">
+        <Link to="/" className="flex items-center gap-2.5 active:scale-95 transition-transform">
+          <div className="w-7.5 h-7.5 rounded-xl bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] flex items-center justify-center shadow">
+            <span className="font-extrabold text-white text-[10px]">N</span>
+          </div>
+          <span className="text-base font-black text-white tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">NoteWeb</span>
+        </Link>
+        
+        <div className="flex items-center gap-2">
+          {/* Active status light */}
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-white/[0.05] bg-white/[0.02]">
+            <span className={`w-1.5 h-1.5 rounded-full ${!isMockMode ? 'bg-[#00FF87]' : 'bg-[#F59E0B]'} animate-pulse`} />
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">
+              {!isMockMode ? 'LIVE' : 'CACHE'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Floating Bottom Navigation capsule pill */}
+      <nav className="lg:hidden fixed bottom-5 left-4 right-4 h-16 rounded-2xl border border-white/10 bg-[#05050A]/85 backdrop-blur-xl z-45 flex items-center justify-around px-2 shadow-[0_15px_30px_rgba(0,0,0,0.55)] select-none">
+        
+        {/* Home tab link */}
+        <NavLink 
+          to="/" 
+          className={({ isActive }) => `
+            flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 relative
+            ${isActive ? 'text-[#00F2FE] scale-110' : 'text-slate-400 active:scale-90'}
+          `}
+        >
+          <HomeIcon className="w-5 h-5" />
+          <span className="text-[8px] font-extrabold tracking-wider mt-0.5">Home</span>
+          {location.pathname === '/' && (
+            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-[#00F2FE] shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
+          )}
+        </NavLink>
+
+        {/* Library tab link */}
+        <NavLink 
+          to="/feed" 
+          className={({ isActive }) => `
+            flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 relative
+            ${isActive ? 'text-[#00F2FE] scale-110' : 'text-slate-400 active:scale-90'}
+          `}
+        >
+          <BookOpen className="w-5 h-5" />
+          <span className="text-[8px] font-extrabold tracking-wider mt-0.5">Library</span>
+          {location.pathname === '/feed' && (
+            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-[#00F2FE] shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
+          )}
+        </NavLink>
+
+        {/* Upload tab link */}
+        <NavLink 
+          to="/upload" 
+          className={({ isActive }) => `
+            flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 relative
+            ${isActive ? 'text-[#00F2FE] scale-110' : 'text-slate-400 active:scale-90'}
+          `}
+        >
+          <UploadCloud className="w-5 h-5" />
+          <span className="text-[8px] font-extrabold tracking-wider mt-0.5">Upload</span>
+          {location.pathname === '/upload' && (
+            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-[#00F2FE] shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
+          )}
+        </NavLink>
+
+        {/* Quiz Arena tab link */}
+        <NavLink 
+          to="/quiz" 
+          className={({ isActive }) => `
+            flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 relative
+            ${isActive ? 'text-purple-400 scale-110' : 'text-slate-400 active:scale-90'}
+          `}
+        >
+          <Gamepad2 className="w-5 h-5" />
+          <span className="text-[8px] font-extrabold tracking-wider mt-0.5 text-purple-400">Quiz</span>
+          {location.pathname === '/quiz' && (
+            <span className="absolute bottom-0 w-1 h-1 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+          )}
+        </NavLink>
+
+        {/* Commander launcher trigger tab */}
+        <button 
+          onClick={() => setIsLauncherOpen(!isLauncherOpen)}
+          className={`
+            flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 relative
+            ${isLauncherOpen ? 'text-[#FF007F] scale-110 animate-pulse' : 'text-slate-400 active:scale-90'}
+          `}
+        >
+          {isLauncherOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          <span className="text-[8px] font-extrabold tracking-wider mt-0.5">More</span>
+        </button>
+      </nav>
+
+      {/* Interactive mobile overlays */}
+      <AnimatePresence>
+        {isLauncherOpen && (
+          <>
+            {/* Soft dark glass overlay */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="lg:hidden fixed inset-0 bg-black/75 backdrop-blur-md z-40"
+              onClick={() => setIsLauncherOpen(false)}
+            />
+            {/* Floating pop-up visual commander console grid */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 30 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 260 }}
+              className="lg:hidden fixed bottom-24 left-4 right-4 max-h-[70vh] rounded-3xl border border-white/10 bg-[#0A0A0F]/95 backdrop-blur-2xl z-50 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.65)] overflow-y-auto flex flex-col gap-6"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/[0.05] pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] flex items-center justify-center shadow">
+                    <span className="font-extrabold text-white text-[9px]">N</span>
+                  </div>
+                  <span className="text-sm font-black text-white">Commander Panel</span>
+                </div>
+                <button
+                  onClick={() => setIsLauncherOpen(false)}
+                  className="p-1.5 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Grid Layout of Other Pages */}
+              <div className="grid grid-cols-3 gap-3">
+                {/* Branches */}
+                <button 
+                  onClick={() => { navigate('/categories'); setIsLauncherOpen(false); }}
+                  className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300"
+                >
+                  <Grid className="w-5 h-5 text-sky-400" />
+                  <span className="text-[9px] font-black uppercase tracking-wider">Branches</span>
+                </button>
+
+                {/* Campus Chat */}
+                {user && !isGuest && (
+                  <button 
+                    onClick={() => { navigate('/chat'); setIsLauncherOpen(false); }}
+                    className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300"
+                  >
+                    <MessageSquare className="w-5 h-5 text-indigo-400" />
+                    <span className="text-[9px] font-black uppercase tracking-wider">Lounge</span>
+                  </button>
+                )}
+
+                {/* Rankings */}
+                {user && !isGuest && (
+                  <button 
+                    onClick={() => { navigate('/leaderboard'); setIsLauncherOpen(false); }}
+                    className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300"
+                  >
+                    <Trophy className="w-5 h-5 text-amber-400" />
+                    <span className="text-[9px] font-black uppercase tracking-wider">Rankings</span>
+                  </button>
+                )}
+
+                {/* Dashboard (Profile) */}
+                {user && !isGuest && (
+                  <button 
+                    onClick={() => { navigate('/profile'); setIsLauncherOpen(false); }}
+                    className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300"
+                  >
+                    <User className="w-5 h-5 text-teal-400" />
+                    <span className="text-[9px] font-black uppercase tracking-wider">Profile</span>
+                  </button>
+                )}
+
+                {/* Admin Area */}
+                {isAdmin && !isGuest && (
+                  <button 
+                    onClick={() => { navigate('/admin'); setIsLauncherOpen(false); }}
+                    className="p-4 rounded-2xl bg-white/[0.02] border border-[#FF007F]/20 bg-[#FF007F]/5 active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-rose-300"
+                  >
+                    <ShieldAlert className="w-5 h-5 text-[#FF007F]" />
+                    <span className="text-[9px] font-black uppercase tracking-wider">Admin</span>
+                  </button>
+                )}
+
+                {/* About Stack */}
+                <button 
+                  onClick={() => { navigate('/about'); setIsLauncherOpen(false); }}
+                  className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 text-center text-slate-300"
+                >
+                  <Info className="w-5 h-5 text-slate-400" />
+                  <span className="text-[9px] font-black uppercase tracking-wider">About</span>
+                </button>
+              </div>
+
+              {/* Quick Actions Panel */}
+              <div className="flex flex-col gap-3.5 border-t border-white/[0.05] pt-4">
+                <div className="flex items-center justify-between">
+                  {/* Theme Switcher Toggle button */}
+                  <button
+                    onClick={toggleTheme}
+                    className="flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[11px] font-bold text-slate-300 active:scale-98 transition-transform cursor-pointer"
+                  >
+                    {isDark ? (
+                      <>
+                        <Sun className="w-4 h-4 text-amber-400 animate-spin-slow" />
+                        <span>Light Theme</span>
+                      </>
+                    ) : (
+                      <>
+                        <Moon className="w-4 h-4 text-indigo-400" />
+                        <span>Dark Theme</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="w-3" />
+
+                  {/* Sync status label */}
+                  <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[10px] font-bold text-slate-400 select-none">
+                    <span className={`w-1.5 h-1.5 rounded-full ${!isMockMode ? 'bg-[#00FF87]' : 'bg-[#F59E0B]'} animate-pulse`} />
+                    <span className="uppercase tracking-wider">
+                      {!isMockMode ? 'LIVE SYNCED' : 'LOCAL CACHE'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* User section or Sign in button */}
+                {user || isGuest ? (
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+                        {isGuest ? (
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#7F00FF] to-[#FF007F] flex items-center justify-center text-white font-extrabold text-[9px]">GS</div>
+                        ) : (
+                          renderAvatar(userProfile?.photoURL || '', "w-8 h-8 rounded-xl")
+                        )}
+                      </div>
+                      <div className="min-w-0 flex flex-col text-left">
+                        <span className="text-xs font-black text-slate-200 truncate">
+                          {isGuest ? 'Guest Student' : (userProfile?.displayName || user?.displayName || 'Student')}
+                        </span>
+                        <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+                          {isGuest ? 'Guest' : (userProfile?.role || 'Student')}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { handleLogout(); setIsLauncherOpen(false); }}
+                      className="p-2 px-3 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Log out</span>
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    to="/login"
+                    onClick={() => setIsLauncherOpen(false)}
+                    className="w-full inline-flex items-center justify-center p-3.5 rounded-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg text-xs"
+                  >
+                    Sign In
+                  </Link>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 };
+
+export default Sidebar;
