@@ -306,15 +306,57 @@ export const Profile: React.FC = () => {
     if (!targetUid) return;
     setIsLoading(true);
     try {
-      // 1. Fetch Target Uploads
-      const { data: uploadsData, error: uploadsErr } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('uploaded_by', targetUid);
+      // 1. Fetch Target Uploads with database column mapping resiliency (snake_case vs camelCase)
+      let uploadsData = null;
+      let uploadsErr = null;
       
-      if (uploadsErr) throw uploadsErr;
+      try {
+        const res = await supabase
+          .from('notes')
+          .select('*')
+          .eq('uploaded_by', targetUid);
+        uploadsData = res.data;
+        uploadsErr = res.error;
+      } catch (err) {
+        uploadsErr = err;
+      }
 
-      const uploads = (uploadsData || []).map(mapDbNoteToNoteDocument);
+      if (uploadsErr) {
+        // Try camelCase fallback
+        try {
+          const res = await supabase
+            .from('notes')
+            .select('*')
+            .eq('uploadedBy', targetUid);
+          uploadsData = res.data;
+          uploadsErr = res.error;
+        } catch (camelErr) {
+          uploadsErr = camelErr;
+        }
+      }
+
+      let uploads = (uploadsData || []).map(mapDbNoteToNoteDocument);
+
+      // Merge local storage own uploads cache if viewing self to bypass RLS/mock delays
+      if (isViewingSelf) {
+        try {
+          const cachedUploadsStr = localStorage.getItem('noteweb-my-uploads');
+          if (cachedUploadsStr) {
+            const cachedUploads = JSON.parse(cachedUploadsStr);
+            if (Array.isArray(cachedUploads)) {
+              cachedUploads.forEach((item: any) => {
+                const note = mapDbNoteToNoteDocument(item);
+                if (!uploads.some((n: NoteDocument) => n.id === note.id)) {
+                  uploads.push(note);
+                }
+              });
+            }
+          }
+        } catch (cacheErr) {
+          console.warn('[Profile] Failed to merge cached uploads:', cacheErr);
+        }
+      }
+
       uploads.sort((a: NoteDocument, b: NoteDocument) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setMyUploads(uploads);
 
@@ -386,7 +428,7 @@ export const Profile: React.FC = () => {
     }
     checkDailyCooldown();
     loadQuestStatus();
-  }, [targetUid, userProfile?.bookmarks, user]);
+  }, [targetUid, userProfile, user]);
 
   // Periodic check-in countdown update
   useEffect(() => {
@@ -635,14 +677,14 @@ export const Profile: React.FC = () => {
                   <select
                     value={editBranch}
                     onChange={(e) => setEditBranch(e.target.value)}
-                    className="w-full bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-850 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                    className="w-full bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-800 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
                   >
-                    <option value="cse">💻 CSE</option>
-                    <option value="aiml">🧠 AI & ML</option>
-                    <option value="ds">📊 DS</option>
-                    <option value="ece">🔌 ECE</option>
-                    <option value="mechanical">⚙️ Mechanical</option>
-                    <option value="civil">🏗️ Civil</option>
+                    <option value="cse" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">💻 CSE</option>
+                    <option value="aiml" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🧠 AI & ML</option>
+                    <option value="ds" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">📊 DS</option>
+                    <option value="ece" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🔌 ECE</option>
+                    <option value="mechanical" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">⚙️ Mechanical</option>
+                    <option value="civil" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🏗️ Civil</option>
                   </select>
                 </div>
 
@@ -651,12 +693,12 @@ export const Profile: React.FC = () => {
                   <select
                     value={editYear}
                     onChange={(e) => setEditYear(e.target.value)}
-                    className="w-full bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-855 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                    className="w-full bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-800 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
                   >
-                    <option value="1">1st Year</option>
-                    <option value="2">2nd Year</option>
-                    <option value="3">3rd Year</option>
-                    <option value="4">4th Year</option>
+                    <option value="1" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">1st Year</option>
+                    <option value="2" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">2nd Year</option>
+                    <option value="3" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">3rd Year</option>
+                    <option value="4" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">4th Year</option>
                   </select>
                 </div>
 

@@ -728,21 +728,21 @@ export const Login: React.FC = () => {
                   <div>
                     <label className={labelCls}>Engineering Branch</label>
                     <select value={regBranch} onChange={(e) => setRegBranch(e.target.value)} className={selectCls}>
-                      <option value="cse">💻 Computer Science & Engineering (CSE)</option>
-                      <option value="aiml">🧠 AI & Machine Learning (AI & ML)</option>
-                      <option value="ds">📊 Data Science (DS)</option>
-                      <option value="ece">🔌 Electronics & Communication (ECE)</option>
-                      <option value="mechanical">⚙️ Mechanical Engineering</option>
-                      <option value="civil">🏗️ Civil Engineering</option>
+                      <option value="cse" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-850 font-semibold">💻 Computer Science & Engineering (CSE)</option>
+                      <option value="aiml" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-850 font-semibold">🧠 AI & Machine Learning (AI & ML)</option>
+                      <option value="ds" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">📊 Data Science (DS)</option>
+                      <option value="ece" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">🔌 Electronics & Communication (ECE)</option>
+                      <option value="mechanical" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">⚙️ Mechanical Engineering</option>
+                      <option value="civil" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">🏗️ Civil Engineering</option>
                     </select>
                   </div>
                   <div>
                     <label className={labelCls}>Class Year</label>
                     <select value={regYear} onChange={(e) => setRegYear(e.target.value)} className={selectCls}>
-                      <option value="1">🎓 1st Year (Freshman)</option>
-                      <option value="2">🎓 2nd Year (Sophomore)</option>
-                      <option value="3">🎓 3rd Year (Junior)</option>
-                      <option value="4">🎓 4th Year (Senior)</option>
+                      <option value="1" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-850 font-semibold">🎓 1st Year (Freshman)</option>
+                      <option value="2" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-850 font-semibold">🎓 2nd Year (Sophomore)</option>
+                      <option value="3" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">🎓 3rd Year (Junior)</option>
+                      <option value="4" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">🎓 4th Year (Senior)</option>
                     </select>
                   </div>
                 </div>
