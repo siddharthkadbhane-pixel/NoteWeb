@@ -17,6 +17,7 @@ export interface UserProfile {
   bookmarks: string[];
   setupComplete?: boolean;
   points: number;
+  lastIp?: string;
 }
 
 export interface CustomUser {
@@ -73,7 +74,8 @@ const dbToProfile = (dbRow: any): UserProfile => {
     createdAt: dbRow.created_at || dbRow.createdAt || new Date(),
     bookmarks: dbRow.bookmarks || [],
     setupComplete: dbRow.setup_complete !== undefined ? dbRow.setup_complete : dbRow.setupComplete,
-    points: dbRow.points !== undefined ? Number(dbRow.points) : 0
+    points: dbRow.points !== undefined ? Number(dbRow.points) : 0,
+    lastIp: dbRow.last_ip || dbRow.lastIp || ''
   };
 };
 
@@ -92,7 +94,8 @@ const profileToDb = (profile: UserProfile): any => {
     created_at: profile.createdAt instanceof Date ? profile.createdAt.toISOString() : profile.createdAt,
     bookmarks: profile.bookmarks,
     setup_complete: profile.setupComplete,
-    points: profile.points
+    points: profile.points,
+    last_ip: profile.lastIp
   };
 };
 
@@ -111,7 +114,8 @@ const profileToDbCamel = (profile: UserProfile): any => {
     createdAt: profile.createdAt instanceof Date ? profile.createdAt.toISOString() : profile.createdAt,
     bookmarks: profile.bookmarks,
     setupComplete: profile.setupComplete,
-    points: profile.points
+    points: profile.points,
+    lastIp: profile.lastIp
   };
 };
 
@@ -662,6 +666,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const profile = dbToProfile(data[0]);
+      
+      // Capture and update IP address on login
+      let userIp = '';
+      try {
+        const fetchIpRes = await fetch('https://api.seeip.org/jsonip', { signal: AbortSignal.timeout(1500) }).then(r => r.json());
+        userIp = fetchIpRes.ip || '';
+      } catch {
+        try {
+          const fetchIpRes = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(1500) }).then(r => r.json());
+          userIp = fetchIpRes.ip || '';
+        } catch {}
+      }
+
+      if (userIp) {
+        profile.lastIp = userIp;
+        // Update database with latest IP address silently
+        try {
+          await supabase.from('profiles').update({ last_ip: userIp }).eq('id', profile.uid);
+        } catch {}
+      }
+
       localStorage.setItem('noteweb-mock-uid', profile.uid);
       localStorage.setItem(`noteweb-profile-${profile.uid}`, JSON.stringify(profile));
       
@@ -707,6 +732,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // password ("Whantom") in the Login page UI before registerUser is called.
       const role: 'student' | 'admin' = profileData.role === 'admin' ? 'admin' : 'student';
 
+      // Fetch latest IP address for registration
+      let userIp = '';
+      try {
+        const fetchIpRes = await fetch('https://api.seeip.org/jsonip', { signal: AbortSignal.timeout(1500) }).then(r => r.json());
+        userIp = fetchIpRes.ip || '';
+      } catch {
+        try {
+          const fetchIpRes = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(1500) }).then(r => r.json());
+          userIp = fetchIpRes.ip || '';
+        } catch {}
+      }
+
       const newProfile: UserProfile = {
         uid,
         username: sanitizedUsername,
@@ -722,6 +759,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         bookmarks: [],
         setupComplete: true,
         points: role === 'admin' ? 0 : 50, // 50 XP startup bonus for new students!
+        lastIp: userIp
       };
 
       await saveUserProfile(newProfile);

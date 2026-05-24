@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { subscribeToPresenceChanges } from '../services/presence';
 import type { OnlineUser } from '../services/presence';
 import { 
+  Shield,
   ShieldAlert, 
   Check, 
   X, 
@@ -128,13 +129,14 @@ export const Admin: React.FC = () => {
   const { user: currentAuthUser } = useAuth();
   const { success, error, info } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'moderation' | 'notes' | 'users' | 'online' | 'feedback' | 'flagged'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'notes' | 'users' | 'online' | 'feedback' | 'flagged' | 'blocked_ips'>('moderation');
   const [pendingNotes, setPendingNotes] = useState<NoteDocument[]>([]);
   const [allNotes, setAllNotes] = useState<NoteDocument[]>([]);
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [flaggedChats, setFlaggedChats] = useState<any[]>([]);
+  const [blockedIps, setBlockedIps] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
@@ -252,9 +254,39 @@ export const Admin: React.FC = () => {
       fetchedFlagged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setFlaggedChats(fetchedFlagged);
       
+      // 6. Fetch Blocked IPs
+      let fetchedBlockedIps: any[] = [];
+      try {
+        const { data: dbBlocked, error: blockedErr } = await supabase
+          .from('blocked_ips')
+          .select('*');
+        if (!blockedErr && dbBlocked) {
+          fetchedBlockedIps = dbBlocked;
+        }
+      } catch (e) {
+        console.warn("Failed to fetch blocked_ips from Supabase:", e);
+      }
+
+      const localBlockedStr = localStorage.getItem('noteweb-db-blocked_ips');
+      if (localBlockedStr) {
+        try {
+          const localBlocked = JSON.parse(localBlockedStr);
+          if (Array.isArray(localBlocked)) {
+            const existingIds = new Set(fetchedBlockedIps.map(b => b.id));
+            localBlocked.forEach((b: any) => {
+              if (b && b.id && !existingIds.has(b.id)) {
+                fetchedBlockedIps.push(b);
+              }
+            });
+          }
+        } catch {}
+      }
+      fetchedBlockedIps.sort((a, b) => new Date(b.blocked_at).getTime() - new Date(a.blocked_at).getTime());
+      setBlockedIps(fetchedBlockedIps);
+
       setLastRefresh(new Date());
 
-      console.log(`[NoteWeb Admin Log] Dashboard data loaded. Pending: ${pending.length}, Total: ${all.length}, Users: ${users.length}, Feedbacks: ${fetchedFeedbacks.length}, Flagged: ${fetchedFlagged.length}`);
+      console.log(`[NoteWeb Admin Log] Dashboard data loaded. Pending: ${pending.length}, Total: ${all.length}, Users: ${users.length}, Feedbacks: ${fetchedFeedbacks.length}, Flagged: ${fetchedFlagged.length}, Blocked IPs: ${fetchedBlockedIps.length}`);
     } catch (e: any) {
       console.error("[NoteWeb Admin Log] Failed to load dashboard data:", e);
       error("Failed to load admin panel data: " + e.message);
@@ -269,6 +301,7 @@ export const Admin: React.FC = () => {
     let channelProfiles: any = null;
     let channelNotes: any = null;
     let channelFeedbacks: any = null;
+    let channelBlockedIps: any = null;
     let channelBroadcastFeedbacks: any = null;
 
     try {
@@ -322,6 +355,18 @@ export const Admin: React.FC = () => {
             console.log('[NoteWeb Admin Realtime] feedbacks channel status:', status);
             if (status === 'SUBSCRIBED') setRealtimeConnected(true);
           });
+
+        channelBlockedIps = supabase
+          .channel('public:blocked_ips_admin')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'blocked_ips' },
+            (payload: any) => {
+              console.log('[NoteWeb Admin Realtime] blocked_ips table change detected:', payload);
+              fetchModerationData(true);
+            }
+          )
+          .subscribe();
 
         // P2P Pushing Broadcast listener for Feedbacks
         channelBroadcastFeedbacks = supabase.channel('public:feedbacks');
@@ -392,6 +437,9 @@ export const Admin: React.FC = () => {
       }
       if (channelFeedbacks) {
         try { channelFeedbacks.unsubscribe(); } catch (e) {}
+      }
+      if (channelBlockedIps) {
+        try { channelBlockedIps.unsubscribe(); } catch (e) {}
       }
       if (channelBroadcastFeedbacks) {
         try { channelBroadcastFeedbacks.unsubscribe(); } catch (e) {}
@@ -529,6 +577,57 @@ export const Admin: React.FC = () => {
     if (!isConfirmed) return;
 
     try {
+      // 1. Fetch the user's last detected IP address before deleting their profile
+      let userIp = '';
+      try {
+        const { data: profileRow } = await supabase
+          .from('profiles')
+          .select('last_ip, lastIp')
+          .eq('id', targetUid)
+          .single();
+        if (profileRow) {
+          userIp = profileRow.last_ip || profileRow.lastIp || '';
+        }
+      } catch (ipErr) {
+        console.warn("Could not retrieve user IP before pruning:", ipErr);
+      }
+
+      // If we found an IP, add it to the blocked IPs database
+      if (userIp) {
+        try {
+          await supabase.from('blocked_ips').insert([
+            {
+              id: userIp,
+              blocked_at: new Date().toISOString(),
+              reason: `Account '${displayName}' pruned by admin`,
+              status: 'blocked'
+            }
+          ]);
+        } catch (blockErr) {
+          console.warn("Failed to insert IP into Supabase blocked_ips:", blockErr);
+        }
+        
+        // Also save to local storage block list database fallback
+        try {
+          const blockedStr = localStorage.getItem('noteweb-db-blocked_ips');
+          let blockedList: any[] = [];
+          if (blockedStr) {
+            try { blockedList = JSON.parse(blockedStr); } catch {}
+          }
+          if (!blockedList.some((entry: any) => entry.id === userIp)) {
+            blockedList.push({
+              id: userIp,
+              blocked_at: new Date().toISOString(),
+              reason: `Account '${displayName}' pruned by admin`,
+              status: 'blocked'
+            });
+            localStorage.setItem('noteweb-db-blocked_ips', JSON.stringify(blockedList));
+          }
+        } catch (lsErr) {
+          console.warn("Failed to block IP in mock localStorage:", lsErr);
+        }
+      }
+
       const { data: userNotes, error: fetchNotesErr } = await supabase
         .from('notes')
         .select('*')
@@ -576,9 +675,63 @@ export const Admin: React.FC = () => {
       setUsersList((prev) => prev.filter((u) => u.uid !== targetUid));
       setAllNotes((prev) => prev.filter((n) => n.uploadedBy !== targetUid));
       setPendingNotes((prev) => prev.filter((n) => n.uploadedBy !== targetUid));
+      fetchModerationData(true);
     } catch (e: any) {
       console.error(e);
       error("Failed to remove user: " + e.message);
+    }
+  };
+
+  const handleUpdateIpStatus = async (ip: string, status: 'blocked' | 'approved_by_admin' | 'deleted') => {
+    try {
+      if (status === 'deleted') {
+        const isConfirmed = window.confirm(`Are you sure you want to permanently remove IP "${ip}" from the access control database?`);
+        if (!isConfirmed) return;
+        
+        await supabase.from('blocked_ips').delete().eq('id', ip);
+        
+        // Local storage update fallback
+        try {
+          const blockedStr = localStorage.getItem('noteweb-db-blocked_ips');
+          if (blockedStr) {
+            const blockedList = JSON.parse(blockedStr);
+            if (Array.isArray(blockedList)) {
+              const filtered = blockedList.filter((item: any) => item.id !== ip);
+              localStorage.setItem('noteweb-db-blocked_ips', JSON.stringify(filtered));
+            }
+          }
+        } catch {}
+        
+        setBlockedIps(prev => prev.filter(b => b.id !== ip));
+        success(`IP Address "${ip}" removed from database.`);
+      } else {
+        const actionText = status === 'approved_by_admin' ? 'approve and grant access to' : 'block';
+        const isConfirmed = window.confirm(`Are you sure you want to ${actionText} IP "${ip}"?`);
+        if (!isConfirmed) return;
+
+        await supabase.from('blocked_ips').update({ status }).eq('id', ip);
+        
+        // Local storage update fallback
+        try {
+          const blockedStr = localStorage.getItem('noteweb-db-blocked_ips');
+          if (blockedStr) {
+            const blockedList = JSON.parse(blockedStr);
+            if (Array.isArray(blockedList)) {
+              const updated = blockedList.map((item: any) => 
+                item.id === ip ? { ...item, status } : item
+              );
+              localStorage.setItem('noteweb-db-blocked_ips', JSON.stringify(updated));
+            }
+          }
+        } catch {}
+
+        setBlockedIps(prev => prev.map(b => b.id === ip ? { ...b, status } : b));
+        success(`IP Address "${ip}" status updated to ${status}.`);
+      }
+      fetchModerationData(true);
+    } catch (e: any) {
+      console.error("Failed to update IP status:", e);
+      error("Failed to update IP access status: " + e.message);
     }
   };
 
@@ -822,6 +975,23 @@ export const Admin: React.FC = () => {
             {flaggedChats.length > 0 && (
               <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-black animate-pulse">
                 {flaggedChats.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('blocked_ips')}
+            className={`
+              px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 flex-shrink-0
+              ${activeTab === 'blocked_ips' 
+                ? 'border-indigo-500 text-white light-mode:text-indigo-650' 
+                : 'border-transparent text-slate-400 hover:text-slate-200'}
+            `}
+          >
+            <Shield className="w-4 h-4 text-indigo-400" />
+            IP Access Control
+            {blockedIps.filter(ip => ip.status === 'pending_approval').length > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[10px] font-black animate-pulse ml-1.5">
+                {blockedIps.filter(ip => ip.status === 'pending_approval').length}
               </span>
             )}
           </button>
@@ -1275,6 +1445,108 @@ export const Admin: React.FC = () => {
                   <h4 className="font-bold text-white light-mode:text-slate-800">Clean Lounge!</h4>
                   <p className="text-xs text-slate-500 max-w-xs mt-1">
                     No vulgar or flagged chat logs detected. The campus chat room is safe and respectful!
+                  </p>
+                </div>
+              </GlassPanel>
+            )
+          ) : activeTab === 'blocked_ips' ? (
+            /* ===== IP ACCESS CONTROL TAB ===== */
+            blockedIps.length > 0 ? (
+              <div className="flex flex-col gap-4 text-left">
+                <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl">
+                  <h4 className="text-xs font-black uppercase text-indigo-400 tracking-wider">IP Restrictive Database</h4>
+                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                    Below is the list of blocked IP addresses mapped when accounts are removed/pruned by administrators. 
+                    Blocked users can submit Access Requests which will appear here as "Pending Review" for approval.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {blockedIps.map((b) => {
+                    const isPending = b.status === 'pending_approval';
+                    const isApproved = b.status === 'approved_by_admin';
+                    
+                    return (
+                      <GlassPanel 
+                        key={b.id} 
+                        className={`p-5 flex flex-col justify-between gap-4 border transition-all ${
+                          isPending 
+                            ? 'border-indigo-500/25 bg-indigo-500/[0.02] shadow-[0_0_12px_rgba(99,102,241,0.05)]' 
+                            : isApproved 
+                              ? 'border-emerald-500/15 bg-emerald-500/[0.01]' 
+                              : 'border-rose-500/15 bg-rose-500/[0.01]'
+                        }`}
+                      >
+                        <div className="space-y-3 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-extrabold text-white text-sm font-mono tracking-tight bg-slate-900 px-2.5 py-1 rounded-lg border border-white/[0.05]">
+                              🌐 {b.id}
+                            </span>
+                            {isPending ? (
+                              <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 animate-pulse">
+                                Pending Review
+                              </span>
+                            ) : isApproved ? (
+                              <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                Approved / Active
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                Blocked / Restricted
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-xs text-slate-400 space-y-1.5 mt-2.5">
+                            <p className="font-semibold"><span className="text-slate-500">Blocked on:</span> {new Date(b.blocked_at).toLocaleString()}</p>
+                            {b.reason && <p className="font-semibold"><span className="text-slate-500">Reason:</span> {b.reason}</p>}
+                            {b.request_statement && (
+                              <div className="mt-3 p-3 bg-white/[0.03] border border-white/[0.05] rounded-xl text-[11px] text-indigo-200">
+                                <span className="block text-[9px] font-black uppercase text-indigo-400 tracking-wider mb-1">Access Request Statement:</span>
+                                "{b.request_statement}"
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 border-t border-white/[0.04] pt-3.5 mt-1.5 flex-wrap">
+                          {!isApproved ? (
+                            <button
+                              onClick={() => handleUpdateIpStatus(b.id, 'approved_by_admin')}
+                              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                            >
+                              <Check className="w-3.5 h-3.5" /> Approve Access
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleUpdateIpStatus(b.id, 'blocked')}
+                              className="px-3.5 py-1.5 rounded-lg bg-rose-600/20 border border-rose-500/30 text-rose-400 hover:bg-rose-600 hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                            >
+                              <X className="w-3.5 h-3.5" /> Revoke Access / Block
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleUpdateIpStatus(b.id, 'deleted')}
+                            className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 active:scale-95 border border-white/[0.05] ml-auto"
+                            title="Remove from blocklist database"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete Entry
+                          </button>
+                        </div>
+                      </GlassPanel>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <GlassPanel className="h-64 flex flex-col items-center justify-center text-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-slate-500">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-200">No Blocked IPs found</h4>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Excellent! All students are currently allowed access.
                   </p>
                 </div>
               </GlassPanel>
