@@ -569,10 +569,15 @@ export const Profile: React.FC = () => {
               </div>
               <p className="text-sm font-semibold text-slate-400 light-mode:text-slate-500">@{viewedProfile?.username}</p>
               
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs font-semibold text-slate-500 light-mode:text-slate-600">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-semibold text-slate-500 light-mode:text-slate-600">
                 <span>📚 Branch: {BRANCH_LABELS[viewedProfile?.branch || ''] || 'General'}</span>
                 <span>🎓 Class: {YEAR_LABELS[viewedProfile?.year || ''] || 'N/A'}</span>
                 {viewedProfile?.cgpa && <span>📐 CGPA: {viewedProfile.cgpa}</span>}
+                {viewedProfile?.mobileNo && (
+                  <span className="flex items-center gap-1.5 text-indigo-400 bg-indigo-500/10 px-2.5 py-0.5 rounded-lg border border-indigo-500/20 font-extrabold shadow-sm shadow-indigo-500/5">
+                    📞 Contact: {viewedProfile.mobileNo}
+                  </span>
+                )}
               </div>
             </div>
           </div>

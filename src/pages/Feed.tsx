@@ -655,7 +655,21 @@ export const Feed: React.FC = () => {
         })
         .eq('id', noteId);
 
-      if (err) throw err;
+      if (err) {
+        if (err.message?.includes('column') || err.code === '42703') {
+          console.warn('[NoteWeb Feed] likes_count column missing, trying camelCase likesCount...');
+          const { error: camelErr } = await supabase
+            .from('notes')
+            .update({
+              likes: nextLikes,
+              likesCount: nextLikesCount
+            })
+            .eq('id', noteId);
+          if (camelErr) throw camelErr;
+        } else {
+          throw err;
+        }
+      }
 
       setNotes((prev) =>
         prev.map((n) =>

@@ -15,7 +15,8 @@ import {
   AlertTriangle,
   MessageSquare,
   Lock,
-  X
+  X,
+  Edit
 } from 'lucide-react';
 
 const BAD_WORDS = [
@@ -94,6 +95,8 @@ export const Chat: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -259,6 +262,21 @@ export const Chat: React.FC = () => {
             (response: any) => {
               if (response?.payload?.id) {
                 setMessages((prev) => prev.filter((m) => m.id !== response.payload.id));
+              }
+            }
+          )
+          .on(
+            'broadcast',
+            { event: 'edit-message' },
+            (response: any) => {
+              if (response?.payload?.id && response?.payload?.content) {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === response.payload.id
+                      ? { ...m, content: response.payload.content }
+                      : m
+                  )
+                );
               }
             }
           )
@@ -542,6 +560,68 @@ export const Chat: React.FC = () => {
     }
   };
 
+  const handleEditMessage = async (msgId: string, newContent: string) => {
+    if (isGuest) return;
+    if (!newContent.trim()) return;
+
+    try {
+      // 1. Update in Supabase Database (if not a temporary broadcast message)
+      if (!msgId.startsWith('broadcast-')) {
+        const { error: dbErr } = await supabase
+          .from('chats')
+          .update({ message: newContent.trim() })
+          .eq('id', msgId);
+        
+        if (dbErr) {
+          // Try camelCase fallback
+          await supabase
+            .from('chats')
+            .update({ content: newContent.trim() })
+            .eq('id', msgId);
+        }
+      }
+
+      // 2. Broadcast edited message instantly to other connected clients
+      if (channelRef.current) {
+        try {
+          await channelRef.current.send({
+            type: 'broadcast',
+            event: 'edit-message',
+            payload: { id: msgId, content: newContent.trim() }
+          });
+        } catch (e) {
+          console.warn("Failed to broadcast edit action:", e);
+        }
+      }
+
+      // 3. Update local state
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, content: newContent.trim() } : m))
+      );
+
+      // 4. Update in local broadcast storage
+      try {
+        const storedStr = localStorage.getItem('noteweb-broadcasted-chats');
+        if (storedStr) {
+          const stored = JSON.parse(storedStr);
+          if (Array.isArray(stored)) {
+            const updated = stored.map((m: any) =>
+              m.id === msgId ? { ...m, content: newContent.trim() } : m
+            );
+            localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(updated));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to update edited chat in local broadcast cache:", cacheErr);
+      }
+
+      info("Message edited successfully.");
+    } catch (e: any) {
+      console.error(e);
+      toastError("Failed to edit chat message: " + e.message);
+    }
+  };
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -692,16 +772,30 @@ export const Chat: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Content Card with delete button for admin */}
+                      {/* Content Card with edit/delete control for sender, and delete button for admin */}
                       <div className="flex items-center gap-2 group/msg w-full relative">
-                        {isMe && userProfile?.role === 'admin' && (
-                          <button
-                            onClick={() => handleDeleteChat(msg.id)}
-                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all opacity-0 group-hover/msg:opacity-100 cursor-pointer flex-shrink-0 active:scale-95 border border-rose-500/20"
-                            title="Delete message"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                        {isMe && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-all duration-200 flex-shrink-0">
+                            {/* Edit Button */}
+                            <button
+                              onClick={() => {
+                                setEditingMsgId(msg.id);
+                                setEditingText(msg.content);
+                              }}
+                              className="p-1.5 rounded-lg bg-white/10 hover:bg-indigo-600 text-slate-350 hover:text-white transition-all cursor-pointer active:scale-95 border border-white/10"
+                              title="Edit message"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => handleDeleteChat(msg.id)}
+                              className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all cursor-pointer active:scale-95 border border-rose-500/20"
+                              title="Delete message"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
 
                         <div className={`p-3.5 rounded-2xl border text-xs font-medium leading-relaxed break-words text-left flex-1 ${
@@ -711,21 +805,62 @@ export const Chat: React.FC = () => {
                               ? 'bg-[#181824]/80 border-white/[0.04] text-slate-200 rounded-bl-none'
                               : 'bg-slate-50 border-slate-200 text-slate-800 rounded-bl-none shadow-sm'
                         }`}>
-                          {msg.content}
-
-                          {/* Attached Image inside Bubble */}
-                          {msg.image_url && (
-                            <div 
-                              onClick={() => setZoomedImage(msg.image_url || null)}
-                              className="mt-2.5 rounded-xl overflow-hidden border border-white/10 max-w-xs shadow-lg bg-black/40 cursor-zoom-in hover:opacity-90 active:scale-[0.99] transition-all"
-                              title="Click to zoom in"
-                            >
-                              <img 
-                                src={msg.image_url} 
-                                alt="Shared attachment" 
-                                className="max-h-60 w-full object-cover select-none"
+                          {editingMsgId === msg.id ? (
+                            <div className="flex flex-col gap-2 min-w-[200px]">
+                              <input
+                                type="text"
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                className="w-full py-1.5 px-3 rounded-lg bg-black/25 text-white text-xs border border-white/20 focus:outline-none focus:border-indigo-400"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleEditMessage(msg.id, editingText);
+                                    setEditingMsgId(null);
+                                  } else if (e.key === 'Escape') {
+                                    setEditingMsgId(null);
+                                  }
+                                }}
                               />
+                              <div className="flex justify-end gap-1.5 text-[10px]">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingMsgId(null)}
+                                  className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-all font-bold text-white cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleEditMessage(msg.id, editingText);
+                                    setEditingMsgId(null);
+                                  }}
+                                  className="px-2 py-1 rounded bg-indigo-500 hover:bg-indigo-400 transition-all font-bold text-white cursor-pointer"
+                                >
+                                  Save
+                                </button>
+                              </div>
                             </div>
+                          ) : (
+                            <>
+                              {msg.content}
+                              
+                              {/* Attached Image inside Bubble */}
+                              {msg.image_url && (
+                                <div 
+                                  onClick={() => setZoomedImage(msg.image_url || null)}
+                                  className="mt-2.5 rounded-xl overflow-hidden border border-white/10 max-w-xs shadow-lg bg-black/40 cursor-zoom-in hover:opacity-90 active:scale-[0.99] transition-all"
+                                  title="Click to zoom in"
+                                >
+                                  <img 
+                                    src={msg.image_url} 
+                                    alt="Shared attachment" 
+                                    className="max-h-60 w-full object-cover select-none"
+                                  />
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
 
