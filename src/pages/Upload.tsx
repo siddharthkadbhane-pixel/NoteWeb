@@ -118,6 +118,8 @@ export const Upload: React.FC = () => {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [categories, setCategories] = useState<{ id: string; branchId: string; name: string; description?: string }[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatDesc, setNewCatDesc] = useState('');
 
   // Note vs Question Paper toggle
   const [uploadType, setUploadType] = useState<'notes' | 'paper'>('notes');
@@ -183,12 +185,12 @@ export const Upload: React.FC = () => {
 
         if (branchesList.length === 0) {
           branchesList = [
-            { id: 'cse', name: 'Computer Science & Engineering' },
-            { id: 'aiml', name: 'AI & Machine Learning' },
-            { id: 'ds', name: 'Data Science' },
+            { id: 'cse', name: 'Computer Science & Engineering (CSE)' },
+            { id: 'aiml', name: 'AI & Machine Learning (AI & ML)' },
+            { id: 'ds', name: 'Data Science (DS)' },
             { id: 'mechanical', name: 'Mechanical Engineering' },
             { id: 'civil', name: 'Civil Engineering' },
-            { id: 'ece', name: 'Electronics & Comm Eng' }
+            { id: 'ece', name: 'Electronics & Communication (ECE)' }
           ];
         }
 
@@ -220,6 +222,7 @@ export const Upload: React.FC = () => {
 
   // Sync selected Category when selected Branch changes or subject title changes
   useEffect(() => {
+    if (selectedCategory === 'new_category') return; // Do not overwrite if user wants to add new category!
     if (selectedBranch && categories.length > 0) {
       const filtered = categories.filter(c => c.branchId === selectedBranch);
       
@@ -237,7 +240,7 @@ export const Upload: React.FC = () => {
         setSelectedCategory('');
       }
     }
-  }, [selectedBranch, categories, subject]);
+  }, [selectedBranch, categories, subject, selectedCategory]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -295,10 +298,7 @@ export const Upload: React.FC = () => {
       error("Academic branch is required");
       return;
     }
-    if (!selectedCategory) {
-      error("Subject category is required");
-      return;
-    }
+    // Category is optional (can fall back to General Catalog if unassigned)
 
     setIsUploading(true);
     setUploadProgress(0);
@@ -440,26 +440,70 @@ export const Upload: React.FC = () => {
         console.error("Text extraction failed:", pdfErr);
       }
 
-      // AI Category auto-sorting check inside subject catalog
+      // Custom category creation vs AI Category auto-sorting check inside subject catalog
       let finalCategory = selectedCategory;
       let finalBranch = selectedBranch;
       let autoCorrected = false;
       let detectedCategoryName = '';
       
-      try {
-        // Map our custom categories array into flat list Gemini classifier accepts
-        const classifiedId = await classifyNoteCategory(subject, description, aiExtractedText, categories);
-        if (classifiedId && classifiedId !== selectedCategory) {
-          const matchedCat = categories.find(c => c.id === classifiedId);
-          if (matchedCat) {
-            finalCategory = classifiedId;
-            finalBranch = matchedCat.branchId || selectedBranch;
-            detectedCategoryName = matchedCat.name;
-            autoCorrected = true;
-          }
+      if (selectedCategory === 'new_category') {
+        if (!newCatName.trim()) {
+          throw new Error("Please specify a name for the new sub-topic category.");
         }
-      } catch (classifyErr) {
-        console.error("AI Category classification failed:", classifyErr);
+        const slug = `${selectedBranch}-${newCatName.toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)+/g, '')}`;
+        
+        try {
+          const exists = categories.some(c => c.id === slug);
+          if (!exists) {
+            const newCatDoc = {
+              id: slug,
+              branch_id: selectedBranch,
+              name: newCatName.trim(),
+              description: newCatDesc.trim() || 'Custom academic sub-topic category folder.'
+            };
+            const { error: catErr } = await supabase.from('categories').insert([newCatDoc]);
+            if (catErr) {
+              console.warn("Primary category insert failed, trying camelCase:", catErr);
+              const newCatDocCamel = {
+                id: slug,
+                branchId: selectedBranch,
+                name: newCatName.trim(),
+                description: newCatDesc.trim() || 'Custom academic sub-topic category folder.'
+              };
+              await supabase.from('categories').insert([newCatDocCamel]);
+            }
+            // Add to local state
+            const newCatObj = {
+              id: slug,
+              branchId: selectedBranch,
+              name: newCatName.trim(),
+              description: newCatDesc.trim()
+            };
+            setCategories(prev => [...prev, newCatObj]);
+          }
+          finalCategory = slug;
+        } catch (catInsertErr: any) {
+          console.error("Failed to insert custom category:", catInsertErr);
+          finalCategory = slug;
+        }
+      } else {
+        try {
+          // Map our custom categories array into flat list Gemini classifier accepts
+          const classifiedId = await classifyNoteCategory(subject, description, aiExtractedText, categories);
+          if (classifiedId && classifiedId !== selectedCategory) {
+            const matchedCat = categories.find(c => c.id === classifiedId);
+            if (matchedCat) {
+              finalCategory = classifiedId;
+              finalBranch = matchedCat.branchId || selectedBranch;
+              detectedCategoryName = matchedCat.name;
+              autoCorrected = true;
+            }
+          }
+        } catch (classifyErr) {
+          console.error("AI Category classification failed:", classifyErr);
+        }
       }
 
       let summaryText = '';
@@ -894,20 +938,41 @@ export const Upload: React.FC = () => {
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  disabled={activeBranchCategories.length === 0}
-                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 disabled:opacity-50 focus:outline-none"
+                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
                 >
-                  {activeBranchCategories.length > 0 ? (
-                    activeBranchCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id} className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">
-                        {cat.name}
-                      </option>
-                    ))
-                  ) : (
-                    <option value="" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">General Catalog</option>
-                  )}
+                  <option value="" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">General Catalog</option>
+                  {activeBranchCategories.map((cat) => (
+                    <option key={cat.id} value={cat.id} className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">
+                      {cat.name}
+                    </option>
+                  ))}
+                  <option value="new_category" className="bg-[#16161D] text-indigo-400 font-bold light-mode:bg-white">
+                    ➕ Add New Sub-Topic Category...
+                  </option>
                 </select>
               </div>
+
+              {/* Inline Custom Category Creation Panel */}
+              {selectedCategory === 'new_category' && (
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5 border border-indigo-500/25 bg-indigo-500/[0.03] p-5 rounded-2xl">
+                  <div className="md:col-span-2 font-bold text-xs uppercase tracking-wider text-[#7F00FF] light-mode:text-indigo-600 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 animate-pulse" /> Create New Sub-Topic Category
+                  </div>
+                  <Input
+                    label="New Sub-Topic Name"
+                    placeholder="e.g. Theory of Computation"
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    required
+                  />
+                  <Input
+                    label="New Sub-Topic Description"
+                    placeholder="e.g. Turing machines, DFA, NFA, CFG"
+                    value={newCatDesc}
+                    onChange={(e) => setNewCatDesc(e.target.value)}
+                  />
+                </div>
+              )}
 
               {/* Custom Subject text field */}
               {selectedPredefinedSubject === 'other' && (

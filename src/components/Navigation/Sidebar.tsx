@@ -45,7 +45,7 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     { to: '/', label: 'Home', icon: <HomeIcon className="w-4 h-4" /> },
     { to: '/feed', label: 'Library', icon: <BookOpen className="w-4 h-4" /> },
-    { to: '/categories', label: 'Branches', icon: <Grid className="w-4 h-4" /> },
+    { to: '/categories', label: 'Departments', icon: <Grid className="w-4 h-4" /> },
     { to: '/upload', label: 'Upload', icon: <UploadCloud className="w-4 h-4" /> },
     { to: '/chat', label: 'Campus Chat', icon: <MessageSquare className="w-4 h-4 text-indigo-400" />, protected: true },
     { to: '/leaderboard', label: 'Rankings', icon: <Trophy className="w-4 h-4 text-amber-400" />, protected: true },
@@ -362,7 +362,7 @@ export const Sidebar: React.FC = () => {
               {/* Nav Grid */}
               <div className="grid grid-cols-3 gap-2.5">
                 {[
-                  { label: 'Branches', icon: <Grid className="w-5 h-5 text-sky-400" />, path: '/categories' },
+                  { label: 'Departments', icon: <Grid className="w-5 h-5 text-sky-400" />, path: '/categories' },
                   ...(user && !isGuest ? [
                     { label: 'Lounge', icon: <MessageSquare className="w-5 h-5 text-indigo-400" />, path: '/chat' },
                     { label: 'Rankings', icon: <Trophy className="w-5 h-5 text-amber-400" />, path: '/leaderboard' },

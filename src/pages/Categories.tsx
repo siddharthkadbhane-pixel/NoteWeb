@@ -42,7 +42,7 @@ interface CategoryType {
 const defaultBranches: BranchType[] = [
   {
     id: 'cse',
-    name: 'Computer Science & Engineering',
+    name: 'Computer Science & Engineering (CSE)',
     description: 'Data Structures, Algorithms, Software Engineering, Web Dev, Databases, and operating systems.',
     icon: 'code',
     color: 'from-[#00F2FE] to-[#4FACFE]',
@@ -51,7 +51,7 @@ const defaultBranches: BranchType[] = [
   },
   {
     id: 'aiml',
-    name: 'AI & Machine Learning',
+    name: 'AI & Machine Learning (AI & ML)',
     description: 'Neural Networks, Deep Learning, Computer Vision, Natural Language Processing, and Robotics.',
     icon: 'sparkles',
     color: 'from-[#7F00FF] to-[#E100FF]',
@@ -60,7 +60,7 @@ const defaultBranches: BranchType[] = [
   },
   {
     id: 'ds',
-    name: 'Data Science',
+    name: 'Data Science (DS)',
     description: 'Data Analytics, Statistical Learning, Big Data Processing, Predictive Modeling, and Visualization.',
     icon: 'binary',
     color: 'from-[#00FF87] to-[#60EFFF]',
@@ -87,7 +87,7 @@ const defaultBranches: BranchType[] = [
   },
   {
     id: 'ece',
-    name: 'Electronics & Comm Eng',
+    name: 'Electronics & Communication (ECE)',
     description: 'Microprocessors, VLSI design, Signal processing, Communication systems, and analog hardware.',
     icon: 'cpu',
     color: 'from-[#00FF87] to-[#60EFFF]',
@@ -95,6 +95,7 @@ const defaultBranches: BranchType[] = [
     notesCount: 'ECE'
   }
 ];
+
 
 const defaultCategories: CategoryType[] = [
   // CS Branch Subjects
@@ -231,6 +232,24 @@ export const Categories: React.FC = () => {
           const dbVal = branchToDb(branch);
           await supabase.from('branches').insert([dbVal]);
           loadedBranches.push(branch);
+        }
+      } else {
+        // Automatically align existing branches with new department names and badges
+        for (const branch of defaultBranches) {
+          const dbVal = branchToDb(branch);
+          await supabase.from('branches').update({
+            name: dbVal.name,
+            description: dbVal.description,
+            icon: dbVal.icon,
+            color: dbVal.color,
+            shadow_color: dbVal.shadow_color,
+            notes_count: dbVal.notes_count
+          }).eq('id', dbVal.id);
+        }
+        // Re-retrieve to ensure local state has updated data
+        const { data: updatedBranchesData } = await supabase.from('branches').select('*');
+        if (updatedBranchesData && updatedBranchesData.length > 0) {
+          loadedBranches = updatedBranchesData.map(dbToBranch);
         }
       }
 
@@ -437,10 +456,10 @@ export const Categories: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-white/[0.05] pb-6 mb-12">
           <div className="text-left">
             <h1 className="text-4xl font-extrabold tracking-tight text-white light-mode:text-slate-900 mb-2">
-              Curriculum Branches
+              Academic Departments
             </h1>
             <p className="text-slate-400 light-mode:text-slate-500 font-medium text-sm">
-              Explore syllabus folders. Click any department branch to access subject-specific lecture notes and summaries.
+              Explore syllabus folders. Click any academic department to access subject-specific lecture notes and summaries.
             </p>
           </div>
           
@@ -448,7 +467,7 @@ export const Categories: React.FC = () => {
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 text-white font-extrabold text-sm self-start md:self-auto shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
           >
-            <Plus className="w-4 h-4" /> Create Category / Branch
+            <Plus className="w-4 h-4" /> Create Category / Department
           </button>
         </div>
 
@@ -720,7 +739,7 @@ export const Categories: React.FC = () => {
                       : 'text-slate-400 hover:text-slate-200'}
                   `}
                 >
-                  Create Department Branch
+                  Create Academic Department
                 </button>
               </div>
 
@@ -732,19 +751,19 @@ export const Categories: React.FC = () => {
                       <Grid className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-white text-sm">Create Curriculum Branch</h4>
-                      <p className="text-[10px] text-slate-500">Register new high-level academic divisions.</p>
+                      <h4 className="font-extrabold text-white text-sm">Create Academic Department</h4>
+                      <p className="text-[10px] text-slate-500">Register new high-level college divisions.</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="md:col-span-2 flex flex-col gap-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 pl-1">
-                        Branch Name
+                        Department Name
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. Artificial Intelligence Eng"
+                        placeholder="e.g. Artificial Intelligence & Machine Learning"
                         value={newBranchTitle}
                         onChange={(e) => setNewBranchTitle(e.target.value)}
                         required
@@ -758,22 +777,22 @@ export const Categories: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. AIE"
+                        placeholder="e.g. AI&ML"
                         value={newBranchBadge}
                         onChange={(e) => setNewBranchBadge(e.target.value)}
                         maxLength={6}
                         required
-                        className="w-full py-2.5 px-4 glass-input text-sm bg-slate-950/80 text-white rounded-xl focus:border-indigo-500 focus:outline-none transition-colors border border-white/[0.08] uppercase"
+                        className="w-full py-2.5 px-4 glass-input text-sm bg-[#0A0A0F] text-white rounded-xl focus:border-indigo-500 focus:outline-none transition-colors border border-white/[0.08] uppercase"
                       />
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 pl-1">
-                      Branch Description
+                      Department Description
                     </label>
                     <textarea
-                      placeholder="Outline topics covered under this college division..."
+                      placeholder="Outline topics covered under this academic department..."
                       value={newBranchDescription}
                       onChange={(e) => setNewBranchDescription(e.target.value)}
                       rows={3}
@@ -784,7 +803,7 @@ export const Categories: React.FC = () => {
                   {/* Preset Icon Selector */}
                   <div className="flex flex-col gap-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 pl-1">
-                      Select Branch Icon
+                      Select Department Icon
                     </span>
                     <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
                       {iconPresets.map((item) => (
@@ -844,7 +863,7 @@ export const Categories: React.FC = () => {
                       disabled={isSubmitting}
                       className="px-6 py-2 rounded-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg hover:brightness-110 text-xs transition-transform active:scale-95"
                     >
-                      {isSubmitting ? 'Saving...' : 'Register Branch'}
+                      {isSubmitting ? 'Saving...' : 'Register Department'}
                     </button>
                   </div>
                 </form>
@@ -857,19 +876,19 @@ export const Categories: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="font-extrabold text-white text-sm">Add Subject Category</h4>
-                      <p className="text-[10px] text-slate-500">Insert curriculum syllabus folders under existing branches.</p>
+                      <p className="text-[10px] text-slate-500">Insert curriculum syllabus folders under existing departments.</p>
                     </div>
                   </div>
 
-                  {/* Parent Branch selector */}
+                  {/* Parent Department selector */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 pl-1">
-                      Parent Division Branch
+                      Parent Department
                     </label>
                     <select
                       value={selectedParentBranchId}
                       onChange={(e) => setSelectedParentBranchId(e.target.value)}
-                      className="w-full py-2.5 px-4 glass-input text-sm bg-slate-950/80 text-white rounded-xl focus:border-indigo-500 focus:outline-none transition-colors border border-white/[0.08]"
+                      className="w-full py-2.5 px-4 glass-input text-sm bg-[#0A0A0F] text-white rounded-xl focus:border-indigo-500 focus:outline-none transition-colors border border-white/[0.08]"
                     >
                       {branches.map(b => (
                         <option key={b.id} value={b.id} className="bg-[#111116] text-white">

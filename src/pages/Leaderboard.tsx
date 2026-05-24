@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { renderAvatar } from '../utils/avatar';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -55,6 +56,7 @@ const getXPProgress = (points: number) => {
 
 export const Leaderboard: React.FC = () => {
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
   
   const [usersList, setUsersList] = useState<LeaderboardUser[]>([]);
@@ -216,11 +218,11 @@ export const Leaderboard: React.FC = () => {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-4 shadow-lg shadow-indigo-500/5">
             <Trophy className="w-6 h-6 animate-bounce-slow" />
           </div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-white light-mode:text-slate-800 flex items-center justify-center gap-2">
+          <h2 className={`text-3xl font-extrabold tracking-tight flex items-center justify-center gap-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>
             Campus Leaderboard
             <Sparkles className="w-5 h-5 text-amber-400" />
           </h2>
-          <p className="mt-2 text-sm text-slate-400 max-w-md mx-auto">
+          <p className={`mt-2 text-sm max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Explore academic rankings, verify contributions, and see who is topping NoteWeb XP standouts!
           </p>
         </div>
@@ -250,22 +252,22 @@ export const Leaderboard: React.FC = () => {
                         {renderAvatar(podiumTop3[1].photoURL, "w-16 h-16 text-3xl")}
                         <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-slate-400 border-2 border-[#0A0A0C] text-white rounded-full text-xs font-bold shadow-lg shadow-black/40">🥈</span>
                       </div>
-                      <h4 className="font-extrabold text-white dark:text-slate-200 text-sm mt-3 hover:text-indigo-400 transition-colors duration-200">{podiumTop3[1].displayName}</h4>
+                      <h4 className={`font-extrabold text-sm mt-3 hover:text-indigo-400 transition-colors duration-200 ${isDark ? 'text-white' : 'text-slate-800'}`}>{podiumTop3[1].displayName}</h4>
                     </div>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[1].branch] || 'ECE'}</span>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>{BRANCH_LABELS[podiumTop3[1].branch] || 'ECE'}</span>
                     
                     {/* XP Level Badge */}
                     <span className={`text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded border bg-gradient-to-r ${level.color} mt-2 shadow-sm`}>
                       {level.badge}
                     </span>
 
-                    <span className="text-xs font-bold text-slate-350 dark:text-slate-400 mt-2.5 bg-white/5 border border-white/[0.04] px-3 py-0.5 rounded-full">
+                    <span className={`text-xs font-bold mt-2.5 border px-3 py-0.5 rounded-full ${isDark ? 'text-slate-350 bg-white/5 border-white/[0.04]' : 'text-slate-700 bg-slate-100 border-slate-200'}`}>
                       {getMetricString(podiumTop3[1])}
                     </span>
                   </div>
                   
                   {/* Pedestal Step */}
-                  <div className="hidden md:flex w-28 h-16 bg-gradient-to-b from-slate-300/15 to-slate-400/5 border-t-2 border-x border-slate-300/20 shadow-[0_0_15px_rgba(203,213,225,0.06)] rounded-t-2xl items-center justify-center font-black text-slate-300 text-base">II</div>
+                  <div className={`hidden md:flex w-28 h-16 border-t-2 border-x rounded-t-2xl items-center justify-center font-black text-base ${isDark ? 'from-slate-300/15 to-slate-400/5 bg-gradient-to-b border-slate-300/20 text-slate-300 shadow-[0_0_15px_rgba(203,213,225,0.06)]' : 'bg-slate-100 border-slate-300 text-slate-600 shadow-[0_4px_10px_rgba(0,0,0,0.05)]'}`}>II</div>
                 </motion.div>
               );
             })()}
@@ -294,22 +296,22 @@ export const Leaderboard: React.FC = () => {
                         {renderAvatar(podiumTop3[0].photoURL, "w-20 h-20 text-4xl")}
                         <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-8 h-8 bg-amber-400 border-2 border-[#0A0A0C] text-white rounded-full text-base font-bold shadow-lg shadow-black/40">👑</span>
                       </div>
-                      <h4 className="font-extrabold text-white dark:text-slate-100 text-base mt-3 hover:text-indigo-400 transition-colors duration-200">{podiumTop3[0].displayName}</h4>
+                      <h4 className={`font-extrabold text-base mt-3 hover:text-indigo-400 transition-colors duration-200 ${isDark ? 'text-white' : 'text-slate-800'}`}>{podiumTop3[0].displayName}</h4>
                     </div>
-                    <span className="text-[10px] text-amber-300 font-semibold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[0].branch] || 'CSE'}</span>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${isDark ? 'text-amber-300' : 'text-amber-600'}`}>{BRANCH_LABELS[podiumTop3[0].branch] || 'CSE'}</span>
                     
                     {/* XP Level Badge */}
                     <span className={`text-[10px] font-extrabold tracking-widest px-2.5 py-0.5 rounded border bg-gradient-to-r ${level.color} mt-2 shadow-[0_0_8px_rgba(245,158,11,0.1)]`}>
                       {level.badge}
                     </span>
 
-                    <span className="text-sm font-black text-amber-400 dark:text-amber-300 mt-2.5 bg-amber-400/10 border border-amber-400/20 px-4 py-1 rounded-full">
+                    <span className={`text-sm font-black mt-2.5 border px-4 py-1 rounded-full ${isDark ? 'text-amber-400 bg-amber-400/10 border-amber-400/20' : 'text-amber-700 bg-amber-50 border-amber-250'}`}>
                       {getMetricString(podiumTop3[0])}
                     </span>
                   </div>
 
                   {/* Pedestal Step */}
-                  <div className="hidden md:flex w-32 h-28 bg-gradient-to-b from-amber-400/20 to-amber-500/5 border-t-2 border-x border-amber-400/30 shadow-[0_0_20px_rgba(245,158,11,0.1)] rounded-t-2xl items-center justify-center font-black text-amber-450 text-lg">I</div>
+                  <div className={`hidden md:flex w-32 h-28 border-t-2 border-x rounded-t-2xl items-center justify-center font-black text-lg ${isDark ? 'from-amber-400/20 to-amber-500/5 bg-gradient-to-b border-amber-400/30 text-amber-450 shadow-[0_0_20px_rgba(245,158,11,0.1)]' : 'bg-amber-100 border-amber-300 text-amber-700 shadow-[0_4px_10px_rgba(0,0,0,0.05)]'}`}>I</div>
                 </motion.div>
               );
             })()}
@@ -335,22 +337,22 @@ export const Leaderboard: React.FC = () => {
                         {renderAvatar(podiumTop3[2].photoURL, "w-16 h-16 text-3xl")}
                         <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-amber-700 border-2 border-[#0A0A0C] text-white rounded-full text-xs font-bold shadow-lg shadow-black/40">🥉</span>
                       </div>
-                      <h4 className="font-extrabold text-white dark:text-slate-200 text-sm mt-3 hover:text-indigo-400 transition-colors duration-200">{podiumTop3[2].displayName}</h4>
+                      <h4 className={`font-extrabold text-sm mt-3 hover:text-indigo-400 transition-colors duration-200 ${isDark ? 'text-white' : 'text-slate-800'}`}>{podiumTop3[2].displayName}</h4>
                     </div>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[2].branch] || 'ECE'}</span>
+                    <span className={`text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>{BRANCH_LABELS[podiumTop3[2].branch] || 'ECE'}</span>
                     
                     {/* XP Level Badge */}
                     <span className={`text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded border bg-gradient-to-r ${level.color} mt-2 shadow-sm`}>
                       {level.badge}
                     </span>
 
-                    <span className="text-xs font-bold text-amber-750 dark:text-amber-600 mt-2.5 bg-white/5 border border-white/[0.04] px-3 py-0.5 rounded-full">
+                    <span className={`text-xs font-bold mt-2.5 border px-3 py-0.5 rounded-full ${isDark ? 'text-slate-350 bg-white/5 border-white/[0.04]' : 'text-amber-700 bg-amber-50 border-amber-200'}`}>
                       {getMetricString(podiumTop3[2])}
                     </span>
                   </div>
 
                   {/* Pedestal Step */}
-                  <div className="hidden md:flex w-24 h-8 bg-gradient-to-b from-amber-700/15 to-amber-800/5 border-t-2 border-x border-amber-700/20 shadow-[0_0_10px_rgba(180,83,9,0.04)] rounded-t-2xl items-center justify-center font-black text-amber-700 text-sm">III</div>
+                  <div className={`hidden md:flex w-24 h-8 border-t-2 border-x rounded-t-2xl items-center justify-center font-black text-sm ${isDark ? 'from-amber-700/15 to-amber-800/5 bg-gradient-to-b border-amber-700/20 text-amber-700 shadow-[0_0_10px_rgba(180,83,9,0.04)]' : 'bg-amber-100/50 border-amber-300 text-amber-800 shadow-[0_4px_10px_rgba(0,0,0,0.05)]'}`}>III</div>
                 </motion.div>
               );
             })()}
@@ -397,15 +399,15 @@ export const Leaderboard: React.FC = () => {
             <select
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full md:w-44 bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-800 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold"
+              className={`w-full md:w-44 border text-white rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold ${isDark ? 'bg-slate-900 border-white/[0.08] text-white' : 'bg-white border-slate-200 text-slate-800'}`}
             >
-              <option value="all">🌐 All Departments</option>
-              <option value="cse">💻 CSE</option>
-              <option value="aiml">🧠 AI & ML</option>
-              <option value="ds">📊 DS</option>
-              <option value="ece">🔌 ECE</option>
-              <option value="mechanical">⚙️ Mechanical</option>
-              <option value="civil">🏗️ Civil</option>
+              <option value="all" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>🌐 All Departments</option>
+              <option value="cse" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>💻 CSE</option>
+              <option value="aiml" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>🧠 AI & ML</option>
+              <option value="ds" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>📊 DS</option>
+              <option value="ece" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>🔌 ECE</option>
+              <option value="mechanical" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>⚙️ Mechanical</option>
+              <option value="civil" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>🏗️ Civil</option>
             </select>
 
             {/* Search Input */}
@@ -416,7 +418,7 @@ export const Leaderboard: React.FC = () => {
                 placeholder="Search peers by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#1A1A24]/60 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-800 rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold placeholder:text-slate-500"
+                className={`w-full border rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold placeholder:text-slate-500 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-white border-slate-200 text-slate-800'}`}
               />
             </div>
           </div>
@@ -432,14 +434,14 @@ export const Leaderboard: React.FC = () => {
               ))}
             </div>
           ) : processedList.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 font-bold text-xs">
+            <div className={`p-8 text-center font-bold text-xs ${isDark ? 'text-slate-550' : 'text-slate-500'}`}>
               No matching records found for current filters.
             </div>
           ) : (
             <div className="flex flex-col gap-2.5">
               
               {/* Leaderboard Row Header */}
-              <div className="px-5 py-2 flex items-center text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+              <div className={`px-5 py-2 flex items-center text-[10px] font-extrabold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-550'}`}>
                 <span className="w-12">Rank</span>
                 <span className="flex-1 pl-4">Student</span>
                 <span className="w-24 text-center">Class</span>
@@ -458,14 +460,18 @@ export const Leaderboard: React.FC = () => {
                 return (
                   <GlassPanel
                     key={peer.uid}
-                    className={`px-5 py-3.5 flex items-center border hover:border-white/10 dark:hover:border-slate-700 transition-all hover:scale-[1.005] duration-200 ${
+                    className={`px-5 py-3.5 flex items-center border hover:scale-[1.005] duration-200 ${
                       isMe 
-                        ? 'bg-indigo-600/10 dark:bg-indigo-950/20 border-indigo-500/30 dark:border-indigo-800/40 shadow shadow-indigo-600/5' 
-                        : 'bg-[#121218]/30 dark:bg-slate-900/[0.02] border-white/[0.04] dark:border-slate-800/40'
+                        ? isDark 
+                          ? 'bg-indigo-600/10 border-indigo-500/30 text-white shadow shadow-indigo-950/10' 
+                          : 'bg-indigo-50 border-indigo-250 text-indigo-900 shadow shadow-indigo-100/50' 
+                        : isDark 
+                          ? 'bg-[#121218]/30 border-white/[0.04] text-white' 
+                          : 'bg-white border-slate-100 shadow-sm text-slate-800'
                     }`}
                   >
                     {/* Rank Badge */}
-                    <span className="w-12 text-sm font-extrabold text-slate-400">
+                    <span className={`w-12 text-sm font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       #{rankNum}
                     </span>
 
@@ -476,12 +482,12 @@ export const Leaderboard: React.FC = () => {
                     >
                       {renderAvatar(peer.photoURL, "w-9 h-9 text-lg")}
                       <div className="min-w-0 text-left">
-                        <span className="font-extrabold text-white dark:text-slate-100 text-xs leading-none flex items-center gap-1.5 group-hover:text-indigo-400 transition-colors">
+                        <span className={`font-extrabold text-xs leading-none flex items-center gap-1.5 group-hover:text-indigo-500 transition-colors ${isDark ? 'text-white' : 'text-slate-850'}`}>
                           {peer.displayName}
-                          {isMe && <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-extrabold">YOU</span>}
+                          {isMe && <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-500 border border-indigo-500/30 font-extrabold">YOU</span>}
                         </span>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="block text-[10px] text-slate-500 font-semibold">@{peer.username}</span>
+                          <span className={`block text-[10px] font-semibold ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>@{peer.username}</span>
                           <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded border bg-gradient-to-r ${level.color}`}>
                             {level.badge}
                           </span>
@@ -490,32 +496,32 @@ export const Leaderboard: React.FC = () => {
                     </div>
 
                     {/* Class Year */}
-                    <span className="w-24 text-center text-xs font-bold text-slate-400">
+                    <span className={`w-24 text-center text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                       {peer.year} Year
                     </span>
 
                     {/* Department tag */}
                     <div className="w-28 flex justify-center">
-                      <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full border border-white/[0.04] bg-white/[0.02] text-slate-400">
+                      <span className={`text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full border ${isDark ? 'border-white/[0.04] bg-white/[0.02] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
                         {BRANCH_LABELS[peer.branch] || 'CSE'}
                       </span>
                     </div>
 
                     {/* CGPA */}
-                    <span className="w-20 text-center text-xs font-extrabold text-slate-400">
+                    <span className={`w-20 text-center text-xs font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                       {peer.cgpa > 0 ? peer.cgpa.toFixed(2) : 'N/A'}
                     </span>
 
                     {/* Sorted score metric + Level Progress Bar */}
                     <div className="w-24 flex flex-col items-end gap-1 pl-2">
-                      <span className="text-xs font-extrabold text-white dark:text-slate-200 flex items-center justify-end gap-1.5">
+                      <span className={`text-xs font-extrabold flex items-center justify-end gap-1.5 ${isDark ? 'text-white' : 'text-slate-800'}`}>
                         {sortBy === 'points' && <Award className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />}
                         {sortBy === 'uploads' && <BookOpen className="w-3.5 h-3.5 text-indigo-400" />}
                         {sortBy === 'cgpa' && <ArrowUp className="w-3.5 h-3.5 text-indigo-400 animate-bounce-slow" />}
                         {getMetricString(peer)}
                       </span>
                       {sortBy === 'points' && (
-                        <div className="w-16 h-1 bg-slate-950/80 border border-white/5 rounded-full overflow-hidden" title={`${progressPct}% towards next level`}>
+                        <div className={`w-16 h-1 border rounded-full overflow-hidden ${isDark ? 'bg-slate-950/80 border-white/5' : 'bg-slate-200 border-slate-350'}`} title={`${progressPct}% towards next level`}>
                           <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style={{ width: `${progressPct}%` }} />
                         </div>
                       )}

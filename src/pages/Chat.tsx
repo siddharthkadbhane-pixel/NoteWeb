@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isMockMode } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { renderAvatar } from '../utils/avatar';
 import { GlassPanel } from '../components/ui/GlassPanel';
@@ -69,6 +70,7 @@ interface ChatMessage {
 
 export const Chat: React.FC = () => {
   const { user, userProfile, isGuest } = useAuth();
+  const { isDark } = useTheme();
   const { error: toastError, info } = useToast();
   const navigate = useNavigate();
   
@@ -469,7 +471,7 @@ export const Chat: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100dvh-4rem)] w-full py-8 px-4 md:px-8 relative overflow-hidden flex flex-col items-center bg-[#F8F9FA] text-[#0F172A] dark:bg-[#0A0A0C] dark:text-[#E2E8F0]">
+    <div className={`min-h-[calc(100dvh-4rem)] w-full py-8 px-4 md:px-8 relative overflow-hidden flex flex-col items-center transition-colors duration-300 ${isDark ? 'bg-[#0A0A0C] text-[#E2E8F0]' : 'bg-slate-50 text-slate-800'}`}>
       {/* Visual background accents */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" />
@@ -477,19 +479,19 @@ export const Chat: React.FC = () => {
       <div className="w-full max-w-4xl flex-1 flex flex-col gap-4 z-10 relative">
         
         {/* Chat Warning Banner */}
-        <GlassPanel className="p-4 bg-[#121218]/45 border border-white/[0.08] rounded-2xl flex items-center justify-between gap-3 text-left">
+        <GlassPanel className={`p-4 border rounded-2xl flex items-center justify-between gap-3 text-left ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200 shadow-sm'}`}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
               <MessageSquare className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+              <h3 className={`text-sm font-bold flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-slate-800'}`}>
                 Campus Chat Lounge
                 <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   LIVE FEED
                 </span>
               </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">Connect and coordinate with fellow engineers across all college departments</p>
+              <p className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Connect and coordinate with fellow engineers across all college departments</p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-1.5 text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl text-xs font-bold">
@@ -499,15 +501,15 @@ export const Chat: React.FC = () => {
         </GlassPanel>
 
         {/* Self-Destruct Ticker info */}
-        <div className="flex items-center gap-2 p-3 bg-rose-500/5 border border-rose-500/10 rounded-xl text-xs text-rose-300 text-left">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-400" />
+        <div className={`flex items-center gap-2 p-3 border rounded-xl text-xs text-left ${isDark ? 'bg-rose-500/5 border-rose-500/10 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700 font-medium'}`}>
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-450" />
           <p>
             <strong>Self-Destruct System:</strong> Messages will automatically expire and permanently self-destruct from the database after 7 days. PDF sharing is strictly prohibited (Photos only).
           </p>
         </div>
 
         {/* Chat window body */}
-        <GlassPanel className="flex-1 min-h-[400px] bg-[#121218]/30 border border-white/[0.08] rounded-3xl p-6 flex flex-col justify-between overflow-hidden relative">
+        <GlassPanel className={`flex-1 min-h-[400px] rounded-3xl p-6 flex flex-col justify-between overflow-hidden relative border ${isDark ? 'bg-[#121218]/30 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'}`}>
           
           {/* Scrollable messages zone */}
           <div className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[500px]">
@@ -519,7 +521,7 @@ export const Chat: React.FC = () => {
               <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-slate-500 py-16">
                 <div className="w-12 h-12 rounded-full bg-slate-900 border border-white/5 flex items-center justify-center text-indigo-400 text-xl">💬</div>
                 <div>
-                  <h4 className="font-bold text-slate-800 dark:text-white text-sm">Quiet Room...</h4>
+                  <h4 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>Quiet Room...</h4>
                   <p className="text-xs text-slate-500 mt-1 max-w-xs">No active chats in the last 7 days. Send a message to start the campus vibe!</p>
                 </div>
               </div>
@@ -542,10 +544,10 @@ export const Chat: React.FC = () => {
                     {/* Chat Bubble */}
                     <div className="max-w-[70%] space-y-1">
                       {/* Name Header */}
-                      <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-400 tracking-wider">
+                      <div className={`flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                         <span 
                           onClick={() => msg.sender_uid && navigate(`/profile/${msg.sender_uid}`)} 
-                          className="hover:text-indigo-400 transition-colors cursor-pointer"
+                          className="hover:text-indigo-500 transition-colors cursor-pointer"
                         >
                           {msg.sender_name}
                         </span>
@@ -555,8 +557,10 @@ export const Chat: React.FC = () => {
                       {/* Content Card */}
                       <div className={`p-3.5 rounded-2xl border text-xs font-medium leading-relaxed break-words text-left ${
                         isMe 
-                          ? 'bg-indigo-600 border-indigo-500 text-white rounded-br-none shadow-md shadow-indigo-600/10' 
-                          : 'bg-white border-slate-200 text-slate-850 dark:bg-[#181824]/80 dark:border-white/[0.04] dark:text-slate-200 rounded-bl-none'
+                          ? 'bg-indigo-600 border-indigo-500 text-white rounded-br-none shadow shadow-indigo-600/10' 
+                          : isDark
+                            ? 'bg-[#181824]/80 border-white/[0.04] text-slate-200 rounded-bl-none'
+                            : 'bg-slate-50 border-slate-200 text-slate-800 rounded-bl-none shadow-sm'
                       }`}>
                         {msg.content}
 
@@ -590,13 +594,13 @@ export const Chat: React.FC = () => {
 
           {/* Image preview drawer */}
           {selectedImage && (
-            <div className="p-3 bg-slate-950/50 border border-white/[0.06] rounded-2xl mb-4 flex items-center justify-between gap-4">
+            <div className={`p-3 border rounded-2xl mb-4 flex items-center justify-between gap-4 ${isDark ? 'bg-slate-950/50 border-white/[0.06]' : 'bg-slate-100 border-slate-200'}`}>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 bg-black/50">
+                <div className={`w-12 h-12 rounded-lg overflow-hidden border ${isDark ? 'border-white/10 bg-black/50' : 'border-slate-250 bg-white'}`}>
                   <img src={selectedImage} alt="Attachment Thumbnail" className="w-full h-full object-cover" />
                 </div>
                 <div className="text-left">
-                  <span className="block text-xs font-bold text-white">Attachment Loaded</span>
+                  <span className={`block text-xs font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>Attachment Loaded</span>
                   <span className="block text-[9px] text-emerald-400 font-semibold uppercase tracking-wider">Ready to upload</span>
                 </div>
               </div>
@@ -613,10 +617,10 @@ export const Chat: React.FC = () => {
           {/* Footer controls input bar */}
           <form 
             onSubmit={handleSendMessage}
-            className="mt-4 pt-4 border-t border-white/[0.06] flex items-center gap-2 relative"
+            className={`mt-4 pt-4 border-t flex items-center gap-2 relative ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}
           >
             {isGuest ? (
-              <div className="w-full py-3 bg-slate-950/40 border border-white/[0.04] rounded-2xl text-xs font-semibold text-slate-500 flex items-center justify-center gap-1.5">
+              <div className={`w-full py-3 border rounded-2xl text-xs font-semibold text-slate-500 flex items-center justify-center gap-1.5 ${isDark ? 'bg-slate-950/40 border-white/[0.04]' : 'bg-slate-100 border-slate-200'}`}>
                 <Lock className="w-3.5 h-3.5" /> Guest Mode: Access is Read-Only. Register to join the chat.
               </div>
             ) : (
@@ -632,7 +636,7 @@ export const Chat: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-3 rounded-2xl border border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5 transition-all active:scale-95 cursor-pointer"
+                  className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
                   title="Attach Photo"
                 >
                   <ImageIcon className="w-5 h-5" />
@@ -644,7 +648,7 @@ export const Chat: React.FC = () => {
                   placeholder="Share a study update, ask a question..."
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  className="flex-1 bg-[#1A1A24]/60 border border-white/[0.08] text-white rounded-2xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-500"
+                  className={`flex-1 border rounded-2xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-500 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
                 />
 
                 {/* Submit button */}
