@@ -154,8 +154,10 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const checkIpStatus = async () => {
-    setLoading(true);
+  const checkIpStatus = async (isInitial = false) => {
+    if (isInitial) {
+      setLoading(true);
+    }
     try {
       const userIp = await fetchUserIp();
       setIp(userIp);
@@ -217,20 +219,22 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
     } catch (e) {
       console.warn("Failed to verify secure IP credentials:", e);
     } finally {
-      setLoading(false);
+      if (isInitial) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    checkIpStatus();
+    checkIpStatus(true); // Initial check with visible loading screen
 
-    // Setup periodic watchdog checking IP/hardware status every 10 seconds
-    const interval = setInterval(checkIpStatus, 10000);
+    // Setup periodic watchdog checking IP/hardware status silently every 10 seconds in the background
+    const interval = setInterval(() => checkIpStatus(false), 10000);
 
     // Listen for storage changes (clearing block) across browser tabs
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'noteweb-db-blocked_ips') {
-        checkIpStatus();
+        checkIpStatus(false);
       }
     };
     window.addEventListener('storage', handleStorageChange);
@@ -245,7 +249,7 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
           { event: '*', schema: 'public', table: 'blocked_ips' },
           () => {
             console.log('[IpBlockGuard] Real-time IP table change detected, refreshing...');
-            checkIpStatus();
+            checkIpStatus(false);
           }
         )
         .subscribe();
@@ -387,7 +391,7 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
               </div>
 
               <button
-                onClick={checkIpStatus}
+                onClick={() => checkIpStatus(true)}
                 className="w-full py-3 rounded-xl font-black text-xs text-slate-300 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer animate-pulse"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Check Approval Status
