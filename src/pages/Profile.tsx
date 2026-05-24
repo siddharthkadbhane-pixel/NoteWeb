@@ -139,12 +139,12 @@ const compressProfileImage = (base64Str: string, maxWidth = 150, maxHeight = 150
 
 
 const BRANCH_LABELS: Record<string, string> = {
-  computers: 'Computer Science (CSE)',
-  electronics: 'Electronics & Comm (ECE)',
-  mechanical: 'Mechanical & Civil',
-  maths: 'Mathematics',
-  science: 'Basic Science & Eng',
-  management: 'Management & Humanities'
+  cse: 'Computer Science & Engineering (CSE)',
+  aiml: 'AI & Machine Learning (AI & ML)',
+  ds: 'Data Science (DS)',
+  ece: 'Electronics & Comm (ECE)',
+  mechanical: 'Mechanical Engineering',
+  civil: 'Civil Engineering'
 };
 
 const YEAR_LABELS: Record<string, string> = {
@@ -203,7 +203,7 @@ export const Profile: React.FC = () => {
     if (userProfile && isViewingSelf) {
       setEditName(userProfile.displayName || '');
       setEditMobile(userProfile.mobileNo || '');
-      setEditBranch(userProfile.branch || 'computers');
+      setEditBranch(userProfile.branch || 'cse');
       setEditYear(userProfile.year || '1');
       setEditCgpa(userProfile.cgpa || '');
       setEditEmail(userProfile.email || '');
@@ -245,12 +245,12 @@ export const Profile: React.FC = () => {
         } else {
           setViewedProfile({
             uid: targetUid,
-            username: 'scholar_' + targetUid.substring(0, 5),
-            email: 'scholar@noteweb.local',
+            username: 'student_' + targetUid.substring(0, 5),
+            email: 'student@noteweb.local',
             displayName: 'Campus Student',
             mobileNo: '',
             year: '1',
-            branch: 'computers',
+            branch: 'cse',
             photoURL: '',
             role: 'student',
             createdAt: new Date(),
@@ -263,12 +263,12 @@ export const Profile: React.FC = () => {
       console.warn("Failed to fetch target user profile:", e);
       setViewedProfile({
         uid: targetUid,
-        username: 'scholar_' + targetUid.substring(0, 5),
-        email: 'scholar@noteweb.local',
+        username: 'student_' + targetUid.substring(0, 5),
+        email: 'student@noteweb.local',
         displayName: 'Campus Student',
         mobileNo: '',
         year: '1',
-        branch: 'computers',
+        branch: 'cse',
         photoURL: '',
         role: 'student',
         createdAt: new Date(),
@@ -632,12 +632,12 @@ export const Profile: React.FC = () => {
                     onChange={(e) => setEditBranch(e.target.value)}
                     className="w-full bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-850 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
                   >
-                    <option value="computers">💻 CSE</option>
-                    <option value="electronics">🔌 ECE</option>
-                    <option value="mechanical">⚙️ Mech & Civil</option>
-                    <option value="maths">📐 Maths</option>
-                    <option value="science">🔬 Basic Sciences</option>
-                    <option value="management">📊 Humanities</option>
+                    <option value="cse">💻 CSE</option>
+                    <option value="aiml">🧠 AI & ML</option>
+                    <option value="ds">📊 DS</option>
+                    <option value="ece">🔌 ECE</option>
+                    <option value="mechanical">⚙️ Mechanical</option>
+                    <option value="civil">🏗️ Civil</option>
                   </select>
                 </div>
 
@@ -802,7 +802,7 @@ export const Profile: React.FC = () => {
                   <Trophy className="w-4 h-4 text-yellow-500" />
                   <span>College Standing:</span>
                   <span className="text-white light-mode:text-slate-800 ml-auto">
-                    {(viewedProfile?.points || 0) > 300 ? '⭐ Elite Scholar' : (viewedProfile?.points || 0) > 100 ? '📘 Active Member' : '🌱 New Contributor'}
+                    {(viewedProfile?.points || 0) > 300 ? '⭐ Elite Contributor' : (viewedProfile?.points || 0) > 100 ? '📘 Active Member' : '🌱 New Contributor'}
                   </span>
                 </div>
               </div>
@@ -1010,7 +1010,7 @@ export const Profile: React.FC = () => {
                   <p className="text-xs text-slate-500 max-w-xs mt-1">
                     {isViewingSelf 
                       ? "You haven't uploaded any study notes yet. Click the contribution link in navigation to share!"
-                      : "This scholar hasn't uploaded any study notes yet."}
+                      : "This student hasn't uploaded any study notes yet."}
                   </p>
                 </div>
               </GlassPanel>
@@ -1072,7 +1072,7 @@ export const Profile: React.FC = () => {
                   <p className="text-xs text-slate-500 max-w-xs mt-1">
                     {isViewingSelf
                       ? "You haven't bookmarked any notes. Explore the public feed page and hit bookmark to collect them!"
-                      : "This scholar hasn't bookmarked any notes yet."}
+                      : "This student hasn't bookmarked any notes yet."}
                   </p>
                 </div>
               </GlassPanel>

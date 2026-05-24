@@ -289,7 +289,7 @@ export const Chat: React.FC = () => {
         sender_uid: user.uid,
         sender_name: userProfile.displayName || 'Student',
         sender_avatar: userProfile.photoURL || '',
-        sender_branch: userProfile.branch || 'computers',
+        sender_branch: userProfile.branch || 'cse',
         content: inputText.trim(),
         image_url: selectedImage || undefined,
         created_at: new Date().toISOString(),
@@ -343,7 +343,7 @@ export const Chat: React.FC = () => {
               sender_uid: user.uid,
               sender_name: userProfile.displayName || 'Student',
               sender_avatar: userProfile.photoURL || '',
-              sender_branch: userProfile.branch || 'computers',
+              sender_branch: userProfile.branch || 'cse',
               content: msgPayload.content,
               image_url: msgPayload.image_url || undefined,
               created_at: msgPayload.created_at,
@@ -355,7 +355,7 @@ export const Chat: React.FC = () => {
               sender_id: user.uid,
               sender_name: userProfile.displayName || 'Student',
               sender_avatar: userProfile.photoURL || '',
-              sender_branch: userProfile.branch || 'computers',
+              sender_branch: userProfile.branch || 'cse',
               message: msgPayload.content,
               photo_url: msgPayload.image_url || null,
               created_at: msgPayload.created_at,
@@ -372,7 +372,7 @@ export const Chat: React.FC = () => {
                 sender_uid: user.uid,
                 sender_name: userProfile.displayName || 'Student',
                 sender_avatar: userProfile.photoURL || '',
-                sender_branch: userProfile.branch || 'computers',
+                sender_branch: userProfile.branch || 'cse',
                 content: msgPayload.content,
                 image_url: msgPayload.image_url || undefined,
                 created_at: msgPayload.created_at,
@@ -458,11 +458,12 @@ export const Chat: React.FC = () => {
 
   const getBranchIcon = (branch: string) => {
     switch (branch) {
-      case 'computers': return '💻';
-      case 'electronics': return '🔌';
+      case 'cse': return '💻';
+      case 'aiml': return '🧠';
+      case 'ds': return '📊';
+      case 'ece': return '🔌';
       case 'mechanical': return '⚙️';
-      case 'maths': return '📐';
-      case 'science': return '🔬';
+      case 'civil': return '🏗️';
       default: return '📚';
     }
   };

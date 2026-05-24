@@ -74,6 +74,40 @@ const uploadToRemoteFallback = async (file: File): Promise<string> => {
   }
 };
 
+const SEMESTER_SUBJECTS: Record<string, string[]> = {
+  "1/2": [
+    "Engineering Mathematics-I & II",
+    "Engineering Physics",
+    "Engineering Chemistry",
+    "Basic Electrical & Electronics",
+    "Programming for Problem Solving",
+    "Technical English"
+  ],
+  "3/4": [
+    "Discrete Mathematics",
+    "Data Structures & Algorithms",
+    "Object-Oriented Programming",
+    "Computer Organization & Architecture",
+    "Operating Systems",
+    "Database Management Systems"
+  ],
+  "5/6": [
+    "Design and Analysis of Algorithms",
+    "Formal Languages & Automata Theory",
+    "Computer Networks",
+    "Software Engineering",
+    "Artificial Intelligence",
+    "Compiler Design"
+  ],
+  "7/8": [
+    "Machine Learning",
+    "Cloud Computing / Cyber Security (Electives)",
+    "Distributed Systems",
+    "Entrepreneurship",
+    "Major Capstone Project Work & Industrial Internship"
+  ]
+};
+
 export const Upload: React.FC = () => {
   const { user, userProfile, isAdmin } = useAuth();
   const { success, error, info } = useToast();
@@ -85,9 +119,19 @@ export const Upload: React.FC = () => {
   const [categories, setCategories] = useState<{ id: string; branchId: string; name: string; description?: string }[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
 
+  // Note vs Question Paper toggle
+  const [uploadType, setUploadType] = useState<'notes' | 'paper'>('notes');
+  const [examYear, setExamYear] = useState('2026');
+  const [examType, setExamType] = useState('End-Term');
+
   const [file, setFile] = useState<File | null>(null);
+  const [semester, setSemester] = useState('1/2');
+  
+  // Custom Subject Selection
+  const [selectedPredefinedSubject, setSelectedPredefinedSubject] = useState('');
+  const [customSubject, setCustomSubject] = useState('');
   const [subject, setSubject] = useState('');
-  const [semester, setSemester] = useState('1');
+
   const [teacher, setTeacher] = useState('');
   const [description, setDescription] = useState('');
   const [generateAI, setGenerateAI] = useState(true);
@@ -98,6 +142,25 @@ export const Upload: React.FC = () => {
   const [aiStatus, setAiStatus] = useState<'idle' | 'extracting' | 'summarizing' | 'done'>('idle');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Synchronize dynamic predefined subject when semester range changes
+  useEffect(() => {
+    const defaultSubjects = SEMESTER_SUBJECTS[semester] || [];
+    if (defaultSubjects.length > 0) {
+      setSelectedPredefinedSubject(defaultSubjects[0]);
+    } else {
+      setSelectedPredefinedSubject('other');
+    }
+  }, [semester]);
+
+  // Synchronize actual subject state with dropdown or custom inputs
+  useEffect(() => {
+    if (selectedPredefinedSubject === 'other') {
+      setSubject(customSubject);
+    } else {
+      setSubject(selectedPredefinedSubject);
+    }
+  }, [selectedPredefinedSubject, customSubject]);
 
   // Fetch branches and categories dynamically on load
   useEffect(() => {
@@ -120,21 +183,21 @@ export const Upload: React.FC = () => {
 
         if (branchesList.length === 0) {
           branchesList = [
-            { id: 'computers', name: 'Computer Science' },
-            { id: 'maths', name: 'Mathematics' },
-            { id: 'science', name: 'Basic Science & Eng' },
-            { id: 'electronics', name: 'Electronics & Comm' },
-            { id: 'mechanical', name: 'Mechanical & Civil' },
-            { id: 'management', name: 'Management & Humanities' }
+            { id: 'cse', name: 'Computer Science & Engineering' },
+            { id: 'aiml', name: 'AI & Machine Learning' },
+            { id: 'ds', name: 'Data Science' },
+            { id: 'mechanical', name: 'Mechanical Engineering' },
+            { id: 'civil', name: 'Civil Engineering' },
+            { id: 'ece', name: 'Electronics & Comm Eng' }
           ];
         }
 
         if (categoriesList.length === 0) {
           categoriesList = [
-            { id: 'computers-dsa', branchId: 'computers', name: 'Data Structures & Algorithms' },
-            { id: 'computers-dbms', branchId: 'computers', name: 'Database Management Systems' },
-            { id: 'computers-os', branchId: 'computers', name: 'Operating Systems' },
-            { id: 'computers-webdev', branchId: 'computers', name: 'Web Development' }
+            { id: 'cse-dsa', branchId: 'cse', name: 'Data Structures & Algorithms' },
+            { id: 'cse-dbms', branchId: 'cse', name: 'Database Management Systems' },
+            { id: 'cse-os', branchId: 'cse', name: 'Operating Systems' },
+            { id: 'cse-webdev', branchId: 'cse', name: 'Web Development' }
           ];
         }
 
@@ -155,17 +218,26 @@ export const Upload: React.FC = () => {
     fetchData();
   }, []);
 
-  // Sync selected Category when selected Branch changes
+  // Sync selected Category when selected Branch changes or subject title changes
   useEffect(() => {
     if (selectedBranch && categories.length > 0) {
       const filtered = categories.filter(c => c.branchId === selectedBranch);
-      if (filtered.length > 0) {
+      
+      // Auto-match category ID with subject name if possible
+      const matched = filtered.find(c => 
+        c.name.toLowerCase() === subject.toLowerCase() || 
+        subject.toLowerCase().includes(c.name.toLowerCase())
+      );
+
+      if (matched) {
+        setSelectedCategory(matched.id);
+      } else if (filtered.length > 0) {
         setSelectedCategory(filtered[0].id);
       } else {
         setSelectedCategory('');
       }
     }
-  }, [selectedBranch, categories]);
+  }, [selectedBranch, categories, subject]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -411,13 +483,24 @@ export const Upload: React.FC = () => {
       const uploaderName = userProfile?.displayName || user.displayName || 'Student';
       const uploaderEmail = user.email || '';
 
+      // Support custom values if uploadType is a question paper
+      let finalSubject = subject.trim();
+      let finalTeacher = teacher.trim() || 'General / Unknown';
+      let finalDescription = description.trim() || 'No description provided.';
+      
+      if (uploadType === 'paper') {
+        finalSubject = `[QP - ${examYear} ${examType}] ${subject.trim()}`;
+        finalTeacher = `Exam Board (${examYear})`;
+        finalDescription = `Previous Year Question Paper for ${subject.trim()} - ${examType} (${examYear}). ${description.trim()}`.trim();
+      }
+
       const noteDoc = {
-        subject: subject.trim(),
+        subject: finalSubject,
         branch: finalBranch,
         category: finalCategory,
         semester: semester,
-        teacher: teacher.trim() || 'General / Unknown',
-        description: description.trim() || 'No description provided.',
+        teacher: finalTeacher,
+        description: finalDescription,
         pdf_url: downloadUrl,
         pdf_path: storagePath,
         file_name: file.name,
@@ -434,12 +517,12 @@ export const Upload: React.FC = () => {
       };
 
       const noteDocCamel = {
-        subject: subject.trim(),
+        subject: finalSubject,
         branch: finalBranch,
         category: finalCategory,
         semester: semester,
-        teacher: teacher.trim() || 'General / Unknown',
-        description: description.trim() || 'No description provided.',
+        teacher: finalTeacher,
+        description: finalDescription,
         pdfUrl: downloadUrl,
         pdfPath: storagePath,
         fileName: file.name,
@@ -642,20 +725,49 @@ export const Upload: React.FC = () => {
         {/* Title */}
         <div className="text-left mb-8">
           <h1 className="text-4xl font-extrabold tracking-tight text-white light-mode:text-slate-900 mb-2">
-            Share Your Study Notes
+            Share Your Syllabus Library
           </h1>
           <p className="text-slate-400 light-mode:text-slate-500 font-medium text-sm">
-            Upload PDF notes, choose categories, and enrich them with automatic Gemini AI summaries.
+            Publish high-quality study notes or previous year exam papers, cataloged perfectly by department and semester.
           </p>
         </div>
 
         {/* Upload Form */}
         <GlassPanel glowBorder className="bg-[#16161D]/30 light-mode:bg-white/80 p-8 shadow-xl">
           <form onSubmit={handleSubmit} className="space-y-6 text-left">
+            
+            {/* Note vs Question Paper Toggle */}
+            <div className="flex items-center gap-1.5 p-1 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-6">
+              <button
+                type="button"
+                onClick={() => setUploadType('notes')}
+                className={`
+                  flex-1 py-3 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer
+                  ${uploadType === 'notes'
+                    ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
+                    : 'text-slate-400 hover:text-slate-200'}
+                `}
+              >
+                <FileText className="w-4 h-4" /> Study Notes
+              </button>
+              <button
+                type="button"
+                onClick={() => setUploadType('paper')}
+                className={`
+                  flex-1 py-3 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer
+                  ${uploadType === 'paper'
+                    ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
+                    : 'text-slate-400 hover:text-slate-200'}
+                `}
+              >
+                <Sparkles className="w-4 h-4" /> Previous Year Papers
+              </button>
+            </div>
+
             {/* Drag & Drop PDF */}
             <div className="flex flex-col gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
-                Select Notes Document
+                Select Notes Document (PDF)
               </span>
               {!file ? (
                 <div
@@ -717,20 +829,11 @@ export const Upload: React.FC = () => {
 
             {/* Inputs grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="md:col-span-2">
-                <Input
-                  label="Subject Title"
-                  placeholder="e.g. Analysis of Algorithms"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* Branch Selector */}
+              
+              {/* Department Selector */}
               <div className="flex flex-col gap-1.5 text-left">
                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
-                  Curriculum Branch
+                  Academic Department
                 </label>
                 <select
                   value={selectedBranch}
@@ -745,10 +848,48 @@ export const Upload: React.FC = () => {
                 </select>
               </div>
 
-              {/* Category Selector */}
+              {/* Semester Selector */}
+              <div className="flex flex-col gap-1.5 text-left">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
+                  Academic Semester
+                </label>
+                <select
+                  value={semester}
+                  onChange={(e) => setSemester(e.target.value)}
+                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
+                >
+                  <option value="1/2" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">Semester 1/2</option>
+                  <option value="3/4" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">Semester 3/4</option>
+                  <option value="5/6" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">Semester 5/6</option>
+                  <option value="7/8" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">Semester 7/8</option>
+                </select>
+              </div>
+
+              {/* Predefined Subject Selector */}
               <div className="flex flex-col gap-1.5 text-left">
                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
                   Subject Category
+                </label>
+                <select
+                  value={selectedPredefinedSubject}
+                  onChange={(e) => setSelectedPredefinedSubject(e.target.value)}
+                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
+                >
+                  {(SEMESTER_SUBJECTS[semester] || []).map((sub) => (
+                    <option key={sub} value={sub} className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">
+                      {sub}
+                    </option>
+                  ))}
+                  <option value="other" className="bg-[#16161D] text-indigo-400 font-bold light-mode:bg-white">
+                    ➕ Add Custom Subject...
+                  </option>
+                </select>
+              </div>
+
+              {/* Category (Fallback mapping visual placeholder or hidden selector) */}
+              <div className="flex flex-col gap-1.5 text-left">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
+                  Sub-Topic / Category Folder
                 </label>
                 <select
                   value={selectedCategory}
@@ -763,42 +904,82 @@ export const Upload: React.FC = () => {
                       </option>
                     ))
                   ) : (
-                    <option value="" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">No subjects registered</option>
+                    <option value="" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">General Catalog</option>
                   )}
                 </select>
               </div>
 
-              <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
-                  Semester
-                </label>
-                <select
-                  value={semester}
-                  onChange={(e) => setSemester(e.target.value)}
-                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
-                >
-                  <option value="1" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">1st Semester</option>
-                  <option value="2" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">2nd Semester</option>
-                  <option value="3" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">3rd Semester</option>
-                  <option value="4" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">4th Semester</option>
-                  <option value="5" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">5th Semester</option>
-                  <option value="6" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">6th Semester</option>
-                  <option value="7" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">7th Semester</option>
-                  <option value="8" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">8th Semester</option>
-                </select>
-              </div>
+              {/* Custom Subject text field */}
+              {selectedPredefinedSubject === 'other' && (
+                <div className="md:col-span-2">
+                  <Input
+                    label="Custom Subject Title"
+                    placeholder="Enter the title of the custom subject..."
+                    value={customSubject}
+                    onChange={(e) => setCustomSubject(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
 
-              <Input
-                label="Teacher Name (Optional)"
-                placeholder="e.g. Dr. Ramesh Kumar"
-                value={teacher}
-                onChange={(e) => setTeacher(e.target.value)}
-              />
+              {/* Dynamic inputs for Question Papers */}
+              {uploadType === 'paper' ? (
+                <>
+                  {/* Exam Year */}
+                  <div className="flex flex-col gap-1.5 text-left">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
+                      Exam Year
+                    </label>
+                    <select
+                      value={examYear}
+                      onChange={(e) => setExamYear(e.target.value)}
+                      className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
+                    >
+                      <option value="2026" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">2026 (Current)</option>
+                      <option value="2025" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">2025</option>
+                      <option value="2024" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">2024</option>
+                      <option value="2023" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">2023</option>
+                      <option value="2022" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">2022</option>
+                      <option value="2021" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">2021</option>
+                    </select>
+                  </div>
+
+                  {/* Exam Type */}
+                  <div className="flex flex-col gap-1.5 text-left">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
+                      Exam Session Type
+                    </label>
+                    <select
+                      value={examType}
+                      onChange={(e) => setExamType(e.target.value)}
+                      className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
+                    >
+                      <option value="Mid-Term" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">Mid-Term Board Exams</option>
+                      <option value="End-Term" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">End-Term Semester Exams</option>
+                      <option value="Supplementary" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">Supplementary Exams</option>
+                      <option value="Practical" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">Practical / Lab Exams</option>
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Standard Notes Teacher Input */}
+                  <Input
+                    label="Teacher Name (Optional)"
+                    placeholder="e.g. Dr. Alex Patel"
+                    value={teacher}
+                    onChange={(e) => setTeacher(e.target.value)}
+                  />
+                  
+                  {/* Placeholder to balance grid columns */}
+                  <div className="hidden md:block" />
+                </>
+              )}
 
               <div className="md:col-span-2">
                 <Input
-                  label="Description"
-                  placeholder="Describe what these notes cover..."
+                  label="Description / Syllabus Coverage"
+                  placeholder="e.g. Covers Unit 1-3 vector analysis, integration, and theorems."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />

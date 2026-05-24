@@ -41,92 +41,85 @@ interface CategoryType {
 
 const defaultBranches: BranchType[] = [
   {
-    id: 'computers',
-    name: 'Computer Science',
+    id: 'cse',
+    name: 'Computer Science & Engineering',
     description: 'Data Structures, Algorithms, Software Engineering, Web Dev, Databases, and operating systems.',
     icon: 'code',
     color: 'from-[#00F2FE] to-[#4FACFE]',
     shadowColor: 'rgba(0, 242, 254, 0.25)',
-    notesCount: 'CS'
+    notesCount: 'CSE'
   },
   {
-    id: 'maths',
-    name: 'Mathematics',
-    description: 'Calculus, Linear Algebra, Discrete Math, Differential Equations, Probability, and Statistics.',
-    icon: 'binary',
+    id: 'aiml',
+    name: 'AI & Machine Learning',
+    description: 'Neural Networks, Deep Learning, Computer Vision, Natural Language Processing, and Robotics.',
+    icon: 'sparkles',
     color: 'from-[#7F00FF] to-[#E100FF]',
     shadowColor: 'rgba(127, 0, 255, 0.25)',
-    notesCount: 'M'
+    notesCount: 'AI&ML'
   },
   {
-    id: 'science',
-    name: 'Basic Science & Eng',
-    description: 'Engineering Physics, Chemistry, Mechanics, Electrical circuits, Thermodynamics, and materials.',
-    icon: 'atom',
+    id: 'ds',
+    name: 'Data Science',
+    description: 'Data Analytics, Statistical Learning, Big Data Processing, Predictive Modeling, and Visualization.',
+    icon: 'binary',
+    color: 'from-[#00FF87] to-[#60EFFF]',
+    shadowColor: 'rgba(0, 255, 135, 0.25)',
+    notesCount: 'DS'
+  },
+  {
+    id: 'mechanical',
+    name: 'Mechanical Engineering',
+    description: 'Thermodynamics, Solid Mechanics, Fluid Dynamics, CAD Design, and Automobile Systems.',
+    icon: 'settings',
+    color: 'from-[#F35555] to-[#FEB47B]',
+    shadowColor: 'rgba(243, 85, 85, 0.25)',
+    notesCount: 'ME'
+  },
+  {
+    id: 'civil',
+    name: 'Civil Engineering',
+    description: 'Structural Analysis, Geotechnical engineering, Surveying, and Environmental infrastructure.',
+    icon: 'compass',
     color: 'from-[#FF0844] to-[#FFB199]',
     shadowColor: 'rgba(255, 8, 68, 0.25)',
-    notesCount: 'BSE'
+    notesCount: 'CE'
   },
   {
-    id: 'electronics',
-    name: 'Electronics & Comm',
+    id: 'ece',
+    name: 'Electronics & Comm Eng',
     description: 'Microprocessors, VLSI design, Signal processing, Communication systems, and analog hardware.',
     icon: 'cpu',
     color: 'from-[#00FF87] to-[#60EFFF]',
     shadowColor: 'rgba(0, 255, 135, 0.25)',
     notesCount: 'ECE'
-  },
-  {
-    id: 'mechanical',
-    name: 'Mechanical & Civil',
-    description: 'Solid mechanics, Fluid dynamics, Kinematics, CAD design, Structural analysis, and geotech.',
-    icon: 'settings',
-    color: 'from-[#F35555] to-[#FEB47B]',
-    shadowColor: 'rgba(243, 85, 85, 0.25)',
-    notesCount: 'ME/CE'
-  },
-  {
-    id: 'management',
-    name: 'Management & Humanities',
-    description: 'Economics, Professional ethics, Business communication, Organizational behavior, and entrepreneurship.',
-    icon: 'compass',
-    color: 'from-[#FF007F] to-[#7F00FF]',
-    shadowColor: 'rgba(255, 0, 127, 0.25)',
-    notesCount: 'MGT'
   }
 ];
 
 const defaultCategories: CategoryType[] = [
   // CS Branch Subjects
-  { id: 'computers-dsa', branchId: 'computers', name: 'Data Structures & Algorithms', description: 'Arrays, Linked Lists, Stacks, Queues, Trees, Graphs, sorting and searching algorithms.' },
-  { id: 'computers-dbms', branchId: 'computers', name: 'Database Management Systems', description: 'Relational databases, SQL queries, normalization, transactions, and indexing.' },
-  { id: 'computers-os', branchId: 'computers', name: 'Operating Systems', description: 'Processes, threads, CPU scheduling, memory management, file systems, and concurrency.' },
-  { id: 'computers-webdev', branchId: 'computers', name: 'Web Development', description: 'HTML, CSS, JavaScript, React, Node.js, REST APIs, and modern full-stack engineering.' },
+  { id: 'cse-dsa', branchId: 'cse', name: 'Data Structures & Algorithms', description: 'Arrays, Linked Lists, Stacks, Queues, Trees, Graphs, sorting and searching algorithms.' },
+  { id: 'cse-dbms', branchId: 'cse', name: 'Database Management Systems', description: 'Relational databases, SQL queries, normalization, transactions, and indexing.' },
+  { id: 'cse-os', branchId: 'cse', name: 'Operating Systems', description: 'Processes, threads, CPU scheduling, memory management, file systems, and concurrency.' },
+  { id: 'cse-webdev', branchId: 'cse', name: 'Web Development', description: 'HTML, CSS, JavaScript, React, Node.js, REST APIs, and modern full-stack engineering.' },
   
-  // Mathematics Branch Subjects
-  { id: 'maths-calculus', branchId: 'maths', name: 'Calculus & Integration', description: 'Limits, derivatives, integrals, series, multivariable calculus, and vector algebra.' },
-  { id: 'maths-linear-algebra', branchId: 'maths', name: 'Linear Algebra & Matrices', description: 'Matrix operations, vector spaces, eigenvalues, eigenvectors, and linear transformations.' },
-  { id: 'maths-probability', branchId: 'maths', name: 'Probability & Statistics', description: 'Random variables, probability distributions, hypothesis testing, and regression analysis.' },
+  // AI & ML
+  { id: 'aiml-ml', branchId: 'aiml', name: 'Artificial Intelligence & Machine Learning', description: 'Supervised/unsupervised learning, regression, classification, clustering, neural networks.' },
   
-  // Basic Science Branch Subjects
-  { id: 'science-physics', branchId: 'science', name: 'Engineering Physics', description: 'Optics, quantum mechanics, lasers, fiber optics, electromagnetism, and semiconductor physics.' },
-  { id: 'science-chemistry', branchId: 'science', name: 'Engineering Chemistry', description: 'Water technology, battery chemistry, polymers, fuels, corrosion, and green chemistry.' },
-  { id: 'science-mechanics', branchId: 'science', name: 'Engineering Mechanics', description: 'Force systems, equilibrium, friction, centroids, moment of inertia, and kinematics.' },
+  // Data Science
+  { id: 'ds-analytics', branchId: 'ds', name: 'Data Analytics', description: 'Exploratory data analysis, statistical tests, data wrangling, and descriptive metrics.' },
   
   // Electronics Branch Subjects
-  { id: 'electronics-microprocessors', branchId: 'electronics', name: 'Microprocessors & Embedded Systems', description: '8085/8086 architectures, assembly programming, interfacing, and microcontrollers like Arduino.' },
-  { id: 'electronics-digital', branchId: 'electronics', name: 'Digital Electronics', description: 'Number systems, logic gates, Boolean algebra, combinational and sequential logic circuits.' },
-  { id: 'electronics-signals', branchId: 'electronics', name: 'Signals & Systems', description: 'Continuous & discrete time signals, Fourier transform, Laplace transform, and LTI systems.' },
+  { id: 'ece-microprocessors', branchId: 'ece', name: 'Microprocessors & Embedded Systems', description: '8085/8086 architectures, assembly programming, interfacing, and microcontrollers like Arduino.' },
+  { id: 'ece-digital', branchId: 'ece', name: 'Digital Electronics', description: 'Number systems, logic gates, Boolean algebra, combinational and sequential logic circuits.' },
+  { id: 'ece-signals', branchId: 'ece', name: 'Signals & Systems', description: 'Signals & Systems, continuous & discrete time signals, Fourier transform, Laplace transform.' },
   
   // Mechanical Branch Subjects
   { id: 'mechanical-thermo', branchId: 'mechanical', name: 'Thermodynamics', description: 'Laws of thermodynamics, heat engines, entropy, pure substances, and power cycles.' },
   { id: 'mechanical-fluid', branchId: 'mechanical', name: 'Fluid Mechanics', description: 'Fluid properties, pressure, flow kinematics, Bernoulli equation, and dimensional analysis.' },
-  { id: 'mechanical-structures', branchId: 'mechanical', name: 'Structural Analysis', description: 'Trusses, beams, columns, bending moments, shear forces, and stress analysis.' },
-  
-  // Management Branch Subjects
-  { id: 'management-economics', branchId: 'management', name: 'Engineering Economics', description: 'Time value of money, cash flow, cost benefit analysis, inflation, and financial statements.' },
-  { id: 'management-ethics', branchId: 'management', name: 'Professional Ethics', description: 'Human values, engineering ethics, safety, rights, responsibilities, and global issues.' },
-  { id: 'management-entrepreneurship', branchId: 'management', name: 'Entrepreneurship Development', description: 'Business plans, startup mechanics, funding, market research, and project management.' }
+
+  // Civil Branch Subjects
+  { id: 'civil-structures', branchId: 'civil', name: 'Structural Analysis', description: 'Trusses, beams, columns, bending moments, shear forces, and stress analysis.' }
 ];
 
 const gradientPresets = [
@@ -251,7 +244,7 @@ export const Categories: React.FC = () => {
       }
 
       // Sort branches by standard order
-      const coreOrder = ['computers', 'maths', 'science', 'electronics', 'mechanical', 'management'];
+      const coreOrder = ['cse', 'aiml', 'ds', 'ece', 'mechanical', 'civil'];
       loadedBranches.sort((a, b) => {
         const indexA = coreOrder.indexOf(a.id);
         const indexB = coreOrder.indexOf(b.id);

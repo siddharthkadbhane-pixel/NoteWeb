@@ -107,6 +107,7 @@ export const Feed: React.FC = () => {
   useEffect(() => { userRef.current = user; }, [user]);
 
   // Search & Filter state
+  const [feedType, setFeedType] = useState<'notes' | 'papers'>('notes');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSemester, setSelectedSemester] = useState<string>('all');
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
@@ -161,21 +162,21 @@ export const Feed: React.FC = () => {
 
         if (branchesList.length === 0) {
           branchesList = [
-            { id: 'computers', name: 'Computer Science' },
-            { id: 'maths', name: 'Mathematics' },
-            { id: 'science', name: 'Basic Science & Eng' },
-            { id: 'electronics', name: 'Electronics & Comm' },
-            { id: 'mechanical', name: 'Mechanical & Civil' },
-            { id: 'management', name: 'Management & Humanities' }
+            { id: 'cse', name: 'Computer Science & Engineering' },
+            { id: 'aiml', name: 'AI & Machine Learning' },
+            { id: 'ds', name: 'Data Science' },
+            { id: 'mechanical', name: 'Mechanical Engineering' },
+            { id: 'civil', name: 'Civil Engineering' },
+            { id: 'ece', name: 'Electronics & Comm Eng' }
           ];
         }
 
         if (categoriesList.length === 0) {
           categoriesList = [
-            { id: 'computers-dsa', branchId: 'computers', name: 'Data Structures & Algorithms' },
-            { id: 'computers-dbms', branchId: 'computers', name: 'Database Management Systems' },
-            { id: 'computers-os', branchId: 'computers', name: 'Operating Systems' },
-            { id: 'computers-webdev', branchId: 'computers', name: 'Web Development' }
+            { id: 'cse-dsa', branchId: 'cse', name: 'Data Structures & Algorithms' },
+            { id: 'cse-dbms', branchId: 'cse', name: 'Database Management Systems' },
+            { id: 'cse-os', branchId: 'cse', name: 'Operating Systems' },
+            { id: 'cse-webdev', branchId: 'cse', name: 'Web Development' }
           ];
         }
 
@@ -502,6 +503,13 @@ export const Feed: React.FC = () => {
   useEffect(() => {
     let result = [...notes];
 
+    // Filter by Feed Type (Notes vs PYQ Papers)
+    if (feedType === 'notes') {
+      result = result.filter(n => !n.subject.startsWith('[QP -'));
+    } else {
+      result = result.filter(n => n.subject.startsWith('[QP -'));
+    }
+
     // Search Query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -513,12 +521,19 @@ export const Feed: React.FC = () => {
       );
     }
 
-    // Semester
+    // Semester Range Filter (Supports both range matching and legacy single semester numbers)
     if (selectedSemester !== 'all') {
-      result = result.filter((n) => n.semester === selectedSemester);
+      result = result.filter((n) => {
+        const sem = n.semester;
+        if (selectedSemester === '1/2') return sem === '1/2' || sem === '1' || sem === '2';
+        if (selectedSemester === '3/4') return sem === '3/4' || sem === '3' || sem === '4';
+        if (selectedSemester === '5/6') return sem === '5/6' || sem === '5' || sem === '6';
+        if (selectedSemester === '7/8') return sem === '7/8' || sem === '7' || sem === '8';
+        return sem === selectedSemester;
+      });
     }
 
-    // Branch Filter
+    // Branch Filter (Renamed to Department)
     if (selectedBranch !== 'all') {
       const bId = selectedBranch.toLowerCase();
       result = result.filter((n: any) => {
@@ -534,12 +549,12 @@ export const Feed: React.FC = () => {
         const desc = (n.description || '').toLowerCase();
         const textToSearch = `${sub} ${desc}`;
         
-        if (bId === 'computers') return textToSearch.includes('computer') || textToSearch.includes('data') || textToSearch.includes('algo') || textToSearch.includes('software') || textToSearch.includes('web') || textToSearch.includes('programming') || textToSearch.includes('code') || textToSearch.includes('javascript') || textToSearch.includes('python');
-        if (bId === 'maths') return textToSearch.includes('math') || textToSearch.includes('calculus') || textToSearch.includes('algebra') || textToSearch.includes('discrete') || textToSearch.includes('geometry') || textToSearch.includes('matrix');
-        if (bId === 'science') return textToSearch.includes('physics') || textToSearch.includes('chemistry') || textToSearch.includes('biology') || textToSearch.includes('science') || textToSearch.includes('space') || textToSearch.includes('lab');
-        if (bId === 'electronics') return textToSearch.includes('circuit') || textToSearch.includes('semiconductor') || textToSearch.includes('diode') || textToSearch.includes('electronics') || textToSearch.includes('arduino') || textToSearch.includes('voltage');
-        if (bId === 'mechanical') return textToSearch.includes('mechanical') || textToSearch.includes('machine') || textToSearch.includes('gear') || textToSearch.includes('cad') || textToSearch.includes('thermodynamics') || textToSearch.includes('engine');
-        if (bId === 'management') return textToSearch.includes('management') || textToSearch.includes('business') || textToSearch.includes('marketing') || textToSearch.includes('finance') || textToSearch.includes('strategy') || textToSearch.includes('economics');
+        if (bId === 'cse') return textToSearch.includes('computer') || textToSearch.includes('data') || textToSearch.includes('algo') || textToSearch.includes('software') || textToSearch.includes('web') || textToSearch.includes('programming') || textToSearch.includes('code') || textToSearch.includes('javascript') || textToSearch.includes('python');
+        if (bId === 'aiml') return textToSearch.includes('ai') || textToSearch.includes('machine') || textToSearch.includes('learning') || textToSearch.includes('intelligence') || textToSearch.includes('robotic') || textToSearch.includes('deep');
+        if (bId === 'ds') return textToSearch.includes('data') || textToSearch.includes('analytic') || textToSearch.includes('statistic') || textToSearch.includes('predictive') || textToSearch.includes('visual');
+        if (bId === 'civil') return textToSearch.includes('civil') || textToSearch.includes('concrete') || textToSearch.includes('structure') || textToSearch.includes('surveying') || textToSearch.includes('geotech');
+        if (bId === 'ece') return textToSearch.includes('circuit') || textToSearch.includes('semiconductor') || textToSearch.includes('diode') || textToSearch.includes('electronics') || textToSearch.includes('arduino') || textToSearch.includes('voltage') || textToSearch.includes('vlsi') || textToSearch.includes('signal');
+        if (bId === 'mechanical') return textToSearch.includes('mechanical') || textToSearch.includes('machine') || textToSearch.includes('gear') || textToSearch.includes('cad') || textToSearch.includes('thermodynamics') || textToSearch.includes('engine') || textToSearch.includes('fluid');
         
         return false;
       });
@@ -573,7 +588,7 @@ export const Feed: React.FC = () => {
     }
 
     setFilteredNotes(result);
-  }, [notes, searchQuery, selectedSemester, selectedBranch, selectedCategory, categories]);
+  }, [notes, searchQuery, selectedSemester, selectedBranch, selectedCategory, categories, feedType]);
 
   // Like Toggle Handler
   const handleLikeToggle = async (noteId: string, currentLikes: string[]) => {
@@ -844,20 +859,39 @@ export const Feed: React.FC = () => {
             </div>
           </div>
           
-          {/* Sorting controls */}
-          <div className="flex items-center gap-2 self-start md:self-auto glass-panel p-1.5 rounded-xl border border-white/[0.08]">
-            <button
-              onClick={() => setSortBy('recent')}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${sortBy === 'recent' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              Recent Uploads
-            </button>
-            <button
-              onClick={() => setSortBy('popular')}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${sortBy === 'popular' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              Most Liked
-            </button>
+          {/* Segment & Sorting controls */}
+          <div className="flex items-center gap-4 flex-wrap self-start md:self-auto">
+            {/* Notes vs PYQ Papers */}
+            <div className="flex items-center gap-1 glass-panel p-1 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10">
+              <button
+                onClick={() => setFeedType('notes')}
+                className={`px-4.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${feedType === 'notes' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-900'}`}
+              >
+                Study Notes
+              </button>
+              <button
+                onClick={() => setFeedType('papers')}
+                className={`px-4.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${feedType === 'papers' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-900'}`}
+              >
+                PYQ Papers
+              </button>
+            </div>
+
+            {/* Sorting */}
+            <div className="flex items-center gap-1 glass-panel p-1 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10">
+              <button
+                onClick={() => setSortBy('recent')}
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${sortBy === 'recent' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-900'}`}
+              >
+                Recent
+              </button>
+              <button
+                onClick={() => setSortBy('popular')}
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${sortBy === 'popular' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-900'}`}
+              >
+                Popular
+              </button>
+            </div>
           </div>
         </div>
 
@@ -953,13 +987,13 @@ export const Feed: React.FC = () => {
               {/* Semester Filter */}
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 pl-1">
-                  Semester
+                  Semester Range
                 </span>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-2 gap-1.5">
                   <button
                     onClick={() => setSelectedSemester('all')}
                     className={`
-                      col-span-4 text-center py-2 text-xs font-semibold rounded-xl border transition-all duration-200
+                      col-span-2 text-center py-2 text-xs font-semibold rounded-xl border transition-all duration-200
                       ${selectedSemester === 'all' 
                         ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400' 
                         : 'border-white/[0.05] bg-white/[0.01] text-slate-400 hover:border-white/10 hover:text-slate-200 light-mode:border-slate-900/10 light-mode:hover:bg-slate-900/[0.02]'}
@@ -967,18 +1001,18 @@ export const Feed: React.FC = () => {
                   >
                     All Semesters
                   </button>
-                  {['1', '2', '3', '4', '5', '6', '7', '8'].map((sem) => (
+                  {['1/2', '3/4', '5/6', '7/8'].map((sem) => (
                     <button
                       key={sem}
                       onClick={() => setSelectedSemester(sem)}
                       className={`
-                        text-center py-2 text-xs font-bold rounded-xl border transition-all duration-200
+                        text-center py-2 text-[10px] font-black rounded-xl border transition-all duration-200
                         ${selectedSemester === sem 
                           ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400' 
                           : 'border-white/[0.05] bg-white/[0.01] text-slate-400 hover:border-white/10 hover:text-slate-200 light-mode:border-slate-900/10 light-mode:hover:bg-slate-900/[0.02]'}
                       `}
                     >
-                      S{sem}
+                      Sem {sem}
                     </button>
                   ))}
                 </div>
@@ -1055,13 +1089,25 @@ export const Feed: React.FC = () => {
                             </div>
 
                             <div>
-                              <h3 className="font-extrabold text-base text-white group-hover:text-indigo-400 transition-colors duration-300 truncate light-mode:text-slate-900">
-                                {note.subject}
-                              </h3>
-                              <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold mt-1">
-                                <GraduationCap className="w-3.5 h-3.5" /> Prof. {note.teacher}
+                              {note.subject.startsWith('[QP -') ? (
+                                <div className="flex flex-col items-start gap-1.5 text-left">
+                                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
+                                    📄 {note.subject.match(/^\[QP - ([^\]]+)\]/)?.[1] || 'Question Paper'}
+                                  </span>
+                                  <h3 className="font-extrabold text-base text-white group-hover:text-indigo-400 transition-colors duration-300 truncate light-mode:text-slate-900 w-full">
+                                    {note.subject.replace(/^\[QP - [^\]]+\] /, '')}
+                                  </h3>
+                                </div>
+                              ) : (
+                                <h3 className="font-extrabold text-base text-white group-hover:text-indigo-400 transition-colors duration-300 truncate light-mode:text-slate-900">
+                                  {note.subject}
+                                </h3>
+                              )}
+                              
+                              <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold mt-1 text-left">
+                                <GraduationCap className="w-3.5 h-3.5" /> {note.subject.startsWith('[QP -') ? 'Exam Board Syllabus' : `Prof. ${note.teacher}`}
                               </div>
-                              <p className="text-xs text-slate-400 light-mode:text-slate-500 leading-relaxed line-clamp-2 mt-2">
+                              <p className="text-xs text-slate-400 light-mode:text-slate-500 leading-relaxed line-clamp-2 mt-2 text-left">
                                 {note.description}
                               </p>
                             </div>

@@ -55,7 +55,7 @@ export const Login: React.FC = () => {
   const [regName,   setRegName]   = useState('');
   const [regMobile, setRegMobile] = useState('');
   const [regYear,   setRegYear]   = useState('1');
-  const [regBranch, setRegBranch] = useState('computers');
+  const [regBranch, setRegBranch] = useState('cse');
   const [regEmail,  setRegEmail]  = useState('');
   const [regCgpa,   setRegCgpa]   = useState('');
 
@@ -728,12 +728,12 @@ export const Login: React.FC = () => {
                   <div>
                     <label className={labelCls}>Engineering Branch</label>
                     <select value={regBranch} onChange={(e) => setRegBranch(e.target.value)} className={selectCls}>
-                      <option value="computers">💻 Computer Science (CSE)</option>
-                      <option value="electronics">🔌 Electronics & Comm (ECE)</option>
-                      <option value="mechanical">⚙️ Mechanical & Civil</option>
-                      <option value="maths">📐 Mathematics</option>
-                      <option value="science">🔬 Basic Science & Eng</option>
-                      <option value="management">📊 Management & Humanities</option>
+                      <option value="cse">💻 Computer Science & Engineering (CSE)</option>
+                      <option value="aiml">🧠 AI & Machine Learning (AI & ML)</option>
+                      <option value="ds">📊 Data Science (DS)</option>
+                      <option value="ece">🔌 Electronics & Communication (ECE)</option>
+                      <option value="mechanical">⚙️ Mechanical Engineering</option>
+                      <option value="civil">🏗️ Civil Engineering</option>
                     </select>
                   </div>
                   <div>

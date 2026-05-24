@@ -22,11 +22,13 @@ import {
   Tablet,
   Clock,
   RefreshCw,
-  Activity
+  Activity,
+  Star
 } from 'lucide-react';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { Skeleton } from '../components/ui/Skeleton';
 import { openPdfDocument } from '../utils/pdfDb';
+import { renderAvatar } from '../utils/avatar';
 
 interface NoteDocument {
   id: string;
@@ -50,6 +52,17 @@ interface UserProfile {
   displayName: string;
   role: 'student' | 'admin';
   createdAt: any;
+}
+
+interface FeedbackItem {
+  id: string;
+  user_id: string;
+  display_name: string;
+  photo_url: string;
+  department: string;
+  rating: number;
+  comment: string;
+  created_at: string;
 }
 
 const mapDbNoteToNoteDocument = (n: any): NoteDocument => {
@@ -80,6 +93,15 @@ const mapDbProfileToUserProfile = (p: any): UserProfile => {
   };
 };
 
+const BRANCH_LABELS: Record<string, string> = {
+  cse: 'Computer Science & Engineering',
+  aiml: 'AI & Machine Learning',
+  ds: 'Data Science',
+  mechanical: 'Mechanical Engineering',
+  civil: 'Civil Engineering',
+  ece: 'Electronics & Comm Eng'
+};
+
 const getTime = (val: any) => {
   if (!val) return 0;
   if (val.seconds) return val.seconds * 1000;
@@ -106,11 +128,12 @@ export const Admin: React.FC = () => {
   const { user: currentAuthUser } = useAuth();
   const { success, error, info } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'moderation' | 'notes' | 'users' | 'online'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'notes' | 'users' | 'online' | 'feedback'>('moderation');
   const [pendingNotes, setPendingNotes] = useState<NoteDocument[]>([]);
   const [allNotes, setAllNotes] = useState<NoteDocument[]>([]);
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
@@ -166,9 +189,41 @@ export const Admin: React.FC = () => {
       
       const users = (usersData || []).map(mapDbProfileToUserProfile);
       setUsersList(users);
+
+      // 4. Fetch Feedbacks
+      let fetchedFeedbacks: FeedbackItem[] = [];
+      try {
+        const { data: feedbackData, error: feedbackErr } = await supabase
+          .from('feedbacks')
+          .select('*');
+          
+        if (!feedbackErr && feedbackData) {
+          fetchedFeedbacks = feedbackData as FeedbackItem[];
+        }
+      } catch (err) {
+        console.warn("Failed to fetch feedbacks from Supabase:", err);
+      }
+      
+      const localFeedbacksStr = localStorage.getItem('noteweb-db-feedbacks');
+      if (localFeedbacksStr) {
+        try {
+          const localFeedbacks = JSON.parse(localFeedbacksStr);
+          if (Array.isArray(localFeedbacks)) {
+            const existingIds = new Set(fetchedFeedbacks.map(f => f.id));
+            localFeedbacks.forEach((f: any) => {
+              if (f && f.id && !existingIds.has(f.id)) {
+                fetchedFeedbacks.push(f);
+              }
+            });
+          }
+        } catch {}
+      }
+      fetchedFeedbacks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setFeedbacks(fetchedFeedbacks);
+      
       setLastRefresh(new Date());
 
-      console.log(`[NoteWeb Admin Log] Dashboard data loaded. Pending: ${pending.length}, Total: ${all.length}, Users: ${users.length}`);
+      console.log(`[NoteWeb Admin Log] Dashboard data loaded. Pending: ${pending.length}, Total: ${all.length}, Users: ${users.length}, Feedbacks: ${fetchedFeedbacks.length}`);
     } catch (e: any) {
       console.error("[NoteWeb Admin Log] Failed to load dashboard data:", e);
       error("Failed to load admin panel data: " + e.message);
@@ -182,6 +237,8 @@ export const Admin: React.FC = () => {
 
     let channelProfiles: any = null;
     let channelNotes: any = null;
+    let channelFeedbacks: any = null;
+    let channelBroadcastFeedbacks: any = null;
 
     try {
       if (typeof supabase.channel === 'function') {
@@ -218,6 +275,37 @@ export const Admin: React.FC = () => {
             console.log('[NoteWeb Admin Realtime] notes channel status:', status);
             if (status === 'SUBSCRIBED') setRealtimeConnected(true);
           });
+
+        channelFeedbacks = supabase
+          .channel('public:feedbacks_admin')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'feedbacks' },
+            (payload: any) => {
+              console.log('[NoteWeb Admin Realtime] feedbacks table change detected:', payload);
+              fetchModerationData(true);
+              setRealtimeConnected(true);
+            }
+          )
+          .subscribe((status: any) => {
+            console.log('[NoteWeb Admin Realtime] feedbacks channel status:', status);
+            if (status === 'SUBSCRIBED') setRealtimeConnected(true);
+          });
+
+        // P2P Pushing Broadcast listener for Feedbacks
+        channelBroadcastFeedbacks = supabase.channel('public:feedbacks');
+        channelBroadcastFeedbacks.on('broadcast', { event: 'new-feedback' }, (response: any) => {
+          console.log('[NoteWeb Admin Broadcast] Realtime peer feedback received:', response);
+          if (response?.payload) {
+            setFeedbacks((prev) => {
+              const exists = prev.some(f => f.id === response.payload.id);
+              if (exists) return prev;
+              const next = [response.payload, ...prev];
+              next.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+              return next;
+            });
+          }
+        }).subscribe();
       }
     } catch (err) {
       console.warn("[NoteWeb Admin Realtime] Realtime subscriptions failed:", err);
@@ -233,6 +321,12 @@ export const Admin: React.FC = () => {
       }
       if (channelNotes) {
         try { channelNotes.unsubscribe(); } catch (e) {}
+      }
+      if (channelFeedbacks) {
+        try { channelFeedbacks.unsubscribe(); } catch (e) {}
+      }
+      if (channelBroadcastFeedbacks) {
+        try { channelBroadcastFeedbacks.unsubscribe(); } catch (e) {}
       }
     };
   }, []);
@@ -294,6 +388,40 @@ export const Admin: React.FC = () => {
     } catch (e: any) {
       console.error(e);
       error("Purge failed: " + e.message);
+    }
+  };
+
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    const isConfirmed = window.confirm("Are you absolutely sure you want to permanently delete this feedback review? This cannot be undone.");
+    if (!isConfirmed) return;
+
+    try {
+      const { error: deleteErr } = await supabase
+        .from('feedbacks')
+        .delete()
+        .eq('id', feedbackId);
+        
+      if (deleteErr) throw deleteErr;
+      
+      // Remove from local storage fallback cache
+      try {
+        const storedFeedbacksStr = localStorage.getItem('noteweb-db-feedbacks');
+        if (storedFeedbacksStr) {
+          const storedFeedbacks = JSON.parse(storedFeedbacksStr);
+          if (Array.isArray(storedFeedbacks)) {
+            const filtered = storedFeedbacks.filter((f: any) => f.id !== feedbackId);
+            localStorage.setItem('noteweb-db-feedbacks', JSON.stringify(filtered));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to clear feedback from local cache:", cacheErr);
+      }
+
+      success("Feedback review permanently deleted.");
+      setFeedbacks((prev) => prev.filter((f) => f.id !== feedbackId));
+    } catch (e: any) {
+      console.error(e);
+      error("Feedback deletion failed: " + e.message);
     }
   };
 
@@ -496,6 +624,23 @@ export const Admin: React.FC = () => {
             {uniqueOnlineCount > 0 && (
               <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold animate-pulse">
                 {onlineUsers.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('feedback')}
+            className={`
+              px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 flex-shrink-0
+              ${activeTab === 'feedback' 
+                ? 'border-indigo-500 text-indigo-400' 
+                : 'border-transparent text-slate-400 hover:text-slate-200'}
+            `}
+          >
+            <Star className="w-4 h-4 text-amber-400" />
+            Reviews
+            {feedbacks.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-extrabold">
+                {feedbacks.length}
               </span>
             )}
           </button>
@@ -765,7 +910,7 @@ export const Admin: React.FC = () => {
                 </div>
               </GlassPanel>
             )
-          ) : (
+          ) : activeTab === 'users' ? (
             // Users list tab
             usersList.length > 0 ? (
               <div className="flex flex-col gap-4">
@@ -880,6 +1025,171 @@ export const Admin: React.FC = () => {
                 </div>
               </GlassPanel>
             )
+          ) : (
+            /* ===== FEEDBACKS/REVIEWS TAB ===== */
+            (() => {
+              const totalFeedbacks = feedbacks.length;
+              const ratingCounts = [0, 0, 0, 0, 0]; // 1 to 5 stars
+              let sumRatings = 0;
+              
+              feedbacks.forEach((f) => {
+                const r = Math.round(f.rating);
+                if (r >= 1 && r <= 5) {
+                  ratingCounts[r - 1]++;
+                  sumRatings += f.rating;
+                }
+              });
+
+              const avgRating = totalFeedbacks > 0 ? (sumRatings / totalFeedbacks).toFixed(1) : '0.0';
+              
+              const getPercentage = (count: number) => {
+                if (totalFeedbacks === 0) return 0;
+                return Math.round((count / totalFeedbacks) * 100);
+              };
+
+              return (
+                <div className="flex flex-col gap-6">
+                  {/* Google Play Store-Style rating metrics */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
+                    
+                    {/* Average Rating Big Box */}
+                    <GlassPanel className="p-6 md:col-span-4 flex flex-col items-center justify-center text-center bg-white/[0.01] border border-white/[0.04]">
+                      <h3 className="text-6xl font-black text-white tracking-tight leading-none mb-2">
+                        {avgRating}
+                      </h3>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const floatAvg = parseFloat(avgRating);
+                          const isFilled = star <= floatAvg;
+                          const isHalf = !isFilled && (star - 0.5 <= floatAvg);
+                          return (
+                            <Star 
+                              key={star} 
+                              className={`w-5 h-5 ${
+                                isFilled 
+                                  ? 'fill-amber-400 text-amber-400 filter drop-shadow-[0_0_4px_rgba(245,158,11,0.3)]' 
+                                  : isHalf 
+                                    ? 'fill-amber-400/50 text-amber-400/50' 
+                                    : 'text-slate-700'
+                              }`} 
+                            />
+                          );
+                        })}
+                      </div>
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        {totalFeedbacks} Ratings
+                      </span>
+                    </GlassPanel>
+
+                    {/* Google Play Store Star Distribution Bars */}
+                    <GlassPanel className="p-6 md:col-span-8 flex flex-col justify-center gap-2.5 bg-white/[0.01] border border-white/[0.04]">
+                      {[5, 4, 3, 2, 1].map((stars) => {
+                        const count = ratingCounts[stars - 1];
+                        const pct = getPercentage(count);
+                        return (
+                          <div key={stars} className="flex items-center gap-3 w-full text-xs font-bold">
+                            <span className="w-3 text-slate-400 text-right">{stars}</span>
+                            <div className="flex-1 h-3 bg-slate-950/80 border border-white/5 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(245,158,11,0.2)]" 
+                                style={{ width: `${pct}%` }} 
+                              />
+                            </div>
+                            <span className="w-12 text-slate-500 text-right">{count} ({pct}%)</span>
+                          </div>
+                        );
+                      })}
+                    </GlassPanel>
+
+                  </div>
+
+                  {/* Reviews Feed List */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-extrabold text-white pl-1 flex items-center gap-2 mt-2">
+                      <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                      Detailed User Reviews
+                    </h3>
+
+                    {totalFeedbacks === 0 ? (
+                      <GlassPanel className="h-64 flex flex-col items-center justify-center text-center gap-4 bg-[#16161D]/10">
+                        <div className="w-12 h-12 rounded-full bg-slate-900 border border-white/5 flex items-center justify-center text-amber-400">
+                          <Star className="w-6 h-6 animate-pulse" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-white light-mode:text-slate-800">No evaluations yet</h4>
+                          <p className="text-xs text-slate-500 max-w-xs mt-1">
+                            No student ratings or reviews have been posted to this instance yet. Leave a feedback to get started!
+                          </p>
+                        </div>
+                      </GlassPanel>
+                    ) : (
+                      <div className="flex flex-col gap-4">
+                        {feedbacks.map((f) => (
+                          <GlassPanel 
+                            key={f.id} 
+                            className="p-5 flex flex-col md:flex-row md:items-start justify-between gap-4 border border-white/[0.04] bg-[#16161D]/20 hover:border-white/10"
+                          >
+                            <div className="flex items-start gap-4 min-w-0 text-left">
+                              {/* Avatar */}
+                              <div className="flex-shrink-0">
+                                {renderAvatar(f.photo_url, "w-11 h-11 text-lg")}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2.5 flex-wrap">
+                                  <h4 className="font-bold text-white leading-none light-mode:text-slate-950">
+                                    {f.display_name}
+                                  </h4>
+                                  <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full border border-white/[0.06] bg-white/[0.02] text-slate-400">
+                                    {BRANCH_LABELS[f.department] || f.department || 'CSE'}
+                                  </span>
+                                </div>
+
+                                {/* Stars */}
+                                <div className="flex items-center gap-1 mt-2">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star 
+                                      key={star} 
+                                      className={`w-3.5 h-3.5 ${
+                                        star <= f.rating 
+                                          ? 'fill-amber-400 text-amber-400 filter drop-shadow-[0_0_3px_rgba(245,158,11,0.3)]' 
+                                          : 'text-slate-700'
+                                      }`} 
+                                    />
+                                  ))}
+                                  <span className="text-[10px] text-slate-500 font-semibold ml-2">
+                                    {getRelativeTime(f.created_at)}
+                                  </span>
+                                </div>
+
+                                {/* Comment */}
+                                <p className="text-xs text-slate-300 font-medium leading-relaxed mt-3 break-words whitespace-pre-wrap">
+                                  {f.comment ? f.comment : (
+                                    <span className="text-slate-500 italic font-normal text-[11px]">
+                                      Rated {f.rating} star{f.rating === 1 ? '' : 's'} (no descriptive comments shared)
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Actions (Purge feedback) */}
+                            <div className="flex items-center gap-2 self-end md:self-auto flex-shrink-0 ml-[60px] md:ml-0">
+                              <button
+                                onClick={() => handleDeleteFeedback(f.id)}
+                                className="p-2 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                                title="Delete Review"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </GlassPanel>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()
           )}
         </div>
       </div>

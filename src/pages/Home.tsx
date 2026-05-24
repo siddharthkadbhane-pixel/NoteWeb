@@ -1041,34 +1041,34 @@ Response must be pure valid JSON:`;
               {/* Grid of branches */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 z-10">
                 
-                {/* CS Branch */}
+                {/* CSE Branch */}
                 <div 
-                  onClick={() => navigate('/feed', { state: { branchFilter: 'computers' } })}
+                  onClick={() => navigate('/feed', { state: { branchFilter: 'cse' } })}
                   className={`p-3.5 rounded-2xl border hover:border-sky-300/50 transition-all cursor-pointer group active:scale-95 ${isDark ? 'bg-white/[0.01] border-white/[0.04] hover:bg-[#00F2FE]/5' : 'bg-slate-50/80 border-slate-200/60 hover:bg-sky-50'}`}
                 >
-                  <span className="text-[8px] font-black uppercase text-sky-500 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded">CS Branch</span>
+                  <span className="text-[8px] font-black uppercase text-sky-500 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded">CSE</span>
                   <h4 className={`text-xs font-extrabold mt-2 group-hover:text-sky-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>Computer Science</h4>
                   <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Data Structures & DBMS</span>
                 </div>
 
-                {/* Math Branch */}
+                {/* AI & ML Branch */}
                 <div 
-                  onClick={() => navigate('/feed', { state: { branchFilter: 'maths' } })}
+                  onClick={() => navigate('/feed', { state: { branchFilter: 'aiml' } })}
                   className={`p-3.5 rounded-2xl border hover:border-purple-300/50 transition-all cursor-pointer group active:scale-95 ${isDark ? 'bg-white/[0.01] border-white/[0.04] hover:bg-[#7F00FF]/5' : 'bg-slate-50/80 border-slate-200/60 hover:bg-purple-50'}`}
                 >
-                  <span className="text-[8px] font-black uppercase text-purple-500 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">M Branch</span>
-                  <h4 className={`text-xs font-extrabold mt-2 group-hover:text-purple-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>Mathematics</h4>
-                  <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Calculus & Algebra</span>
+                  <span className="text-[8px] font-black uppercase text-purple-500 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">AI & ML</span>
+                  <h4 className={`text-xs font-extrabold mt-2 group-hover:text-purple-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>AI & Machine Learning</h4>
+                  <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Neural Networks & ML</span>
                 </div>
 
-                {/* Science Branch */}
+                {/* Data Science Branch */}
                 <div 
-                  onClick={() => navigate('/feed', { state: { branchFilter: 'science' } })}
+                  onClick={() => navigate('/feed', { state: { branchFilter: 'ds' } })}
                   className={`p-3.5 rounded-2xl border hover:border-rose-300/50 transition-all cursor-pointer group active:scale-95 ${isDark ? 'bg-white/[0.01] border-white/[0.04] hover:bg-rose-500/5' : 'bg-slate-50/80 border-slate-200/60 hover:bg-rose-50'}`}
                 >
-                  <span className="text-[8px] font-black uppercase text-rose-500 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded">BSE Branch</span>
-                  <h4 className={`text-xs font-extrabold mt-2 group-hover:text-rose-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>Basic Sciences</h4>
-                  <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Physics & Mechanics</span>
+                  <span className="text-[8px] font-black uppercase text-rose-500 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded">DS</span>
+                  <h4 className={`text-xs font-extrabold mt-2 group-hover:text-rose-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>Data Science</h4>
+                  <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Analytics & Big Data</span>
                 </div>
 
               </div>

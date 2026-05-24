@@ -14,7 +14,8 @@ import {
   Menu, 
   X,
   MessageSquare,
-  Trophy
+  Trophy,
+  Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -49,6 +50,7 @@ export const Sidebar: React.FC = () => {
     { to: '/chat', label: 'Campus Chat', icon: <MessageSquare className="w-4 h-4 text-indigo-400" />, protected: true },
     { to: '/leaderboard', label: 'Rankings', icon: <Trophy className="w-4 h-4 text-amber-400" />, protected: true },
     { to: '/profile', label: 'Dashboard', icon: <User className="w-4 h-4" />, protected: true },
+    { to: '/feedback', label: 'Feedback', icon: <Star className="w-4 h-4 text-amber-400" />, protected: true },
     { to: '/admin', label: 'Admin', icon: <ShieldAlert className="w-4 h-4 text-rose-400" />, protected: true, adminOnly: true },
   ];
 

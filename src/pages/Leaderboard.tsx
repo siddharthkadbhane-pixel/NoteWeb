@@ -29,12 +29,28 @@ interface LeaderboardUser {
 }
 
 const BRANCH_LABELS: Record<string, string> = {
-  computers: 'CSE',
-  electronics: 'ECE',
-  mechanical: 'Mech/Civil',
-  maths: 'Maths',
-  science: 'Sciences',
-  management: 'Humanities'
+  cse: 'CSE',
+  aiml: 'AI & ML',
+  ds: 'DS',
+  mechanical: 'Mechanical',
+  civil: 'Civil',
+  ece: 'ECE'
+};
+
+const getXPLevel = (points: number) => {
+  if (points >= 1000) return { badge: '👑 Level 5', color: 'from-amber-400 to-orange-500 text-amber-300 border-amber-500/30' };
+  if (points >= 500) return { badge: '🌟 Level 4', color: 'from-fuchsia-500 to-purple-600 text-fuchsia-300 border-fuchsia-500/30' };
+  if (points >= 250) return { badge: '📚 Level 3', color: 'from-blue-500 to-indigo-600 text-blue-300 border-blue-500/30' };
+  if (points >= 100) return { badge: '📖 Level 2', color: 'from-emerald-500 to-teal-650 text-emerald-300 border-emerald-500/30' };
+  return { badge: '🌱 Level 1', color: 'from-slate-500 to-slate-600 text-slate-400 border-white/5' };
+};
+
+const getXPProgress = (points: number) => {
+  if (points >= 1000) return 100;
+  if (points >= 500) return Math.min(100, Math.round(((points - 500) / 500) * 100));
+  if (points >= 250) return Math.min(100, Math.round(((points - 250) / 250) * 100));
+  if (points >= 100) return Math.min(100, Math.round(((points - 100) / 150) * 100));
+  return Math.min(100, Math.round((points / 100) * 100));
 };
 
 export const Leaderboard: React.FC = () => {
@@ -70,7 +86,7 @@ export const Leaderboard: React.FC = () => {
           uid: uid,
           username: p.username || '',
           displayName: p.display_name || p.displayName || 'Student',
-          branch: p.branch || 'computers',
+          branch: p.branch || 'cse',
           year: p.year || '1',
           cgpa: p.cgpa ? parseFloat(p.cgpa) : 0,
           points: p.points !== undefined ? Number(p.points) : 0,
@@ -211,94 +227,133 @@ export const Leaderboard: React.FC = () => {
 
         {/* Podium Top 3 Section */}
         {!isLoading && podiumTop3.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-8 max-w-3xl mx-auto w-full">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-8 max-w-3xl mx-auto w-full mb-4">
             
             {/* Podium 2nd Place (Silver) */}
-            {podiumTop3[1] && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="order-2 md:order-1 flex flex-col items-center w-full"
-              >
-                <GlassPanel className="w-full bg-[#121218]/40 light-mode:bg-white/70 border border-white/[0.05] light-mode:border-slate-200/50 p-5 rounded-2xl flex flex-col items-center relative overflow-hidden">
-                  <div className="absolute top-2 right-2 text-slate-400 font-extrabold text-sm">#2</div>
-                  <div 
-                    onClick={() => podiumTop3[1]?.uid && navigate(`/profile/${podiumTop3[1].uid}`)} 
-                    className="flex flex-col items-center hover:scale-105 transition-transform duration-200 w-full cursor-pointer"
-                  >
-                    <div className="relative">
-                      {renderAvatar(podiumTop3[1].photoURL, "w-16 h-16 text-3xl")}
-                      <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-slate-400 border border-white text-white rounded-full text-xs font-bold shadow">🥈</span>
+            {podiumTop3[1] && (() => {
+              const level = getXPLevel(podiumTop3[1].points);
+              return (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="order-2 md:order-1 flex flex-col items-center w-full"
+                >
+                  {/* Floating User details above pedestal (No enclosing card!) */}
+                  <div className="flex flex-col items-center mb-3 text-center">
+                    <span className="text-slate-400 font-extrabold text-[10px] uppercase tracking-wider bg-slate-400/10 px-3 py-1 rounded-full border border-slate-400/20 mb-2">🥈 2nd Place</span>
+                    <div 
+                      onClick={() => podiumTop3[1]?.uid && navigate(`/profile/${podiumTop3[1].uid}`)} 
+                      className="flex flex-col items-center hover:scale-105 transition-transform duration-200 cursor-pointer"
+                    >
+                      <div className="relative">
+                        {renderAvatar(podiumTop3[1].photoURL, "w-16 h-16 text-3xl")}
+                        <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-slate-400 border-2 border-[#0A0A0C] text-white rounded-full text-xs font-bold shadow-lg shadow-black/40">🥈</span>
+                      </div>
+                      <h4 className="font-extrabold text-white dark:text-slate-200 text-sm mt-3 hover:text-indigo-400 transition-colors duration-200">{podiumTop3[1].displayName}</h4>
                     </div>
-                    <h4 className="font-extrabold text-white light-mode:text-slate-805 text-sm mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[1].displayName}</h4>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[1].branch] || 'ECE'}</span>
+                    
+                    {/* XP Level Badge */}
+                    <span className={`text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded border bg-gradient-to-r ${level.color} mt-2 shadow-sm`}>
+                      {level.badge}
+                    </span>
+
+                    <span className="text-xs font-bold text-slate-350 dark:text-slate-400 mt-2.5 bg-white/5 border border-white/[0.04] px-3 py-0.5 rounded-full">
+                      {getMetricString(podiumTop3[1])}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[1].branch]}</span>
-                  <span className="text-sm font-bold text-slate-300 light-mode:text-slate-600 mt-2 bg-slate-400/10 light-mode:bg-slate-500/10 px-3 py-1 rounded-full border border-slate-400/20 light-mode:border-slate-200/50">
-                    {getMetricString(podiumTop3[1])}
-                  </span>
-                </GlassPanel>
-                <div className="hidden md:block w-24 h-12 bg-slate-400/15 border-t border-slate-400/30 rounded-t-xl mt-1.5 flex items-center justify-center font-extrabold text-slate-400">II</div>
-              </motion.div>
-            )}
+                  
+                  {/* Pedestal Step */}
+                  <div className="hidden md:flex w-28 h-16 bg-gradient-to-b from-slate-300/15 to-slate-400/5 border-t-2 border-x border-slate-300/20 shadow-[0_0_15px_rgba(203,213,225,0.06)] rounded-t-2xl items-center justify-center font-black text-slate-300 text-base">II</div>
+                </motion.div>
+              );
+            })()}
 
             {/* Podium 1st Place (Gold) */}
-            {podiumTop3[0] && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="order-1 md:order-2 flex flex-col items-center scale-105 w-full"
-              >
-                <GlassPanel className="w-full bg-[#121218]/50 light-mode:bg-white/80 border border-amber-400/30 light-mode:border-amber-500/50 p-6 rounded-3xl flex flex-col items-center relative overflow-hidden shadow-xl shadow-amber-400/5">
-                  <div className="absolute top-2 right-2 text-amber-400 font-extrabold text-sm">#1</div>
-                  <div 
-                    onClick={() => podiumTop3[0]?.uid && navigate(`/profile/${podiumTop3[0].uid}`)} 
-                    className="flex flex-col items-center hover:scale-105 transition-transform duration-200 w-full cursor-pointer"
-                  >
-                    <div className="relative">
-                      {renderAvatar(podiumTop3[0].photoURL, "w-20 h-20 text-4xl")}
-                      <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 bg-amber-400 border border-white text-white rounded-full text-sm font-bold shadow">👑</span>
+            {podiumTop3[0] && (() => {
+              const level = getXPLevel(podiumTop3[0].points);
+              return (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="order-1 md:order-2 flex flex-col items-center scale-105 w-full relative z-20"
+                >
+                  {/* Glowing halo behind gold */}
+                  <div className="absolute inset-0 bg-amber-400/5 rounded-full blur-2xl pointer-events-none" />
+                  
+                  {/* Floating User details above pedestal (No enclosing card!) */}
+                  <div className="flex flex-col items-center mb-3 text-center">
+                    <span className="text-amber-400 font-extrabold text-[10px] uppercase tracking-wider bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20 mb-2 animate-pulse">👑 1st Place</span>
+                    <div 
+                      onClick={() => podiumTop3[0]?.uid && navigate(`/profile/${podiumTop3[0].uid}`)} 
+                      className="flex flex-col items-center hover:scale-105 transition-transform duration-200 cursor-pointer"
+                    >
+                      <div className="relative">
+                        {renderAvatar(podiumTop3[0].photoURL, "w-20 h-20 text-4xl")}
+                        <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-8 h-8 bg-amber-400 border-2 border-[#0A0A0C] text-white rounded-full text-base font-bold shadow-lg shadow-black/40">👑</span>
+                      </div>
+                      <h4 className="font-extrabold text-white dark:text-slate-100 text-base mt-3 hover:text-indigo-400 transition-colors duration-200">{podiumTop3[0].displayName}</h4>
                     </div>
-                    <h4 className="font-extrabold text-white light-mode:text-slate-805 text-base mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[0].displayName}</h4>
+                    <span className="text-[10px] text-amber-300 font-semibold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[0].branch] || 'CSE'}</span>
+                    
+                    {/* XP Level Badge */}
+                    <span className={`text-[10px] font-extrabold tracking-widest px-2.5 py-0.5 rounded border bg-gradient-to-r ${level.color} mt-2 shadow-[0_0_8px_rgba(245,158,11,0.1)]`}>
+                      {level.badge}
+                    </span>
+
+                    <span className="text-sm font-black text-amber-400 dark:text-amber-300 mt-2.5 bg-amber-400/10 border border-amber-400/20 px-4 py-1 rounded-full">
+                      {getMetricString(podiumTop3[0])}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-amber-300 font-semibold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[0].branch]}</span>
-                  <span className="text-base font-black text-amber-400 light-mode:text-amber-600 mt-3 bg-amber-400/10 light-mode:bg-amber-500/10 px-4 py-1.5 rounded-full border border-amber-400/20 light-mode:border-amber-300/40">
-                    {getMetricString(podiumTop3[0])}
-                  </span>
-                </GlassPanel>
-                <div className="hidden md:block w-28 h-20 bg-amber-400/15 border-t border-amber-400/30 rounded-t-xl mt-1.5 flex items-center justify-center font-extrabold text-amber-400">I</div>
-              </motion.div>
-            )}
+
+                  {/* Pedestal Step */}
+                  <div className="hidden md:flex w-32 h-28 bg-gradient-to-b from-amber-400/20 to-amber-500/5 border-t-2 border-x border-amber-400/30 shadow-[0_0_20px_rgba(245,158,11,0.1)] rounded-t-2xl items-center justify-center font-black text-amber-450 text-lg">I</div>
+                </motion.div>
+              );
+            })()}
 
             {/* Podium 3rd Place (Bronze) */}
-            {podiumTop3[2] && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="order-3 flex flex-col items-center w-full"
-              >
-                <GlassPanel className="w-full bg-[#121218]/40 light-mode:bg-white/70 border border-amber-700/20 light-mode:border-amber-700/40 p-5 rounded-2xl flex flex-col items-center relative overflow-hidden">
-                  <div className="absolute top-2 right-2 text-amber-700 font-extrabold text-sm">#3</div>
-                  <div 
-                    onClick={() => podiumTop3[2]?.uid && navigate(`/profile/${podiumTop3[2].uid}`)} 
-                    className="flex flex-col items-center hover:scale-105 transition-transform duration-200 w-full cursor-pointer"
-                  >
-                    <div className="relative">
-                      {renderAvatar(podiumTop3[2].photoURL, "w-16 h-16 text-3xl")}
-                      <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-amber-700 border border-white text-white rounded-full text-xs font-bold shadow">🥉</span>
+            {podiumTop3[2] && (() => {
+              const level = getXPLevel(podiumTop3[2].points);
+              return (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="order-3 flex flex-col items-center w-full"
+                >
+                  {/* Floating User details above pedestal (No enclosing card!) */}
+                  <div className="flex flex-col items-center mb-3 text-center">
+                    <span className="text-amber-700 font-extrabold text-[10px] uppercase tracking-wider bg-amber-700/10 px-3 py-1 rounded-full border border-amber-700/20 mb-2">🥉 3rd Place</span>
+                    <div 
+                      onClick={() => podiumTop3[2]?.uid && navigate(`/profile/${podiumTop3[2].uid}`)} 
+                      className="flex flex-col items-center hover:scale-105 transition-transform duration-200 cursor-pointer"
+                    >
+                      <div className="relative">
+                        {renderAvatar(podiumTop3[2].photoURL, "w-16 h-16 text-3xl")}
+                        <span className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 bg-amber-700 border-2 border-[#0A0A0C] text-white rounded-full text-xs font-bold shadow-lg shadow-black/40">🥉</span>
+                      </div>
+                      <h4 className="font-extrabold text-white dark:text-slate-200 text-sm mt-3 hover:text-indigo-400 transition-colors duration-200">{podiumTop3[2].displayName}</h4>
                     </div>
-                    <h4 className="font-extrabold text-white light-mode:text-slate-805 text-sm mt-3 truncate w-full text-center hover:text-indigo-400 transition-colors duration-200">{podiumTop3[2].displayName}</h4>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[2].branch] || 'ECE'}</span>
+                    
+                    {/* XP Level Badge */}
+                    <span className={`text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded border bg-gradient-to-r ${level.color} mt-2 shadow-sm`}>
+                      {level.badge}
+                    </span>
+
+                    <span className="text-xs font-bold text-amber-750 dark:text-amber-600 mt-2.5 bg-white/5 border border-white/[0.04] px-3 py-0.5 rounded-full">
+                      {getMetricString(podiumTop3[2])}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">{BRANCH_LABELS[podiumTop3[2].branch]}</span>
-                  <span className="text-sm font-bold text-amber-700 light-mode:text-amber-800 mt-2 bg-amber-700/10 light-mode:bg-amber-600/10 px-3 py-1 rounded-full border border-amber-700/20 light-mode:border-amber-600/30">
-                    {getMetricString(podiumTop3[2])}
-                  </span>
-                </GlassPanel>
-                <div className="hidden md:block w-24 h-8 bg-amber-700/15 border-t border-amber-700/30 rounded-t-xl mt-1.5 flex items-center justify-center font-extrabold text-amber-700">III</div>
-              </motion.div>
-            )}
+
+                  {/* Pedestal Step */}
+                  <div className="hidden md:flex w-24 h-8 bg-gradient-to-b from-amber-700/15 to-amber-800/5 border-t-2 border-x border-amber-700/20 shadow-[0_0_10px_rgba(180,83,9,0.04)] rounded-t-2xl items-center justify-center font-black text-amber-700 text-sm">III</div>
+                </motion.div>
+              );
+            })()}
 
           </div>
         )}
@@ -345,12 +400,12 @@ export const Leaderboard: React.FC = () => {
               className="w-full md:w-44 bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-800 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold"
             >
               <option value="all">🌐 All Departments</option>
-              <option value="computers">💻 CSE</option>
-              <option value="electronics">🔌 ECE</option>
-              <option value="mechanical">⚙️ Mech/Civil</option>
-              <option value="maths">📐 Maths</option>
-              <option value="science">🔬 Sciences</option>
-              <option value="management">📊 Humanities</option>
+              <option value="cse">💻 CSE</option>
+              <option value="aiml">🧠 AI & ML</option>
+              <option value="ds">📊 DS</option>
+              <option value="ece">🔌 ECE</option>
+              <option value="mechanical">⚙️ Mechanical</option>
+              <option value="civil">🏗️ Civil</option>
             </select>
 
             {/* Search Input */}
@@ -397,13 +452,16 @@ export const Leaderboard: React.FC = () => {
               {remainderList.map((peer, idx) => {
                 const isMe = peer.uid === user?.uid;
                 const rankNum = idx + 4;
+                const level = getXPLevel(peer.points);
+                const progressPct = getXPProgress(peer.points);
+                
                 return (
                   <GlassPanel
                     key={peer.uid}
-                    className={`px-5 py-3.5 flex items-center border hover:border-white/10 light-mode:hover:border-slate-300 ${
+                    className={`px-5 py-3.5 flex items-center border hover:border-white/10 dark:hover:border-slate-700 transition-all hover:scale-[1.005] duration-200 ${
                       isMe 
-                        ? 'bg-indigo-600/10 light-mode:bg-indigo-50/60 border-indigo-500/30 light-mode:border-indigo-300/60 shadow shadow-indigo-600/5' 
-                        : 'bg-[#121218]/30 light-mode:bg-white/60 border-white/[0.04] light-mode:border-slate-200/50'
+                        ? 'bg-indigo-600/10 dark:bg-indigo-950/20 border-indigo-500/30 dark:border-indigo-800/40 shadow shadow-indigo-600/5' 
+                        : 'bg-[#121218]/30 dark:bg-slate-900/[0.02] border-white/[0.04] dark:border-slate-800/40'
                     }`}
                   >
                     {/* Rank Badge */}
@@ -418,11 +476,16 @@ export const Leaderboard: React.FC = () => {
                     >
                       {renderAvatar(peer.photoURL, "w-9 h-9 text-lg")}
                       <div className="min-w-0 text-left">
-                        <span className="font-extrabold text-white light-mode:text-slate-800 text-xs leading-none flex items-center gap-1.5 group-hover:text-indigo-400 transition-colors">
+                        <span className="font-extrabold text-white dark:text-slate-100 text-xs leading-none flex items-center gap-1.5 group-hover:text-indigo-400 transition-colors">
                           {peer.displayName}
-                          {isMe && <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">YOU</span>}
+                          {isMe && <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-extrabold">YOU</span>}
                         </span>
-                        <span className="block text-[10px] text-slate-500 font-semibold mt-0.5">@{peer.username}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="block text-[10px] text-slate-500 font-semibold">@{peer.username}</span>
+                          <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded border bg-gradient-to-r ${level.color}`}>
+                            {level.badge}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -443,14 +506,19 @@ export const Leaderboard: React.FC = () => {
                       {peer.cgpa > 0 ? peer.cgpa.toFixed(2) : 'N/A'}
                     </span>
 
-                    {/* Sorted score metric */}
-                    <div className="w-24 text-right">
-                      <span className="text-xs font-extrabold text-white light-mode:text-slate-800 flex items-center justify-end gap-1.5">
-                        {sortBy === 'points' && <Award className="w-3.5 h-3.5 text-indigo-400" />}
+                    {/* Sorted score metric + Level Progress Bar */}
+                    <div className="w-24 flex flex-col items-end gap-1 pl-2">
+                      <span className="text-xs font-extrabold text-white dark:text-slate-200 flex items-center justify-end gap-1.5">
+                        {sortBy === 'points' && <Award className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />}
                         {sortBy === 'uploads' && <BookOpen className="w-3.5 h-3.5 text-indigo-400" />}
-                        {sortBy === 'cgpa' && <ArrowUp className="w-3.5 h-3.5 text-indigo-400" />}
+                        {sortBy === 'cgpa' && <ArrowUp className="w-3.5 h-3.5 text-indigo-400 animate-bounce-slow" />}
                         {getMetricString(peer)}
                       </span>
+                      {sortBy === 'points' && (
+                        <div className="w-16 h-1 bg-slate-950/80 border border-white/5 rounded-full overflow-hidden" title={`${progressPct}% towards next level`}>
+                          <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style={{ width: `${progressPct}%` }} />
+                        </div>
+                      )}
                     </div>
 
                   </GlassPanel>

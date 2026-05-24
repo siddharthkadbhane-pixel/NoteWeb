@@ -165,12 +165,12 @@ export const classifyNoteCategory = async (
     ];
 
     const keywordMaps: Record<string, string[]> = {
-      computers: csKeywords,
-      maths: mathKeywords,
-      science: scienceKeywords,
-      electronics: electronicsKeywords,
-      mechanical: mechanicalKeywords,
-      management: managementKeywords,
+      cse: csKeywords,
+      aiml: mathKeywords,
+      ds: mathKeywords,
+      ece: electronicsKeywords,
+      mechanical: mechanicalKeywords.concat(managementKeywords),
+      civil: scienceKeywords,
     };
 
     // Calculate score for each category based on keyword matches
@@ -233,7 +233,7 @@ export const classifyNoteCategory = async (
     }
 
     // If no keywords matched, return the first available category or a default
-    return bestCatId || (availableCategories.length > 0 ? availableCategories[0].id : 'computers');
+    return bestCatId || (availableCategories.length > 0 ? availableCategories[0].id : 'cse');
   };
 
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -262,7 +262,7 @@ Please classify the note into exactly ONE of the following active category IDs:
 Here is some context about these category IDs:
 [ ${categoryListStr} ]
 
-Select the single best fitting category ID. Return ONLY the category ID itself as a plain text string, with no formatting, markdown, quotes, explanations, or extra spaces. Example: "computers" or "maths".`;
+Select the single best fitting category ID. Return ONLY the category ID itself as a plain text string, with no formatting, markdown, quotes, explanations, or extra spaces. Example: "cse" or "ece".`;
 
   try {
     const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {

@@ -965,58 +965,58 @@ function mockPostgresSeedAndReturnMock() {
   if (!branchesSeed) {
     const defaultBranches = [
       {
-        id: 'computers',
-        name: 'Computer Science',
+        id: 'cse',
+        name: 'Computer Science & Engineering',
         description: 'Data Structures, Algorithms, Software Engineering, Web Dev, Databases, and operating systems.',
         icon: 'code',
         color: 'from-blue-500 to-indigo-500',
         shadow_color: 'rgba(59, 130, 246, 0.3)',
-        notes_count: 'CS'
+        notes_count: 'CSE'
       },
       {
-        id: 'maths',
-        name: 'Mathematics',
-        description: 'Calculus, Linear Algebra, Discrete Math, Differential Equations, Probability, and Statistics.',
+        id: 'aiml',
+        name: 'AI & Machine Learning',
+        description: 'Neural Networks, Deep Learning, Computer Vision, NLP, and Robotics.',
+        icon: 'sparkles',
+        color: 'from-fuchsia-500 to-purple-500',
+        shadow_color: 'rgba(217, 70, 239, 0.3)',
+        notes_count: 'AI&ML'
+      },
+      {
+        id: 'ds',
+        name: 'Data Science',
+        description: 'Data analytics, statistical learning, visualization, big data processing, and predictive models.',
         icon: 'binary',
-        color: 'from-purple-500 to-pink-500',
-        shadow_color: 'rgba(168, 85, 247, 0.3)',
-        notes_count: 'M'
+        color: 'from-cyan-500 to-blue-500',
+        shadow_color: 'rgba(6, 182, 212, 0.3)',
+        notes_count: 'DS'
       },
       {
-        id: 'science',
-        name: 'Basic Science & Eng',
-        description: 'Engineering Physics, Chemistry, Mechanics, Electrical circuits, Thermodynamics, and materials.',
-        icon: 'atom',
+        id: 'mechanical',
+        name: 'Mechanical Engineering',
+        description: 'Thermodynamics, fluid mechanics, design of machines, heat transfer, and manufacturing processes.',
+        icon: 'settings',
         color: 'from-amber-500 to-orange-500',
         shadow_color: 'rgba(245, 158, 11, 0.3)',
-        notes_count: 'BSE'
+        notes_count: 'ME'
       },
       {
-        id: 'electronics',
-        name: 'Electronics & Comm',
+        id: 'civil',
+        name: 'Civil Engineering',
+        description: 'Structural mechanics, geotech, environment, surveying, and infrastructure design.',
+        icon: 'compass',
+        color: 'from-rose-500 to-pink-500',
+        shadow_color: 'rgba(244, 63, 94, 0.3)',
+        notes_count: 'CE'
+      },
+      {
+        id: 'ece',
+        name: 'Electronics & Comm Eng',
         description: 'Microprocessors, VLSI design, Signal processing, Communication systems, and analog hardware.',
         icon: 'cpu',
         color: 'from-emerald-500 to-teal-500',
         shadow_color: 'rgba(16, 185, 129, 0.3)',
         notes_count: 'ECE'
-      },
-      {
-        id: 'mechanical',
-        name: 'Mechanical & Civil',
-        description: 'Solid mechanics, Fluid dynamics, Kinematics, CAD design, Structural analysis, and geotech.',
-        icon: 'settings',
-        color: 'from-rose-500 to-pink-500',
-        shadow_color: 'rgba(244, 63, 94, 0.3)',
-        notes_count: 'ME/CE'
-      },
-      {
-        id: 'management',
-        name: 'Management & Humanities',
-        description: 'Economics, Professional ethics, Business communication, Organizational behavior, and entrepreneurship.',
-        icon: 'compass',
-        color: 'from-cyan-500 to-blue-500',
-        shadow_color: 'rgba(6, 182, 212, 0.3)',
-        notes_count: 'MGT'
       }
     ];
     localStorage.setItem('noteweb-db-branches', JSON.stringify(defaultBranches));
@@ -1025,30 +1025,23 @@ function mockPostgresSeedAndReturnMock() {
   const categoriesSeed = localStorage.getItem('noteweb-db-categories');
   if (!categoriesSeed) {
     const defaultCategories = [
-      { id: 'computers-dsa', branch_id: 'computers', name: 'Data Structures & Algorithms', description: 'Arrays, Linked Lists, Stacks, Queues, Trees, Graphs, sorting and searching algorithms.' },
-      { id: 'computers-dbms', branch_id: 'computers', name: 'Database Management Systems', description: 'Relational databases, SQL queries, normalization, transactions, and indexing.' },
-      { id: 'computers-os', branch_id: 'computers', name: 'Operating Systems', description: 'Processes, threads, CPU scheduling, memory management, file systems, and concurrency.' },
-      { id: 'computers-webdev', branch_id: 'computers', name: 'Web Development', description: 'HTML, CSS, JavaScript, React, Node.js, REST APIs, and modern full-stack engineering.' },
+      { id: 'cse-dsa', branch_id: 'cse', name: 'Data Structures & Algorithms', description: 'Arrays, Linked Lists, Stacks, Queues, Trees, Graphs, sorting and searching algorithms.' },
+      { id: 'cse-dbms', branch_id: 'cse', name: 'Database Management Systems', description: 'Relational databases, SQL queries, normalization, transactions, and indexing.' },
+      { id: 'cse-os', branch_id: 'cse', name: 'Operating Systems', description: 'Processes, threads, CPU scheduling, memory management, file systems, and concurrency.' },
+      { id: 'cse-webdev', branch_id: 'cse', name: 'Web Development', description: 'HTML, CSS, JavaScript, React, Node.js, REST APIs, and modern full-stack engineering.' },
       
-      { id: 'maths-calculus', branch_id: 'maths', name: 'Calculus & Integration', description: 'Limits, derivatives, integrals, series, multivariable calculus, and vector algebra.' },
-      { id: 'maths-linear-algebra', branch_id: 'maths', name: 'Linear Algebra & Matrices', description: 'Matrix operations, vector spaces, eigenvalues, eigenvectors, and linear transformations.' },
-      { id: 'maths-probability', branch_id: 'maths', name: 'Probability & Statistics', description: 'Random variables, probability distributions, hypothesis testing, and regression analysis.' },
+      { id: 'aiml-ml', branch_id: 'aiml', name: 'Artificial Intelligence & Machine Learning', description: 'Supervised/unsupervised learning, regression, classification, clustering, neural networks.' },
       
-      { id: 'science-physics', branch_id: 'science', name: 'Engineering Physics', description: 'Optics, quantum mechanics, lasers, fiber optics, electromagnetism, and semiconductor physics.' },
-      { id: 'science-chemistry', branch_id: 'science', name: 'Engineering Chemistry', description: 'Water technology, battery chemistry, polymers, fuels, corrosion, and green chemistry.' },
-      { id: 'science-mechanics', branch_id: 'science', name: 'Engineering Mechanics', description: 'Force systems, equilibrium, friction, centroids, moment of inertia, and kinematics.' },
+      { id: 'ds-analytics', branch_id: 'ds', name: 'Data Analytics', description: 'Exploratory data analysis, statistical tests, data wrangling, and descriptive metrics.' },
       
-      { id: 'electronics-microprocessors', branch_id: 'electronics', name: 'Microprocessors & Embedded Systems', description: '8085/8086 architectures, assembly programming, interfacing, and microcontrollers like Arduino.' },
-      { id: 'electronics-digital', branch_id: 'electronics', name: 'Digital Electronics', description: 'Number systems, logic gates, Boolean algebra, combinational and sequential logic circuits.' },
-      { id: 'electronics-signals', branch_id: 'electronics', name: 'Signals & Systems', description: 'Signals & Systems, continuous & discrete time signals, Fourier transform, Laplace transform.' },
+      { id: 'ece-microprocessors', branch_id: 'ece', name: 'Microprocessors & Embedded Systems', description: '8085/8086 architectures, assembly programming, interfacing, and microcontrollers like Arduino.' },
+      { id: 'ece-digital', branch_id: 'ece', name: 'Digital Electronics', description: 'Number systems, logic gates, Boolean algebra, combinational and sequential logic circuits.' },
+      { id: 'ece-signals', branch_id: 'ece', name: 'Signals & Systems', description: 'Signals & Systems, continuous & discrete time signals, Fourier transform, Laplace transform.' },
       
       { id: 'mechanical-thermo', branch_id: 'mechanical', name: 'Thermodynamics', description: 'Laws of thermodynamics, heat engines, entropy, pure substances, and power cycles.' },
       { id: 'mechanical-fluid', branch_id: 'mechanical', name: 'Fluid Mechanics', description: 'Fluid properties, pressure, flow kinematics, Bernoulli equation, and dimensional analysis.' },
-      { id: 'mechanical-structures', branch_id: 'mechanical', name: 'Structural Analysis', description: 'Trusses, beams, columns, bending moments, shear forces, and stress analysis.' },
       
-      { id: 'management-economics', branch_id: 'management', name: 'Engineering Economics', description: 'Time value of money, cash flow, cost benefit analysis, inflation, and financial statements.' },
-      { id: 'management-ethics', branch_id: 'management', name: 'Professional Ethics', description: 'Human values, engineering ethics, safety, rights, responsibilities, and global issues.' },
-      { id: 'management-entrepreneurship', branch_id: 'management', name: 'Entrepreneurship Development', description: 'Business plans, startup mechanics, funding, market research, and project management.' }
+      { id: 'civil-structures', branch_id: 'civil', name: 'Structural Analysis', description: 'Trusses, beams, columns, bending moments, shear forces, and stress analysis.' }
     ];
     localStorage.setItem('noteweb-db-categories', JSON.stringify(defaultCategories));
   }
@@ -1060,8 +1053,8 @@ function mockPostgresSeedAndReturnMock() {
       {
         id: 'note-dsa-trees',
         subject: 'Binary Search Trees & Balancing (AVL)',
-        branch: 'computers',
-        category: 'computers-dsa',
+        branch: 'cse',
+        category: 'cse-dsa',
         semester: '3',
         teacher: 'Dr. Alex Patel',
         description: 'Comprehensive notes covering BST properties, insertion, deletion, and rotation algorithms for AVL trees with runtime complexities.',
@@ -1090,8 +1083,8 @@ function mockPostgresSeedAndReturnMock() {
       {
         id: 'note-dbms-norm',
         subject: 'Database Normalization: 1NF to BCNF',
-        branch: 'computers',
-        category: 'computers-dbms',
+        branch: 'cse',
+        category: 'cse-dbms',
         semester: '4',
         teacher: 'Dr. Ramesh Kumar',
         description: 'Step-by-step normalization guide using functional dependencies. Explains update anomalies with clear tabular examples.',
@@ -1119,16 +1112,16 @@ function mockPostgresSeedAndReturnMock() {
 - **Deletion Anomaly**: Deleting a child record accidentally purges vital parent facts.`
       },
       {
-        id: 'note-physics-quantum',
-        subject: 'Quantum Mechanics: Wave Equations & Tunneling',
-        branch: 'science',
-        category: 'science-physics',
-        semester: '2',
+        id: 'note-ece-microprocessors',
+        subject: 'Microprocessors and Interfacing: 8086',
+        branch: 'ece',
+        category: 'ece-microprocessors',
+        semester: '4',
         teacher: 'Dr. Vikram Singh',
-        description: 'Lecture notes on Schrodinger time-independent wave equations, probability densities, and wave function boundary conditions for potential barriers.',
+        description: 'Lecture notes on 8086 microprocessor internal architecture, register organization, memory segmentation, and addressing modes.',
         pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
         pdf_path: 'notes/mock/1716301400000_Quantum.pdf',
-        file_name: 'Quantum_Mechanics_Lec8.pdf',
+        file_name: 'Microprocessors_8086_Lec8.pdf',
         file_size: 3254000,
         uploaded_by: 'mock-phone-919876543210',
         uploader_name: 'Student +91 98765 43210',
@@ -1138,22 +1131,22 @@ function mockPostgresSeedAndReturnMock() {
         likes: ['mock-google-user'],
         likes_count: 1,
         bookmarks_count: 1,
-        summary: `### Schrodinger Equation Basics
-- **Formulation**: Hψ = Eψ, where H is the Hamiltonian operator.
-- **Wave Function ψ**: Complex probability amplitude. |ψ|² represents the probability density of finding a particle at a given point.
-- **Quantum Tunneling**: Particle passing through a potential barrier higher than its kinetic energy, explained by the wave behavior of matter.`
+        summary: `### 8086 Microprocessor Basics
+- **Architecture**: Contains BIU (Bus Interface Unit) and EU (Execution Unit) working in parallel.
+- **Pipelining**: BIU fetches up to 6 instruction bytes into a queue, enabling instruction prefetching.
+- **Memory Segmentation**: 1 MB address space divided into segments (CS, DS, SS, ES) of 64 KB each.`
       },
       {
-        id: 'note-maths-calc',
-        subject: 'Calculus: Double & Triple Integrals in Polar Coordinates',
-        branch: 'maths',
-        category: 'maths-calculus',
-        semester: '1',
+        id: 'note-ds-analytics',
+        subject: 'Probability and Linear Algebra for Data Science',
+        branch: 'ds',
+        category: 'ds-analytics',
+        semester: '3',
         teacher: 'Prof. Sarah Jenkins',
-        description: 'Complete breakdown of shifting integrals from Cartesian coordinates to Cylindrical and Spherical systems, with solved examples of volume calculation.',
+        description: 'Complete breakdown of vector spaces, matrix factorization, and probability distributions used in statistical modeling.',
         pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
         pdf_path: 'notes/mock/1716301500000_Calculus.pdf',
-        file_name: 'Multivariable_Integration.pdf',
+        file_name: 'DS_Maths_LinearAlgebra.pdf',
         file_size: 1980300,
         uploaded_by: 'mock-google-user',
         uploader_name: 'Google Student',
@@ -1163,10 +1156,9 @@ function mockPostgresSeedAndReturnMock() {
         likes: [],
         likes_count: 0,
         bookmarks_count: 0,
-        summary: `### Coordinate Transformation Rules
-- **Polar Coordinates**: dx dy = r dr dθ. Substitute x = r cos θ, y = r sin θ.
-- **Cylindrical Coordinates**: dx dy dz = r dz dr dθ.
-- **Spherical Coordinates**: dx dy dz = ρ² sin φ dρ dφ dθ.`
+        summary: `### Essential DS Math Topics
+- **Matrices**: SVD (Singular Value Decomposition) and Principal Component Analysis (PCA) foundations.
+- **Probability**: Bayes Theorem, continuous distributions (Gaussian/Normal), and maximum likelihood estimation.`
       }
     ];
     localStorage.setItem('noteweb-db-notes', JSON.stringify(defaultNotes));

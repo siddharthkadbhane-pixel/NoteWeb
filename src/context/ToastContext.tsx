@@ -9,13 +9,14 @@ export interface ToastMessage {
   type: ToastType;
   message: string;
   duration?: number;
+  onClick?: () => void;
 }
 
 interface ToastContextType {
-  show: (message: string, type?: ToastType, duration?: number) => void;
+  show: (message: string, type?: ToastType, duration?: number, onClick?: () => void) => void;
   success: (message: string, duration?: number) => void;
   error: (message: string, duration?: number) => void;
-  info: (message: string, duration?: number) => void;
+  info: (message: string, duration?: number, onClick?: () => void) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -27,9 +28,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const show = useCallback((message: string, type: ToastType = 'info', duration = 4000) => {
+  const show = useCallback((message: string, type: ToastType = 'info', duration = 4000, onClick?: () => void) => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, type, message, duration }]);
+    setToasts((prev) => [...prev, { id, type, message, duration, onClick }]);
 
     setTimeout(() => {
       remove(id);
@@ -38,7 +39,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const success = useCallback((message: string, duration?: number) => show(message, 'success', duration), [show]);
   const error = useCallback((message: string, duration?: number) => show(message, 'error', duration), [show]);
-  const info = useCallback((message: string, duration?: number) => show(message, 'info', duration), [show]);
+  const info = useCallback((message: string, duration?: number, onClick?: () => void) => show(message, 'info', duration, onClick), [show]);
 
   return (
     <ToastContext.Provider value={{ show, success, error, info }}>
@@ -52,7 +53,13 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               initial={{ opacity: 0, x: 50, y: -10, scale: 0.9 }}
               animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
               exit={{ opacity: 0, x: 80, scale: 0.9, transition: { duration: 0.2 } }}
-              className="pointer-events-auto"
+              className={`pointer-events-auto ${toast.onClick ? 'cursor-pointer select-none active:scale-[0.98] transition-transform' : ''}`}
+              onClick={() => {
+                if (toast.onClick) {
+                  toast.onClick();
+                  remove(toast.id);
+                }
+              }}
             >
               <div className="glass-panel backdrop-blur-md rounded-xl p-4 flex items-start gap-3 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.15)] bg-slate-900/80 light-mode:bg-white/90">
                 {toast.type === 'success' && <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />}
