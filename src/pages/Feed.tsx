@@ -308,7 +308,26 @@ export const Feed: React.FC = () => {
         }
       }
 
+      // Get own local uploads (always visible on uploader's device instantly regardless of status/RLS)
+      const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
+      let myUploads: any[] = [];
+      if (myUploadsStr) {
+        try {
+          myUploads = JSON.parse(myUploadsStr);
+        } catch {}
+      }
+
       const merged = [...fetched];
+      
+      // Merge my local uploads first (they have higher precedence and status)
+      for (const my of myUploads) {
+        const mappedMy = mapDbNoteToNoteDocument(my);
+        if (!merged.some((n) => n.id === mappedMy.id)) {
+          merged.push(mappedMy);
+        }
+      }
+
+      // Merge other broadcasted local notes
       for (const sn of finalStoredNotes) {
         const mappedSn = mapDbNoteToNoteDocument(sn);
         if (!merged.some((n) => n.id === mappedSn.id)) {
@@ -417,6 +436,20 @@ export const Feed: React.FC = () => {
                   }
                 } catch (e) {
                   console.warn('[NoteWeb Realtime] Failed to remove deleted note from broadcast cache:', e);
+                }
+
+                // Remove from local own uploads cache
+                try {
+                  const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
+                  if (myUploadsStr) {
+                    const myUploads = JSON.parse(myUploadsStr);
+                    if (Array.isArray(myUploads)) {
+                      const filtered = myUploads.filter((n: any) => n.id !== payload.old.id);
+                      localStorage.setItem('noteweb-my-uploads', JSON.stringify(filtered));
+                    }
+                  }
+                } catch (e) {
+                  console.warn('[NoteWeb Realtime] Failed to remove deleted note from own uploads cache:', e);
                 }
               }
             }
@@ -820,6 +853,20 @@ export const Feed: React.FC = () => {
         }
       } catch (cacheErr) {
         console.warn("Failed to clear note from local broadcast cache:", cacheErr);
+      }
+
+      // Remove from local own uploads cache
+      try {
+        const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
+        if (myUploadsStr) {
+          const myUploads = JSON.parse(myUploadsStr);
+          if (Array.isArray(myUploads)) {
+            const filtered = myUploads.filter((n: any) => n.id !== noteId);
+            localStorage.setItem('noteweb-my-uploads', JSON.stringify(filtered));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to clear note from local own uploads cache:", cacheErr);
       }
 
       setNotes((prev) => prev.filter((n) => n.id !== noteId));

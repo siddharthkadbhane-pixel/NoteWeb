@@ -549,6 +549,21 @@ export const Upload: React.FC = () => {
           localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(storedNotes));
         }
 
+        // Also save to my-uploads
+        try {
+          const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
+          let myUploads: any[] = [];
+          if (myUploadsStr) {
+            try { myUploads = JSON.parse(myUploadsStr); } catch {}
+          }
+          if (!myUploads.some((n: any) => n.id === broadcastPayload.id)) {
+            myUploads.push(broadcastPayload);
+            localStorage.setItem('noteweb-my-uploads', JSON.stringify(myUploads));
+          }
+        } catch (myErr) {
+          console.warn("Failed to cache uploader note:", myErr);
+        }
+
         clearInterval(progressInterval);
         success("NoteWeb Secure Shield: Note uploaded and synced instantly via P2P Broadcast.");
         // Signal Feed page to immediately refetch
@@ -658,6 +673,21 @@ export const Upload: React.FC = () => {
         bookmarks_count: 0,
         summary: summaryText || null
       };
+
+      // Save to own uploads local cache for persistent visibility
+      try {
+        const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
+        let myUploads: any[] = [];
+        if (myUploadsStr) {
+          try { myUploads = JSON.parse(myUploadsStr); } catch {}
+        }
+        if (!myUploads.some((n: any) => n.id === optimisticNote.id)) {
+          myUploads.push(optimisticNote);
+          localStorage.setItem('noteweb-my-uploads', JSON.stringify(myUploads));
+        }
+      } catch (myErr) {
+        console.warn("Failed to cache uploader note:", myErr);
+      }
 
       // Wait 800ms to allow broadcast transmission to flush
       await new Promise((r) => setTimeout(r, 800));
