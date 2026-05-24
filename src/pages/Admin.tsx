@@ -128,12 +128,13 @@ export const Admin: React.FC = () => {
   const { user: currentAuthUser } = useAuth();
   const { success, error, info } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'moderation' | 'notes' | 'users' | 'online' | 'feedback'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'notes' | 'users' | 'online' | 'feedback' | 'flagged'>('moderation');
   const [pendingNotes, setPendingNotes] = useState<NoteDocument[]>([]);
   const [allNotes, setAllNotes] = useState<NoteDocument[]>([]);
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [flaggedChats, setFlaggedChats] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
@@ -220,10 +221,40 @@ export const Admin: React.FC = () => {
       }
       fetchedFeedbacks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setFeedbacks(fetchedFeedbacks);
+
+      // 5. Fetch Flagged Chats
+      let fetchedFlagged: any[] = [];
+      try {
+        const { data: dbFlagged, error: flaggedErr } = await supabase
+          .from('flagged_chats')
+          .select('*');
+        if (!flaggedErr && dbFlagged) {
+          fetchedFlagged = dbFlagged;
+        }
+      } catch (e) {
+        console.warn("Failed to fetch flagged_chats from Supabase:", e);
+      }
+
+      const localFlaggedStr = localStorage.getItem('noteweb-flagged-chats');
+      if (localFlaggedStr) {
+        try {
+          const localFlagged = JSON.parse(localFlaggedStr);
+          if (Array.isArray(localFlagged)) {
+            const existingIds = new Set(fetchedFlagged.map(f => f.id));
+            localFlagged.forEach((f: any) => {
+              if (f && f.id && !existingIds.has(f.id)) {
+                fetchedFlagged.push(f);
+              }
+            });
+          }
+        } catch {}
+      }
+      fetchedFlagged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setFlaggedChats(fetchedFlagged);
       
       setLastRefresh(new Date());
 
-      console.log(`[NoteWeb Admin Log] Dashboard data loaded. Pending: ${pending.length}, Total: ${all.length}, Users: ${users.length}, Feedbacks: ${fetchedFeedbacks.length}`);
+      console.log(`[NoteWeb Admin Log] Dashboard data loaded. Pending: ${pending.length}, Total: ${all.length}, Users: ${users.length}, Feedbacks: ${fetchedFeedbacks.length}, Flagged: ${fetchedFlagged.length}`);
     } catch (e: any) {
       console.error("[NoteWeb Admin Log] Failed to load dashboard data:", e);
       error("Failed to load admin panel data: " + e.message);
@@ -306,16 +337,53 @@ export const Admin: React.FC = () => {
             });
           }
         }).subscribe();
+
+        // P2P Broadcast listener for Chat flagging & deletion
+        const channelBroadcastChats = supabase.channel('public:chats');
+        channelBroadcastChats
+          .on('broadcast', { event: 'flagged-chat' }, (response: any) => {
+            console.log('[NoteWeb Admin Broadcast] Flagged chat received:', response);
+            if (response?.payload) {
+              setFlaggedChats((prev) => {
+                const exists = prev.some(f => f.id === response.payload.id);
+                if (exists) return prev;
+                const next = [response.payload, ...prev];
+                next.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                return next;
+              });
+              info(`⚠️ Profanity Alert: User "${response.payload.sender_name}" typed a flagged word!`);
+            }
+          })
+          .on('broadcast', { event: 'delete-message' }, (response: any) => {
+            if (response?.payload?.id) {
+              setFlaggedChats((prev) => prev.filter(f => f.chat_id !== response.payload.id));
+            }
+          })
+          .subscribe();
       }
     } catch (err) {
       console.warn("[NoteWeb Admin Realtime] Realtime subscriptions failed:", err);
     }
+
+    // Listen for storage changes to sync flagged chats across admin tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'noteweb-flagged-chats') {
+        const stored = localStorage.getItem('noteweb-flagged-chats');
+        if (stored) {
+          try {
+            setFlaggedChats(JSON.parse(stored));
+          } catch {}
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
 
     // Auto-refresh every 15 seconds silently
     const refreshInterval = setInterval(() => fetchModerationData(true), 15000);
 
     return () => {
       clearInterval(refreshInterval);
+      window.removeEventListener('storage', handleStorageChange);
       if (channelProfiles) {
         try { channelProfiles.unsubscribe(); } catch (e) {}
       }
@@ -514,6 +582,102 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const handleDeleteFlaggedChat = async (flaggedId: string, chatId: string) => {
+    const isConfirmed = window.confirm("Are you sure you want to permanently delete this chat message and clear this notification?");
+    if (!isConfirmed) return;
+
+    try {
+      // 1. Delete the chat message from chats table
+      await supabase.from('chats').delete().eq('id', chatId);
+
+      // 2. Broadcast the delete message event
+      try {
+        const channel = supabase.channel('public:chats');
+        await new Promise<void>((resolve) => {
+          channel.subscribe(async (status: any) => {
+            if (status === 'SUBSCRIBED') {
+              await channel.send({
+                type: 'broadcast',
+                event: 'delete-message',
+                payload: { id: chatId }
+              });
+              resolve();
+            } else {
+              resolve();
+            }
+          });
+          setTimeout(resolve, 1000);
+        });
+      } catch (e) {
+        console.warn(e);
+      }
+
+      // 3. Delete flagged notification from Supabase
+      try {
+        await supabase.from('flagged_chats').delete().eq('id', flaggedId);
+      } catch (e) {}
+
+      // 4. Update state and localStorage
+      setFlaggedChats((prev) => prev.filter((f) => f.id !== flaggedId));
+      
+      const localFlaggedStr = localStorage.getItem('noteweb-flagged-chats');
+      if (localFlaggedStr) {
+        try {
+          const localFlagged = JSON.parse(localFlaggedStr);
+          if (Array.isArray(localFlagged)) {
+            const filtered = localFlagged.filter((f: any) => f.id !== flaggedId);
+            localStorage.setItem('noteweb-flagged-chats', JSON.stringify(filtered));
+          }
+        } catch {}
+      }
+
+      // Also clean from local broadcast chat cache
+      try {
+        const storedChatsStr = localStorage.getItem('noteweb-broadcasted-chats');
+        if (storedChatsStr) {
+          const storedChats = JSON.parse(storedChatsStr);
+          if (Array.isArray(storedChats)) {
+            const filtered = storedChats.filter((c: any) => c.id !== chatId);
+            localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(filtered));
+          }
+        }
+      } catch {}
+
+      success("Flagged message deleted and notification cleared.");
+    } catch (e: any) {
+      console.error(e);
+      error("Failed to delete flagged message: " + e.message);
+    }
+  };
+
+  const handleClearFlaggedNotification = async (flaggedId: string) => {
+    try {
+      // Delete flagged notification from Supabase
+      try {
+        await supabase.from('flagged_chats').delete().eq('id', flaggedId);
+      } catch (e) {}
+
+      // Update state and localStorage
+      setFlaggedChats((prev) => prev.filter((f) => f.id !== flaggedId));
+      
+      const localFlaggedStr = localStorage.getItem('noteweb-flagged-chats');
+      if (localFlaggedStr) {
+        try {
+          const localFlagged = JSON.parse(localFlaggedStr);
+          if (Array.isArray(localFlagged)) {
+            const filtered = localFlagged.filter((f: any) => f.id !== flaggedId);
+            localStorage.setItem('noteweb-flagged-chats', JSON.stringify(filtered));
+          }
+        } catch {}
+      }
+
+      success("Notification dismissed.");
+    } catch (e: any) {
+      console.error(e);
+      error("Failed to dismiss notification: " + e.message);
+    }
+  };
+
   const getFormatDate = (timestamp: any) => {
     if (!timestamp) return 'Recent';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -641,6 +805,23 @@ export const Admin: React.FC = () => {
             {feedbacks.length > 0 && (
               <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-extrabold">
                 {feedbacks.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('flagged')}
+            className={`
+              px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 flex-shrink-0
+              ${activeTab === 'flagged' 
+                ? 'border-rose-500 text-rose-455 font-extrabold' 
+                : 'border-transparent text-slate-400 hover:text-slate-200'}
+            `}
+          >
+            <ShieldAlert className="w-4 h-4 text-rose-450 animate-pulse" />
+            Flagged Chats
+            {flaggedChats.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-black animate-pulse">
+                {flaggedChats.length}
               </span>
             )}
           </button>
@@ -1021,6 +1202,79 @@ export const Admin: React.FC = () => {
                   <h4 className="font-bold text-slate-200">No users found</h4>
                   <p className="text-xs text-slate-500 mt-1">
                     Wait... how are you reading this if no users exist? Excellent!
+                  </p>
+                </div>
+              </GlassPanel>
+            )
+          ) : activeTab === 'flagged' ? (
+            /* ===== FLAGGED CHATS TAB ===== */
+            flaggedChats.length > 0 ? (
+              <div className="flex flex-col gap-4">
+                {flaggedChats.map((f) => (
+                  <GlassPanel 
+                    key={f.id} 
+                    className="p-5 flex flex-col md:flex-row md:items-start justify-between gap-4 border border-rose-500/10 bg-rose-500/[0.02] hover:border-rose-500/20"
+                  >
+                    <div className="flex items-start gap-4 min-w-0 text-left">
+                      <div className="flex-shrink-0">
+                        {renderAvatar(f.sender_avatar, "w-11 h-11 text-lg")}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <h4 className="font-bold text-white leading-none light-mode:text-slate-950">
+                            {f.sender_name}
+                          </h4>
+                          <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-450 uppercase">
+                            Flagged Message
+                          </span>
+                          <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded border border-white/[0.06] bg-white/[0.02] text-slate-400">
+                            Department: {f.sender_branch?.toUpperCase() || 'CSE'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-[10px] font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            Vulgar Words: {f.bad_word_detected}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-semibold ml-1">
+                            {getRelativeTime(f.created_at)}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-300 font-semibold leading-relaxed mt-3 break-words bg-rose-500/[0.03] border border-rose-500/15 p-3.5 rounded-2xl max-w-2xl">
+                          "{f.content}"
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 self-start md:self-auto flex-shrink-0 ml-[60px] md:ml-0">
+                      <button
+                        onClick={() => handleClearFlaggedNotification(f.id)}
+                        className="px-4 py-2 rounded-xl border border-white/[0.08] text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                        title="Dismiss Notification"
+                      >
+                        <Check className="w-4 h-4 text-emerald-400" /> Dismiss
+                      </button>
+                      <button
+                        onClick={() => handleDeleteFlaggedChat(f.id, f.chat_id)}
+                        className="px-4 py-2 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                        title="Delete Message & Clear"
+                      >
+                        <Trash2 className="w-4 h-4" /> Purge Chat
+                      </button>
+                    </div>
+                  </GlassPanel>
+                ))}
+              </div>
+            ) : (
+              <GlassPanel className="h-64 flex flex-col items-center justify-center text-center gap-4 bg-[#16161D]/10 border-dashed border-white/5">
+                <div className="w-12 h-12 rounded-full bg-slate-900 border border-white/5 flex items-center justify-center text-rose-400">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white light-mode:text-slate-800">Clean Lounge!</h4>
+                  <p className="text-xs text-slate-500 max-w-xs mt-1">
+                    No vulgar or flagged chat logs detected. The campus chat room is safe and respectful!
                   </p>
                 </div>
               </GlassPanel>

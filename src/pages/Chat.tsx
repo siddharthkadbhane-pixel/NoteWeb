@@ -18,6 +18,20 @@ import {
   X
 } from 'lucide-react';
 
+const BAD_WORDS = [
+  'abuse', 'fuck', 'shit', 'asshole', 'bitch', 'crap', 'cunt', 'dick', 'bastard', 'vulgar', 
+  'ass', 'dumb', 'idiot', 'stupid', 'slut', 'whore', 'piss', 'vulgar'
+];
+
+export const containsBadWords = (text: string): boolean => {
+  if (!text) return false;
+  const lowerText = text.toLowerCase();
+  return BAD_WORDS.some(word => {
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    return regex.test(lowerText);
+  });
+};
+
 const compressImage = (base64Str: string, maxWidth = 400, maxHeight = 400, quality = 0.6): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -239,6 +253,15 @@ export const Chat: React.FC = () => {
               }
             }
           )
+          .on(
+            'broadcast',
+            { event: 'delete-message' },
+            (response: any) => {
+              if (response?.payload?.id) {
+                setMessages((prev) => prev.filter((m) => m.id !== response.payload.id));
+              }
+            }
+          )
           .subscribe();
         
         channelRef.current = channel;
@@ -296,6 +319,61 @@ export const Chat: React.FC = () => {
         image_url: selectedImage || undefined,
         created_at: new Date().toISOString(),
       };
+
+      // Bad words detection
+      const hasBadWords = containsBadWords(inputText.trim());
+      if (hasBadWords) {
+        const detected = BAD_WORDS.filter(w => new RegExp(`\\b${w}\\b`, 'i').test(inputText.toLowerCase())).join(', ');
+        const flaggedPayload = {
+          id: `flagged-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          chat_id: tempMsgId,
+          sender_uid: user.uid,
+          sender_name: userProfile.displayName || 'Student',
+          sender_avatar: userProfile.photoURL || '',
+          sender_branch: userProfile.branch || 'cse',
+          content: inputText.trim(),
+          bad_word_detected: detected,
+          created_at: new Date().toISOString()
+        };
+
+        // Save flagged message to localStorage
+        const storedFlaggedStr = localStorage.getItem('noteweb-flagged-chats');
+        let storedFlagged = [];
+        if (storedFlaggedStr) {
+          try { storedFlagged = JSON.parse(storedFlaggedStr); } catch {}
+        }
+        storedFlagged.push(flaggedPayload);
+        localStorage.setItem('noteweb-flagged-chats', JSON.stringify(storedFlagged));
+
+        // Trigger a custom storage event for other tabs to detect
+        window.dispatchEvent(new Event('storage'));
+
+        // Try non-blocking insert into flagged_chats table in Supabase
+        try {
+          await supabase.from('flagged_chats').insert([{
+            sender_id: user.uid,
+            sender_name: userProfile.displayName || 'Student',
+            message: inputText.trim(),
+            bad_words: detected,
+            created_at: flaggedPayload.created_at
+          }]);
+        } catch (dbFlagErr) {
+          console.warn("Flagged chat database insert skipped:", dbFlagErr);
+        }
+
+        // Send a broadcast notification for real-time admin flashing
+        if (channelRef.current) {
+          try {
+            await channelRef.current.send({
+              type: 'broadcast',
+              event: 'flagged-chat',
+              payload: flaggedPayload
+            });
+          } catch (broadcastErr) {
+            console.warn("Failed to broadcast profanity alert:", broadcastErr);
+          }
+        }
+      }
 
       // 1. Optimistic UI update: show message immediately
       setMessages((prev) => {
@@ -406,6 +484,61 @@ export const Chat: React.FC = () => {
       toastError('Failed to send message: ' + e.message);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleDeleteChat = async (msgId: string) => {
+    const isConfirmed = window.confirm("Are you sure you want to permanently delete this chat message?");
+    if (!isConfirmed) return;
+
+    try {
+      // 1. Delete from Supabase Database
+      const { error: dbErr } = await supabase
+        .from('chats')
+        .delete()
+        .eq('id', msgId);
+
+      if (dbErr) {
+        const numId = parseInt(msgId, 10);
+        if (!isNaN(numId)) {
+          await supabase.from('chats').delete().eq('id', numId);
+        }
+      }
+
+      // 2. Broadcast deletion instantly to other connected clients
+      if (channelRef.current) {
+        try {
+          await channelRef.current.send({
+            type: 'broadcast',
+            event: 'delete-message',
+            payload: { id: msgId }
+          });
+        } catch (e) {
+          console.warn("Failed to broadcast delete action:", e);
+        }
+      }
+
+      // 3. Update local state
+      setMessages((prev) => prev.filter((m) => m.id !== msgId));
+      
+      // 4. Remove from local broadcast storage
+      try {
+        const storedStr = localStorage.getItem('noteweb-broadcasted-chats');
+        if (storedStr) {
+          const stored = JSON.parse(storedStr);
+          if (Array.isArray(stored)) {
+            const filtered = stored.filter((m: any) => m.id !== msgId);
+            localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(filtered));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to clear chat from local broadcast cache:", cacheErr);
+      }
+
+      info("Message deleted successfully.");
+    } catch (e: any) {
+      console.error(e);
+      toastError("Failed to delete chat message: " + e.message);
     }
   };
 
@@ -544,7 +677,7 @@ export const Chat: React.FC = () => {
                     {/* Chat Bubble */}
                     <div className="max-w-[70%] space-y-1">
                       {/* Name Header */}
-                      <div className={`flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <div className={`flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'} ${isMe ? 'justify-end' : ''}`}>
                         <span 
                           onClick={() => msg.sender_uid && navigate(`/profile/${msg.sender_uid}`)} 
                           className="hover:text-indigo-500 transition-colors cursor-pointer"
@@ -552,31 +685,58 @@ export const Chat: React.FC = () => {
                           {msg.sender_name}
                         </span>
                         <span>{getBranchIcon(msg.sender_branch)}</span>
+                        {userProfile?.role === 'admin' && (
+                          <span className="text-[8px] font-extrabold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-455 border border-amber-500/30">
+                            ADMIN
+                          </span>
+                        )}
                       </div>
 
-                      {/* Content Card */}
-                      <div className={`p-3.5 rounded-2xl border text-xs font-medium leading-relaxed break-words text-left ${
-                        isMe 
-                          ? 'bg-indigo-600 border-indigo-500 text-white rounded-br-none shadow shadow-indigo-600/10' 
-                          : isDark
-                            ? 'bg-[#181824]/80 border-white/[0.04] text-slate-200 rounded-bl-none'
-                            : 'bg-slate-50 border-slate-200 text-slate-800 rounded-bl-none shadow-sm'
-                      }`}>
-                        {msg.content}
-
-                        {/* Attached Image inside Bubble */}
-                        {msg.image_url && (
-                          <div 
-                            onClick={() => setZoomedImage(msg.image_url || null)}
-                            className="mt-2.5 rounded-xl overflow-hidden border border-white/10 max-w-xs shadow-lg bg-black/40 cursor-zoom-in hover:opacity-90 active:scale-[0.99] transition-all"
-                            title="Click to zoom in"
+                      {/* Content Card with delete button for admin */}
+                      <div className="flex items-center gap-2 group/msg w-full relative">
+                        {isMe && userProfile?.role === 'admin' && (
+                          <button
+                            onClick={() => handleDeleteChat(msg.id)}
+                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all opacity-0 group-hover/msg:opacity-100 cursor-pointer flex-shrink-0 active:scale-95 border border-rose-500/20"
+                            title="Delete message"
                           >
-                            <img 
-                              src={msg.image_url} 
-                              alt="Shared attachment" 
-                              className="max-h-60 w-full object-cover select-none"
-                            />
-                          </div>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        <div className={`p-3.5 rounded-2xl border text-xs font-medium leading-relaxed break-words text-left flex-1 ${
+                          isMe 
+                            ? 'bg-indigo-600 border-indigo-500 text-white rounded-br-none shadow shadow-indigo-600/10' 
+                            : isDark
+                              ? 'bg-[#181824]/80 border-white/[0.04] text-slate-200 rounded-bl-none'
+                              : 'bg-slate-50 border-slate-200 text-slate-800 rounded-bl-none shadow-sm'
+                        }`}>
+                          {msg.content}
+
+                          {/* Attached Image inside Bubble */}
+                          {msg.image_url && (
+                            <div 
+                              onClick={() => setZoomedImage(msg.image_url || null)}
+                              className="mt-2.5 rounded-xl overflow-hidden border border-white/10 max-w-xs shadow-lg bg-black/40 cursor-zoom-in hover:opacity-90 active:scale-[0.99] transition-all"
+                              title="Click to zoom in"
+                            >
+                              <img 
+                                src={msg.image_url} 
+                                alt="Shared attachment" 
+                                className="max-h-60 w-full object-cover select-none"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {!isMe && userProfile?.role === 'admin' && (
+                          <button
+                            onClick={() => handleDeleteChat(msg.id)}
+                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all opacity-0 group-hover/msg:opacity-100 cursor-pointer flex-shrink-0 active:scale-95 border border-rose-500/20"
+                            title="Delete message"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </div>
 

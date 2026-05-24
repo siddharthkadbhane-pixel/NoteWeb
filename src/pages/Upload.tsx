@@ -114,12 +114,10 @@ export const Upload: React.FC = () => {
   const navigate = useNavigate();
 
   // Branch and Category states
-  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
-  const [selectedBranch, setSelectedBranch] = useState('');
   const [categories, setCategories] = useState<{ id: string; branchId: string; name: string; description?: string }[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [newCatName, setNewCatName] = useState('');
-  const [newCatDesc, setNewCatDesc] = useState('');
+
+  // Notes Name state
+  const [notesName, setNotesName] = useState('');
 
   // Note vs Question Paper toggle
   const [uploadType, setUploadType] = useState<'notes' | 'paper'>('notes');
@@ -164,17 +162,11 @@ export const Upload: React.FC = () => {
     }
   }, [selectedPredefinedSubject, customSubject]);
 
-  // Fetch branches and categories dynamically on load
+  // Fetch categories dynamically on load
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: branchesData } = await supabase.from('branches').select('*');
         const { data: categoriesData } = await supabase.from('categories').select('*');
-
-        let branchesList = (branchesData || []).map((b: any) => ({
-          id: b.id,
-          name: b.name
-        }));
 
         let categoriesList = (categoriesData || []).map((c: any) => ({
           id: c.id,
@@ -182,17 +174,6 @@ export const Upload: React.FC = () => {
           name: c.name,
           description: c.description
         }));
-
-        if (branchesList.length === 0) {
-          branchesList = [
-            { id: 'cse', name: 'Computer Science & Engineering (CSE)' },
-            { id: 'aiml', name: 'AI & Machine Learning (AI & ML)' },
-            { id: 'ds', name: 'Data Science (DS)' },
-            { id: 'mechanical', name: 'Mechanical Engineering' },
-            { id: 'civil', name: 'Civil Engineering' },
-            { id: 'ece', name: 'Electronics & Communication (ECE)' }
-          ];
-        }
 
         if (categoriesList.length === 0) {
           categoriesList = [
@@ -203,44 +184,13 @@ export const Upload: React.FC = () => {
           ];
         }
 
-        setBranches(branchesList);
         setCategories(categoriesList);
-
-        if (branchesList.length > 0) {
-          setSelectedBranch(branchesList[0].id);
-          const firstBranchCats = categoriesList.filter((c: any) => c.branchId === branchesList[0].id);
-          if (firstBranchCats.length > 0) {
-            setSelectedCategory(firstBranchCats[0].id);
-          }
-        }
       } catch (e) {
         console.error("Error loading upload configurations:", e);
       }
     };
     fetchData();
   }, []);
-
-  // Sync selected Category when selected Branch changes or subject title changes
-  useEffect(() => {
-    if (selectedCategory === 'new_category') return; // Do not overwrite if user wants to add new category!
-    if (selectedBranch && categories.length > 0) {
-      const filtered = categories.filter(c => c.branchId === selectedBranch);
-      
-      // Auto-match category ID with subject name if possible
-      const matched = filtered.find(c => 
-        c.name.toLowerCase() === subject.toLowerCase() || 
-        subject.toLowerCase().includes(c.name.toLowerCase())
-      );
-
-      if (matched) {
-        setSelectedCategory(matched.id);
-      } else if (filtered.length > 0) {
-        setSelectedCategory(filtered[0].id);
-      } else {
-        setSelectedCategory('');
-      }
-    }
-  }, [selectedBranch, categories, subject, selectedCategory]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -257,6 +207,10 @@ export const Upload: React.FC = () => {
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile && droppedFile.type === 'application/pdf') {
       setFile(droppedFile);
+      if (!notesName) {
+        const cleanName = droppedFile.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+        setNotesName(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
+      }
     } else {
       error("Only PDF notes are supported!");
     }
@@ -266,6 +220,10 @@ export const Upload: React.FC = () => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile && selectedFile.type === 'application/pdf') {
       setFile(selectedFile);
+      if (!notesName) {
+        const cleanName = selectedFile.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+        setNotesName(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
+      }
     } else if (selectedFile) {
       error("Only PDF notes are supported!");
     }
@@ -290,12 +248,12 @@ export const Upload: React.FC = () => {
       error("Please choose or drag a PDF notes file");
       return;
     }
-    if (!subject.trim()) {
-      error("Subject name is required");
+    if (!notesName.trim()) {
+      error("Notes / File Title is required");
       return;
     }
-    if (!selectedBranch) {
-      error("Academic branch is required");
+    if (!subject.trim()) {
+      error("Subject name is required");
       return;
     }
     // Category is optional (can fall back to General Catalog if unassigned)
@@ -441,69 +399,25 @@ export const Upload: React.FC = () => {
       }
 
       // Custom category creation vs AI Category auto-sorting check inside subject catalog
-      let finalCategory = selectedCategory;
-      let finalBranch = selectedBranch;
+      let finalCategory = '';
+      let finalBranch = 'cse';
       let autoCorrected = false;
       let detectedCategoryName = '';
       
-      if (selectedCategory === 'new_category') {
-        if (!newCatName.trim()) {
-          throw new Error("Please specify a name for the new sub-topic category.");
-        }
-        const slug = `${selectedBranch}-${newCatName.toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)+/g, '')}`;
-        
-        try {
-          const exists = categories.some(c => c.id === slug);
-          if (!exists) {
-            const newCatDoc = {
-              id: slug,
-              branch_id: selectedBranch,
-              name: newCatName.trim(),
-              description: newCatDesc.trim() || 'Custom academic sub-topic category folder.'
-            };
-            const { error: catErr } = await supabase.from('categories').insert([newCatDoc]);
-            if (catErr) {
-              console.warn("Primary category insert failed, trying camelCase:", catErr);
-              const newCatDocCamel = {
-                id: slug,
-                branchId: selectedBranch,
-                name: newCatName.trim(),
-                description: newCatDesc.trim() || 'Custom academic sub-topic category folder.'
-              };
-              await supabase.from('categories').insert([newCatDocCamel]);
-            }
-            // Add to local state
-            const newCatObj = {
-              id: slug,
-              branchId: selectedBranch,
-              name: newCatName.trim(),
-              description: newCatDesc.trim()
-            };
-            setCategories(prev => [...prev, newCatObj]);
+      try {
+        // Map our custom categories array into flat list Gemini classifier accepts
+        const classifiedId = await classifyNoteCategory(notesName, description, aiExtractedText, categories);
+        if (classifiedId) {
+          const matchedCat = categories.find(c => c.id === classifiedId);
+          if (matchedCat) {
+            finalCategory = classifiedId;
+            finalBranch = matchedCat.branchId || 'cse';
+            detectedCategoryName = matchedCat.name;
+            autoCorrected = true;
           }
-          finalCategory = slug;
-        } catch (catInsertErr: any) {
-          console.error("Failed to insert custom category:", catInsertErr);
-          finalCategory = slug;
         }
-      } else {
-        try {
-          // Map our custom categories array into flat list Gemini classifier accepts
-          const classifiedId = await classifyNoteCategory(subject, description, aiExtractedText, categories);
-          if (classifiedId && classifiedId !== selectedCategory) {
-            const matchedCat = categories.find(c => c.id === classifiedId);
-            if (matchedCat) {
-              finalCategory = classifiedId;
-              finalBranch = matchedCat.branchId || selectedBranch;
-              detectedCategoryName = matchedCat.name;
-              autoCorrected = true;
-            }
-          }
-        } catch (classifyErr) {
-          console.error("AI Category classification failed:", classifyErr);
-        }
+      } catch (classifyErr) {
+        console.error("AI Category classification failed:", classifyErr);
       }
 
       let summaryText = '';
@@ -528,14 +442,14 @@ export const Upload: React.FC = () => {
       const uploaderEmail = user.email || '';
 
       // Support custom values if uploadType is a question paper
-      let finalSubject = subject.trim();
+      let finalSubject = notesName.trim();
       let finalTeacher = teacher.trim() || 'General / Unknown';
       let finalDescription = description.trim() || 'No description provided.';
       
       if (uploadType === 'paper') {
-        finalSubject = `[QP - ${examYear} ${examType}] ${subject.trim()}`;
+        finalSubject = `[QP - ${examYear} ${examType}] ${notesName.trim()}`;
         finalTeacher = `Exam Board (${examYear})`;
-        finalDescription = `Previous Year Question Paper for ${subject.trim()} - ${examType} (${examYear}). ${description.trim()}`.trim();
+        finalDescription = `Previous Year Question Paper for ${notesName.trim()} - ${examType} (${examYear}). ${description.trim()}`.trim();
       }
 
       const noteDoc = {
@@ -724,7 +638,7 @@ export const Upload: React.FC = () => {
       // This makes the note appear INSTANTLY (0ms) when Feed.tsx mounts — no DB fetch needed.
       const optimisticNote = {
         id: (insertData && insertData[0]?.id) || 'optimistic-' + Date.now(),
-        subject: subject.trim(),
+        subject: notesName.trim(),
         branch: finalBranch,
         category: finalCategory,
         semester,
@@ -758,8 +672,6 @@ export const Upload: React.FC = () => {
     }
   };
 
-  // Filter categories dynamically based on selected branch
-  const activeBranchCategories = categories.filter(c => c.branchId === selectedBranch);
 
   return (
     <div className="min-h-screen w-full py-12 px-4 md:px-8 relative overflow-hidden text-left">
@@ -874,22 +786,19 @@ export const Upload: React.FC = () => {
             {/* Inputs grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               
-              {/* Department Selector */}
+              {/* Notes Name / Custom Title Input */}
               <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
-                  Academic Department
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1 flex items-center gap-1">
+                  Notes / File Title <span className="text-rose-500">*</span>
                 </label>
-                <select
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
-                >
-                  {branches.map((b) => (
-                    <option key={b.id} value={b.id} className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  placeholder="e.g. Lecture 4 - Normalization Notes"
+                  value={notesName}
+                  onChange={(e) => setNotesName(e.target.value)}
+                  required
+                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
               </div>
 
               {/* Semester Selector */}
@@ -930,49 +839,7 @@ export const Upload: React.FC = () => {
                 </select>
               </div>
 
-              {/* Category (Fallback mapping visual placeholder or hidden selector) */}
-              <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
-                  Sub-Topic / Category Folder
-                </label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
-                >
-                  <option value="" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">General Catalog</option>
-                  {activeBranchCategories.map((cat) => (
-                    <option key={cat.id} value={cat.id} className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">
-                      {cat.name}
-                    </option>
-                  ))}
-                  <option value="new_category" className="bg-[#16161D] text-indigo-400 font-bold light-mode:bg-white">
-                    ➕ Add New Sub-Topic Category...
-                  </option>
-                </select>
-              </div>
 
-              {/* Inline Custom Category Creation Panel */}
-              {selectedCategory === 'new_category' && (
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5 border border-indigo-500/25 bg-indigo-500/[0.03] p-5 rounded-2xl">
-                  <div className="md:col-span-2 font-bold text-xs uppercase tracking-wider text-[#7F00FF] light-mode:text-indigo-600 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 animate-pulse" /> Create New Sub-Topic Category
-                  </div>
-                  <Input
-                    label="New Sub-Topic Name"
-                    placeholder="e.g. Theory of Computation"
-                    value={newCatName}
-                    onChange={(e) => setNewCatName(e.target.value)}
-                    required
-                  />
-                  <Input
-                    label="New Sub-Topic Description"
-                    placeholder="e.g. Turing machines, DFA, NFA, CFG"
-                    value={newCatDesc}
-                    onChange={(e) => setNewCatDesc(e.target.value)}
-                  />
-                </div>
-              )}
 
               {/* Custom Subject text field */}
               {selectedPredefinedSubject === 'other' && (

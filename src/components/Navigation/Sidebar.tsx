@@ -23,6 +23,40 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { renderAvatar } from '../../utils/avatar';
 
+export const NoteWebLogo: React.FC<{ sizeClass?: string; isMobile?: boolean }> = ({ sizeClass = "w-9 h-9", isMobile = false }) => {
+  return (
+    <div className={`relative ${sizeClass} flex-shrink-0 flex items-center justify-center group/logo`}>
+      {/* Outer pulsing glow */}
+      <div className="absolute inset-0 rounded-xl bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] opacity-40 blur-[8px] animate-pulse" />
+      
+      {/* Inner premium container */}
+      <div className={`absolute inset-0 rounded-xl bg-[#0F0F1A]/90 border border-white/20 backdrop-blur-md flex items-center justify-center shadow-inner group-hover/logo:rotate-6 transition-transform duration-500 ${isMobile ? 'scale-90' : ''}`}>
+        <svg viewBox="0 0 100 100" className="w-5.5 h-5.5 drop-shadow-[0_0_6px_rgba(127,0,255,0.7)]">
+          <defs>
+            <linearGradient id="logoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#00F2FE" />
+              <stop offset="50%" stopColor="#9d4edd" />
+              <stop offset="100%" stopColor="#FF007F" />
+            </linearGradient>
+          </defs>
+          {/* Futuristic sharp ribbon letter "N" and "W" */}
+          <path
+            d="M26,74 L26,26 L48,56 L70,26 L70,74"
+            fill="none"
+            stroke="url(#logoGrad)"
+            strokeWidth="13"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {/* Centered glowing premium core */}
+          <circle cx="48" cy="28" r="6" fill="#00F2FE" className="animate-ping" />
+          <circle cx="48" cy="28" r="4.5" fill="#FFF" />
+        </svg>
+      </div>
+    </div>
+  );
+};
+
 export const Sidebar: React.FC = () => {
   const { user, userProfile, isAdmin, isGuest, logout, isMockMode } = useAuth();
   const { isDark, toggleTheme } = useTheme();
@@ -80,11 +114,8 @@ export const Sidebar: React.FC = () => {
       >
         {/* Brand Logo */}
         <div className={`flex items-center gap-3 px-1.5 pb-3 mb-1 border-b flex-shrink-0 ${isDark ? 'border-white/[0.05]' : 'border-slate-200/60'}`}>
-          <Link
-            to="/"
-            className="w-9 h-9 min-w-[2.25rem] rounded-xl bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] flex items-center justify-center shadow-lg shadow-purple-600/30 flex-shrink-0 active:scale-95 transition-all"
-          >
-            <span className="font-extrabold text-white text-xs">N</span>
+          <Link to="/" className="active:scale-95 transition-all flex-shrink-0">
+            <NoteWebLogo sizeClass="w-9 h-9" />
           </Link>
           <span className={`
             opacity-0 translate-x-2 pointer-events-none whitespace-nowrap
@@ -239,9 +270,7 @@ export const Sidebar: React.FC = () => {
         }
       `}>
         <Link to="/" className="flex items-center gap-2 active:scale-95 transition-transform">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] flex items-center justify-center shadow">
-            <span className="font-extrabold text-white text-[10px]">N</span>
-          </div>
+          <NoteWebLogo sizeClass="w-7.5 h-7.5" isMobile />
           <span className={`text-sm font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>NoteWeb</span>
         </Link>
         
@@ -346,9 +375,7 @@ export const Sidebar: React.FC = () => {
               {/* Header */}
               <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-200/80'}`}>
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] flex items-center justify-center shadow">
-                    <span className="font-extrabold text-white text-[9px]">N</span>
-                  </div>
+                  <NoteWebLogo sizeClass="w-6.5 h-6.5" isMobile />
                   <span className={`text-sm font-black ${isDark ? 'text-white' : 'text-slate-800'}`}>Commander Panel</span>
                 </div>
                 <button
