@@ -18,6 +18,7 @@ export interface UserProfile {
   setupComplete?: boolean;
   points: number;
   lastIp?: string;
+  hardwareId?: string;
 }
 
 export interface CustomUser {
@@ -75,7 +76,8 @@ const dbToProfile = (dbRow: any): UserProfile => {
     bookmarks: dbRow.bookmarks || [],
     setupComplete: dbRow.setup_complete !== undefined ? dbRow.setup_complete : dbRow.setupComplete,
     points: dbRow.points !== undefined ? Number(dbRow.points) : 0,
-    lastIp: dbRow.last_ip || dbRow.lastIp || ''
+    lastIp: dbRow.last_ip || dbRow.lastIp || '',
+    hardwareId: dbRow.hardware_id || dbRow.hardwareId || ''
   };
 };
 
@@ -95,7 +97,8 @@ const profileToDb = (profile: UserProfile): any => {
     bookmarks: profile.bookmarks,
     setup_complete: profile.setupComplete,
     points: profile.points,
-    last_ip: profile.lastIp
+    last_ip: profile.lastIp,
+    hardware_id: profile.hardwareId
   };
 };
 
@@ -115,8 +118,21 @@ const profileToDbCamel = (profile: UserProfile): any => {
     bookmarks: profile.bookmarks,
     setupComplete: profile.setupComplete,
     points: profile.points,
-    lastIp: profile.lastIp
+    lastIp: profile.lastIp,
+    hardwareId: profile.hardwareId
   };
+};
+
+const getHardwareId = (): string => {
+  if (typeof window === 'undefined') return '';
+  let hwId = localStorage.getItem('noteweb-hardware-id');
+  if (!hwId) {
+    const randStr = () => Math.random().toString(36).substring(2, 15);
+    const canvasFp = typeof HTMLCanvasElement !== 'undefined' ? 'canvas' : 'no-canvas';
+    hwId = `hw-${randStr()}-${randStr()}-${Date.now().toString(36)}-${canvasFp}`;
+    localStorage.setItem('noteweb-hardware-id', hwId);
+  }
+  return hwId;
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -310,6 +326,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription?.unsubscribe();
     };
   }, [isGuest]);
+
+  // Periodic active student session validity guard (Prune protection)
+  useEffect(() => {
+    if (!user || isGuest) return;
+
+    const checkProfileValidity = async () => {
+      // 1. Local caching guard check
+      const cachedProfile = localStorage.getItem(`noteweb-profile-${user.uid}`);
+      if (!cachedProfile) {
+        console.log("[AuthContext] Profile cache not found, logging out...");
+        await logout();
+        return;
+      }
+
+      // 2. Real-time active Supabase profile verification
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', user.uid);
+          
+        if (!error && (!data || data.length === 0)) {
+          console.log("[AuthContext] Profile deleted in database by administrator, signing out...");
+          await logout();
+        }
+      } catch (err) {
+        console.warn("Database profile validity check failed:", err);
+      }
+    };
+
+    const interval = setInterval(checkProfileValidity, 8000); // Check user existence every 8 seconds
+    return () => clearInterval(interval);
+  }, [user, isGuest]);
 
   const signup = async (email: string, password: string, displayName: string) => {
     setLoading(true);
@@ -679,12 +728,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch {}
       }
 
+      const userHwId = getHardwareId();
+      profile.hardwareId = userHwId;
       if (userIp) {
         profile.lastIp = userIp;
-        // Update database with latest IP address silently
-        try {
-          await supabase.from('profiles').update({ last_ip: userIp }).eq('id', profile.uid);
-        } catch {}
+      }
+      
+      // Update database with latest IP address and hardware fingerprint silently
+      try {
+        await supabase.from('profiles').update({ 
+          last_ip: userIp || profile.lastIp || '',
+          hardware_id: userHwId 
+        }).eq('id', profile.uid);
+      } catch (dbErr) {
+        console.warn("Failed silently stashing login IP/HW identifiers:", dbErr);
       }
 
       localStorage.setItem('noteweb-mock-uid', profile.uid);
@@ -759,7 +816,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         bookmarks: [],
         setupComplete: true,
         points: role === 'admin' ? 0 : 50, // 50 XP startup bonus for new students!
-        lastIp: userIp
+        lastIp: userIp,
+        hardwareId: getHardwareId()
       };
 
       await saveUserProfile(newProfile);

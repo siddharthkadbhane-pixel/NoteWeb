@@ -7,6 +7,7 @@ import { Sidebar } from './components/Navigation/Sidebar';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { supabase } from './supabase/config';
 import { ShieldAlert, Send, RefreshCw } from 'lucide-react';
+import { leavePresence } from './services/presence';
 
 // Import NoteWeb Pages
 import { Home } from './pages/Home';
@@ -129,6 +130,18 @@ const fetchUserIp = async (): Promise<string> => {
   return mockIp;
 };
 
+const getHardwareId = (): string => {
+  if (typeof window === 'undefined') return '';
+  let hwId = localStorage.getItem('noteweb-hardware-id');
+  if (!hwId) {
+    const randStr = () => Math.random().toString(36).substring(2, 15);
+    const canvasFp = typeof HTMLCanvasElement !== 'undefined' ? 'canvas' : 'no-canvas';
+    hwId = `hw-${randStr()}-${randStr()}-${Date.now().toString(36)}-${canvasFp}`;
+    localStorage.setItem('noteweb-hardware-id', hwId);
+  }
+  return hwId;
+};
+
 interface IpBlockGuardProps {
   children: React.ReactNode;
 }
@@ -146,14 +159,15 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
     try {
       const userIp = await fetchUserIp();
       setIp(userIp);
+      const hwId = getHardwareId();
       
-      // Query blocked_ips database table
+      // Query blocked_ips database table for BOTH IP and Hardware fingerprint
       let dbData = null;
       try {
         const { data, error } = await supabase
           .from('blocked_ips')
           .select('*')
-          .eq('id', userIp);
+          .or(`id.eq.${userIp},hardware_id.eq.${hwId}`);
         if (error) {
           console.warn("Supabase IP lookup warning:", error);
         }
@@ -162,7 +176,7 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
         console.warn("Offline/DB check failed, using mock fallbacks:", err);
       }
 
-      let entry = dbData && dbData[0];
+      let entry = dbData && dbData.find((item: any) => item.id === userIp || (item.hardware_id && item.hardware_id === hwId));
       
       // Local storage fallback for mock/offline configurations
       if (!entry) {
@@ -171,7 +185,7 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
           if (blockedStr) {
             const blockedList = JSON.parse(blockedStr);
             if (Array.isArray(blockedList)) {
-              entry = blockedList.find((item: any) => item.id === userIp);
+              entry = blockedList.find((item: any) => item.id === userIp || (item.hardware_id && item.hardware_id === hwId));
             }
           }
         } catch {}
@@ -180,6 +194,22 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
       if (entry) {
         setBlockedEntry(entry);
         setStatus(entry.status || 'blocked');
+
+        // FORCE LOGOUT AND REMOVE PRESENCE IMMEDIATELY IF BLOCKED/PENDING
+        if (entry.status === 'blocked' || entry.status === 'pending_approval') {
+          try {
+            localStorage.removeItem('noteweb-mock-uid');
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && (key.startsWith('noteweb-profile-') || key === 'noteweb-is-guest')) {
+                keysToRemove.push(key);
+              }
+            }
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+            await leavePresence();
+          } catch {}
+        }
       } else {
         setBlockedEntry(null);
         setStatus('none');
@@ -194,6 +224,9 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
   useEffect(() => {
     checkIpStatus();
 
+    // Setup periodic watchdog checking IP/hardware status every 10 seconds
+    const interval = setInterval(checkIpStatus, 10000);
+
     // Listen for storage changes (clearing block) across browser tabs
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'noteweb-db-blocked_ips') {
@@ -201,7 +234,34 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
       }
     };
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+
+    // Listen to real-time additions/deletions to the blocked_ips table
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel('public:blocked_ips_guard')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'blocked_ips' },
+          () => {
+            console.log('[IpBlockGuard] Real-time IP table change detected, refreshing...');
+            checkIpStatus();
+          }
+        )
+        .subscribe();
+    } catch (err) {
+      console.warn("Failed to subscribe to realtime blocked_ips:", err);
+    }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
+      }
+    };
   }, []);
 
   const handleSubmitRequest = async (e: React.FormEvent) => {
@@ -210,12 +270,14 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
     
     setIsSubmitting(true);
     try {
+      const hwId = getHardwareId();
       const updatedEntry = {
         id: ip,
         blocked_at: blockedEntry?.blocked_at || new Date().toISOString(),
         reason: blockedEntry?.reason || 'Account pruned by administrator',
         status: 'pending_approval',
-        request_statement: statement.trim()
+        request_statement: statement.trim(),
+        hardware_id: hwId
       };
 
       // Write to database

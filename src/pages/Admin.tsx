@@ -577,30 +577,34 @@ export const Admin: React.FC = () => {
     if (!isConfirmed) return;
 
     try {
-      // 1. Fetch the user's last detected IP address before deleting their profile
+      // 1. Fetch the user's last detected IP address and hardware fingerprint before deleting their profile
       let userIp = '';
+      let userHwId = '';
       try {
         const { data: profileRow } = await supabase
           .from('profiles')
-          .select('last_ip, lastIp')
+          .select('last_ip, lastIp, hardware_id, hardwareId')
           .eq('id', targetUid)
           .single();
         if (profileRow) {
           userIp = profileRow.last_ip || profileRow.lastIp || '';
+          userHwId = profileRow.hardware_id || profileRow.hardwareId || '';
         }
       } catch (ipErr) {
         console.warn("Could not retrieve user IP before pruning:", ipErr);
       }
 
-      // If we found an IP, add it to the blocked IPs database
-      if (userIp) {
+      // If we found an IP or HW fingerprint, add it to the blocked database
+      if (userIp || userHwId) {
+        const blockId = userIp || `hw-blocked-${targetUid}`;
         try {
           await supabase.from('blocked_ips').insert([
             {
-              id: userIp,
+              id: blockId,
               blocked_at: new Date().toISOString(),
               reason: `Account '${displayName}' pruned by admin`,
-              status: 'blocked'
+              status: 'blocked',
+              hardware_id: userHwId
             }
           ]);
         } catch (blockErr) {
@@ -614,14 +618,16 @@ export const Admin: React.FC = () => {
           if (blockedStr) {
             try { blockedList = JSON.parse(blockedStr); } catch {}
           }
-          if (!blockedList.some((entry: any) => entry.id === userIp)) {
+          if (!blockedList.some((entry: any) => entry.id === blockId)) {
             blockedList.push({
-              id: userIp,
+              id: blockId,
               blocked_at: new Date().toISOString(),
               reason: `Account '${displayName}' pruned by admin`,
-              status: 'blocked'
+              status: 'blocked',
+              hardware_id: userHwId
             });
             localStorage.setItem('noteweb-db-blocked_ips', JSON.stringify(blockedList));
+            window.dispatchEvent(new StorageEvent('storage', { key: 'noteweb-db-blocked_ips' }));
           }
         } catch (lsErr) {
           console.warn("Failed to block IP in mock localStorage:", lsErr);
@@ -679,6 +685,109 @@ export const Admin: React.FC = () => {
     } catch (e: any) {
       console.error(e);
       error("Failed to remove user: " + e.message);
+    }
+  };
+
+  const handleBlockUser = async (targetUid: string, displayName: string) => {
+    if (targetUid === currentAuthUser?.uid) {
+      info("Self-block safeguard: You cannot ban your own administrative account!");
+      return;
+    }
+
+    const isConfirmed = window.confirm(`Are you absolutely sure you want to BLOCK & BAN "${displayName}"? This will permanently blacklist their IP address and browser hardware fingerprint, disconnect them immediately, and delete their profile.`);
+    if (!isConfirmed) return;
+
+    try {
+      // 1. Fetch user IP and Hardware Fingerprint from profiles table
+      let userIp = '';
+      let userHwId = '';
+      try {
+        const { data: profileRow } = await supabase
+          .from('profiles')
+          .select('last_ip, lastIp, hardware_id, hardwareId')
+          .eq('id', targetUid)
+          .single();
+        if (profileRow) {
+          userIp = profileRow.last_ip || profileRow.lastIp || '';
+          userHwId = profileRow.hardware_id || profileRow.hardwareId || '';
+        }
+      } catch (ipErr) {
+        console.warn("Could not retrieve user credentials before banning:", ipErr);
+      }
+
+      // Fallback: If no IP stashed, try to find in online users
+      if (!userIp) {
+        const session = onlineUsers.find(u => u.uid === targetUid);
+        if (session) {
+          userIp = localStorage.getItem('noteweb-detected-ip') || '';
+        }
+      }
+
+      const blockedAt = new Date().toISOString();
+      const reason = `Banned by administrator (IP & Hardware ID)`;
+
+      // Write to supabase blocked_ips table
+      if (userIp || userHwId) {
+        const ipKey = userIp || `hw-blocked-${targetUid}`;
+        try {
+          await supabase.from('blocked_ips').insert([
+            {
+              id: ipKey,
+              blocked_at: blockedAt,
+              reason,
+              status: 'blocked',
+              hardware_id: userHwId
+            }
+          ]);
+        } catch (blockErr) {
+          console.warn("Failed to block user in Supabase:", blockErr);
+        }
+
+        // Write to mock localStorage blocked_ips database
+        try {
+          const blockedStr = localStorage.getItem('noteweb-db-blocked_ips');
+          let blockedList: any[] = [];
+          if (blockedStr) {
+            try { blockedList = JSON.parse(blockedStr); } catch {}
+          }
+          blockedList = blockedList.filter((item: any) => item.id !== ipKey);
+          blockedList.push({
+            id: ipKey,
+            blocked_at: blockedAt,
+            reason,
+            status: 'blocked',
+            hardware_id: userHwId
+          });
+          localStorage.setItem('noteweb-db-blocked_ips', JSON.stringify(blockedList));
+          
+          // Force active tabs to reload/check by dispatching storage event
+          window.dispatchEvent(new StorageEvent('storage', { key: 'noteweb-db-blocked_ips' }));
+        } catch (lsErr) {
+          console.warn("Failed to block user in local storage mockup:", lsErr);
+        }
+      }
+
+      // 2. Cascade delete their profile so their active session watchdog triggers immediate logout
+      const { error: deleteProfileErr } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', targetUid);
+
+      if (deleteProfileErr) throw deleteProfileErr;
+
+      // Delete from mock/local profile stash
+      try {
+        localStorage.removeItem(`noteweb-profile-${targetUid}`);
+      } catch {}
+
+      success(`User "${displayName}" has been completely blocked and banned!`);
+      
+      // Update UI lists
+      setUsersList((prev) => prev.filter((u) => u.uid !== targetUid));
+      fetchModerationData(true);
+    } catch (e: any) {
+      console.error(e);
+      error("Failed to execute device block: " + e.message);
     }
   };
 
@@ -1350,13 +1459,23 @@ export const Admin: React.FC = () => {
                         </button>
 
                         {usr.uid !== currentAuthUser?.uid && (
-                          <button
-                            onClick={() => handleRemoveUser(usr.uid, usr.displayName)}
-                            className="p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
-                            title="Remove Student Profile"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleBlockUser(usr.uid, usr.displayName)}
+                              className="p-2 rounded-lg border border-rose-500/30 bg-rose-500/15 text-rose-450 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                              title="Block & Ban Device (IP + Hardware Fingerprint)"
+                            >
+                              <ShieldAlert className="w-4 h-4" />
+                            </button>
+                            
+                            <button
+                              onClick={() => handleRemoveUser(usr.uid, usr.displayName)}
+                              className="p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                              title="Remove Student Profile"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </GlassPanel>
