@@ -24,7 +24,8 @@ import {
   X,
   BookOpen,
   MessageSquare,
-  Award
+  Award,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -101,6 +102,14 @@ export const Feed: React.FC = () => {
 
   // Track optimistically-injected note IDs so we can merge them properly on real fetch
   const optimisticIdsRef = useRef<Set<string>>(new Set());
+
+  // Ref to track if we have a fresh optimistic note to bypass loading skeleton
+  const hasOptimisticRef = useRef(!!location.state?.newNote);
+  useEffect(() => {
+    if (location.state?.newNote) {
+      hasOptimisticRef.current = true;
+    }
+  }, [location.state]);
 
   // Always-fresh ref to user so stale closures (polling interval, realtime handlers) can read it
   const userRef = useRef(user);
@@ -201,7 +210,7 @@ export const Feed: React.FC = () => {
 
   // Fetch all notes — always reads fresh user from userRef to avoid stale closures
   const fetchNotes = useCallback(async (silent = false) => {
-    if (!silent) setIsLoading(true);
+    if (!silent && !hasOptimisticRef.current) setIsLoading(true);
     const currentUser = userRef.current;
     try {
       let fetched: NoteDocument[] = [];
@@ -350,6 +359,7 @@ export const Feed: React.FC = () => {
       error('Could not load notes: ' + (e.message || 'Check console for details'));
     } finally {
       if (!silent) setIsLoading(false);
+      hasOptimisticRef.current = false;
     }
   }, [sortBy]);
 
@@ -856,6 +866,16 @@ export const Feed: React.FC = () => {
                   <><WifiOff className="w-3 h-3" /> Syncing...</>
                 )}
               </div>
+
+              {/* Manual Sync / Refresh Button */}
+              <button
+                onClick={() => fetchNotes(false)}
+                disabled={isLoading}
+                className="flex items-center justify-center p-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] active:scale-95 border border-white/[0.08] hover:border-indigo-500/40 text-slate-400 hover:text-white transition-all cursor-pointer shadow-md shadow-black/5 disabled:opacity-50"
+                title="Sync Library Notes"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-indigo-400' : ''}`} />
+              </button>
             </div>
           </div>
           
