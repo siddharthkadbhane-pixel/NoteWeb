@@ -24,6 +24,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { supabase } from '../supabase/config';
+import { callAiChatCompletion } from '../services/gemini';
 
 // Academic trivia was successfully removed to make room for our premium AI Study Planner roadmap widget.
 
@@ -304,43 +305,32 @@ export const Home: React.FC = () => {
   };
 
   const generateAiStudyPlan = async (subject: string, timeframe: string, goal: string): Promise<any[]> => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey || apiKey === 'mock-gemini-api-key') {
-      throw new Error('API_KEY_MISSING');
-    }
-
-    const prompt = `You are NoteWeb's expert AI Study Planner. Generate a customized exam preparation study roadmap for the subject: "${subject}", with a timeframe of "${timeframe}" and a target goal of "${goal}".
-Format your response as a strict JSON array of 3 phases. Do not wrap in markdown \`\`\`json blocks.
+    const systemInstruction = "You are NoteWeb's expert AI Study Planner. Your task is to generate customized, action-oriented study roadmaps.";
+    
+    const prompt = `Generate a customized exam preparation study roadmap for the subject: "${subject}", with a timeframe of "${timeframe}" and a target goal of "${goal}".
+Format your response as a strict raw JSON array of exactly 3 phases. Do not wrap in markdown code blocks (e.g. do not write \`\`\`json), and include absolutely no explanations or introductory sentences. Return only the raw JSON.
 Each phase object MUST have exactly these keys:
 - "title": Short title of the study phase (e.g. "Phase 1: Concepts & Core Formulas")
 - "duration": Duration or timeframe chunk (e.g. "Day 1" or "First 4 Hours")
 - "tasks": Array of exactly 3 specific, checkable, action-oriented task strings (e.g. ["Revise AVL tree balancing", "Solve 5 past equations on calculus", "Summarize Lecture 3 notes"]).
 
-Response must be pure valid JSON:`;
+Example raw format:
+[
+  {
+    "title": "Phase 1 Title",
+    "duration": "Day 1",
+    "tasks": ["Task 1", "Task 2", "Task 3"]
+  }
+]`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('API_CALL_FAILED');
-    }
-
-    const data = await response.json();
-    let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    generatedText = generatedText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const generatedText = await callAiChatCompletion(systemInstruction, prompt);
+    const cleanedText = generatedText.replace(/```json/g, '').replace(/```/g, '').trim();
     
-    const parsed = JSON.parse(generatedText);
+    const parsed = JSON.parse(cleanedText);
     if (Array.isArray(parsed)) {
       return parsed;
     }
-    throw new Error('INVALID_JSON');
+    throw new Error('Invalid JSON array structure returned from AI');
   };
 
   // AI Study Plan Generation Handler
@@ -765,18 +755,35 @@ Response must be pure valid JSON:`;
                 </div>
               </div>
 
-              {/* Dynamic Points Pod Counter */}
-              <div className="w-full sm:w-auto p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex sm:flex-col items-center justify-between sm:justify-center gap-2.5 z-10 flex-shrink-0">
-                <div className="text-left sm:text-center">
-                  <span className="text-[9px] font-black tracking-wider uppercase text-slate-500 block">Total points</span>
-                  <span className="text-2xl font-black text-white tracking-tight mt-0.5 block">
-                    {stats.score + (isGuest ? 0 : (userProfile?.points || 0))} Pts
-                  </span>
+              {/* Dynamic Points Pod Counter & Streak Pod Counter */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto flex-shrink-0">
+                <div className="w-full sm:w-32 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex sm:flex-col items-center justify-between sm:justify-center gap-2.5 z-10">
+                  <div className="text-left sm:text-center">
+                    <span className="text-[9px] font-black tracking-wider uppercase text-slate-500 block">Total points</span>
+                    <span className="text-2xl font-black text-white tracking-tight mt-0.5 block">
+                      {stats.score + (isGuest ? 0 : (userProfile?.points || 0))} Pts
+                    </span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-lg flex-shrink-0 animate-pulse">
+                    <Trophy className="w-5 h-5" />
+                  </div>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-lg flex-shrink-0 animate-pulse">
-                  <Trophy className="w-5 h-5" />
-                </div>
+
+                {!isGuest && user && (
+                  <div className="w-full sm:w-32 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex sm:flex-col items-center justify-between sm:justify-center gap-2.5 z-10">
+                    <div className="text-left sm:text-center">
+                      <span className="text-[9px] font-black tracking-wider uppercase text-slate-500 block">Study Streak</span>
+                      <span className="text-2xl font-black text-amber-500 tracking-tight mt-0.5 block">
+                        {localStorage.getItem(`noteweb-study-streak-${user.uid}`) || '0'} Days
+                      </span>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-500 to-red-500 flex items-center justify-center text-white shadow-lg flex-shrink-0 animate-pulse text-xl">
+                      🔥
+                    </div>
+                  </div>
+                )}
               </div>
+
 
             </div>
 

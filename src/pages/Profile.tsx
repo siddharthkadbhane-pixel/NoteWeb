@@ -17,7 +17,8 @@ import {
   CheckCircle,
   Trophy,
   Award,
-  Zap
+  Zap,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -344,9 +345,25 @@ export const Profile: React.FC = () => {
           if (cachedUploadsStr) {
             const cachedUploads = JSON.parse(cachedUploadsStr);
             if (Array.isArray(cachedUploads)) {
-              cachedUploads.forEach((item: any) => {
+              // Self-healing prune: If the database returned successfully, and a cached upload has a numeric ID but is missing in the database's returned list, it has been deleted.
+              let prunedCached = [...cachedUploads];
+              if (!uploadsErr && Array.isArray(uploadsData)) {
+                const fetchedIds = new Set(uploads.map((u) => String(u.id)));
+                prunedCached = cachedUploads.filter((item: any) => {
+                  if (!isNaN(Number(item.id))) {
+                    return fetchedIds.has(String(item.id));
+                  }
+                  return true;
+                });
+                if (prunedCached.length !== cachedUploads.length) {
+                  localStorage.setItem('noteweb-my-uploads', JSON.stringify(prunedCached));
+                  console.log(`[Profile] Pruned ${cachedUploads.length - prunedCached.length} deleted uploads from local cache.`);
+                }
+              }
+
+              prunedCached.forEach((item: any) => {
                 const note = mapDbNoteToNoteDocument(item);
-                if (!uploads.some((n: NoteDocument) => n.id === note.id)) {
+                if (!uploads.some((n: NoteDocument) => String(n.id) === String(note.id))) {
                   uploads.push(note);
                 }
               });
@@ -479,14 +496,49 @@ export const Profile: React.FC = () => {
   const handleClaimDaily = async () => {
     if (!user) return;
     try {
-      await updatePoints(20);
+      const lastCheckin = localStorage.getItem(`noteweb-daily-checkin-${user.uid}`);
+      const savedStreak = localStorage.getItem(`noteweb-study-streak-${user.uid}`) || '0';
+      let currentStreak = parseInt(savedStreak);
+      let newStreak = 1;
+
+      if (lastCheckin) {
+        const diff = Date.now() - parseInt(lastCheckin);
+        // If they checked in between 24 and 48 hours, they keep the streak alive!
+        if (diff >= 24 * 3600 * 1000 && diff < 48 * 3600 * 1000) {
+          newStreak = currentStreak + 1;
+        } else if (diff < 24 * 3600 * 1000) {
+          error("You can only check-in once every 24 hours!");
+          return;
+        } else {
+          // Over 48 hours, streak broken
+          newStreak = 1;
+        }
+      } else {
+        newStreak = 1;
+      }
+
+      // Calculate XP: Double XP (40 XP) if streak > 1, else 20 XP
+      const xpAmt = newStreak > 1 ? 40 : 20;
+      await updatePoints(xpAmt);
+      
       localStorage.setItem(`noteweb-daily-checkin-${user.uid}`, Date.now().toString());
+      localStorage.setItem(`noteweb-study-streak-${user.uid}`, newStreak.toString());
+      
       checkDailyCooldown();
-      success("Daily Check-In Claimed! +20 XP awarded.");
+      
+      if (newStreak > 1) {
+        success(`Daily Check-In! Streak: ${newStreak} Days 🔥 +${xpAmt} XP awarded (Double XP Streak Bonus!)`);
+      } else {
+        success(`Daily Check-In Claimed! Streak: 1 Day 🔥 +${xpAmt} XP awarded.`);
+      }
+      
+      // Force trigger state reload
+      fetchViewedProfile();
     } catch (e) {
       error("Failed to claim daily check-in");
     }
   };
+
 
   const handleClaimQuest = async (questId: string, xpAmt: number) => {
     if (!user) return;
@@ -521,7 +573,7 @@ export const Profile: React.FC = () => {
         if (storedNotesStr) {
           const storedNotes = JSON.parse(storedNotesStr);
           if (Array.isArray(storedNotes)) {
-            const filtered = storedNotes.filter((n: any) => n.id !== noteId);
+            const filtered = storedNotes.filter((n: any) => String(n.id) !== String(noteId));
             localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
           }
         }
@@ -529,7 +581,21 @@ export const Profile: React.FC = () => {
         console.warn("Failed to clear note from local broadcast cache:", cacheErr);
       }
 
-      setMyUploads((prev) => prev.filter((n) => n.id !== noteId));
+      // Remove from local own uploads cache
+      try {
+        const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
+        if (myUploadsStr) {
+          const myUploads = JSON.parse(myUploadsStr);
+          if (Array.isArray(myUploads)) {
+            const filtered = myUploads.filter((n: any) => String(n.id) !== String(noteId));
+            localStorage.setItem('noteweb-my-uploads', JSON.stringify(filtered));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to clear note from local own uploads cache:", cacheErr);
+      }
+
+      setMyUploads((prev) => prev.filter((n) => String(n.id) !== String(noteId)));
       success("Notes document purged successfully!");
     } catch (e: any) {
       console.error(e);
@@ -619,12 +685,18 @@ export const Profile: React.FC = () => {
                 <span>📚 Branch: {BRANCH_LABELS[viewedProfile?.branch || ''] || 'General'}</span>
                 <span>🎓 Class: {YEAR_LABELS[viewedProfile?.year || ''] || 'N/A'}</span>
                 {viewedProfile?.cgpa && <span>📐 CGPA: {viewedProfile.cgpa}</span>}
+                {isViewingSelf && (
+                  <span className="flex items-center gap-1 text-amber-500 font-extrabold bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20 shadow-sm shadow-amber-500/5 select-none animate-pulse" title="Daily Study Streak">
+                    🔥 Streak: {localStorage.getItem(`noteweb-study-streak-${user?.uid}`) || '0'} Days
+                  </span>
+                )}
                 {viewedProfile?.mobileNo && (
                   <span className="flex items-center gap-1.5 text-indigo-400 bg-indigo-500/10 px-2.5 py-0.5 rounded-lg border border-indigo-500/20 font-extrabold shadow-sm shadow-indigo-500/5">
                     📞 Contact: {viewedProfile.mobileNo}
                   </span>
                 )}
               </div>
+
             </div>
           </div>
 
@@ -1033,9 +1105,13 @@ export const Profile: React.FC = () => {
                         <button
                           onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
                           className="p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer active:scale-95 flex items-center justify-center"
-                          title="View PDF"
+                          title={note.pdfPath === 'external-link' ? "Open Cloud Link" : "View PDF"}
                         >
-                          <Eye className="w-4 h-4" />
+                          {note.pdfPath === 'external-link' ? (
+                            <ExternalLink className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
                         </button>
                         {isViewingSelf && (
                           <button
@@ -1096,10 +1172,15 @@ export const Profile: React.FC = () => {
                       <button
                         onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
                         className="p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer active:scale-95 flex items-center justify-center"
-                        title="View PDF"
+                        title={note.pdfPath === 'external-link' ? "Open Cloud Link" : "View PDF"}
                       >
-                        <Eye className="w-4 h-4" />
+                        {note.pdfPath === 'external-link' ? (
+                          <ExternalLink className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
+
                       {isViewingSelf && (
                         <button
                           onClick={() => handleUnbookmark(note.id)}

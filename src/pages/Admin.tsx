@@ -494,7 +494,7 @@ export const Admin: React.FC = () => {
         if (storedNotesStr) {
           const storedNotes = JSON.parse(storedNotesStr);
           if (Array.isArray(storedNotes)) {
-            const filtered = storedNotes.filter((n: any) => n.id !== noteId);
+            const filtered = storedNotes.filter((n: any) => String(n.id) !== String(noteId));
             localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
           }
         }
@@ -502,9 +502,23 @@ export const Admin: React.FC = () => {
         console.warn("Failed to clear note from local broadcast cache:", cacheErr);
       }
 
+      // Remove from local own uploads cache
+      try {
+        const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
+        if (myUploadsStr) {
+          const myUploads = JSON.parse(myUploadsStr);
+          if (Array.isArray(myUploads)) {
+            const filtered = myUploads.filter((n: any) => String(n.id) !== String(noteId));
+            localStorage.setItem('noteweb-my-uploads', JSON.stringify(filtered));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to clear note from local own uploads cache:", cacheErr);
+      }
+
       success("Notes document permanently deleted.");
-      setAllNotes((prev) => prev.filter((n) => n.id !== noteId));
-      setPendingNotes((prev) => prev.filter((n) => n.id !== noteId));
+      setAllNotes((prev) => prev.filter((n) => String(n.id) !== String(noteId)));
+      setPendingNotes((prev) => prev.filter((n) => String(n.id) !== String(noteId)));
     } catch (e: any) {
       console.error(e);
       error("Purge failed: " + e.message);
@@ -1270,8 +1284,9 @@ export const Admin: React.FC = () => {
                         onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
                         className="px-4 py-2 rounded-lg border border-white/[0.08] text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 light-mode:text-slate-600 light-mode:hover:text-slate-900 cursor-pointer"
                       >
-                        Preview PDF
+                        {note.pdfPath === 'external-link' ? 'Open Shared Link' : 'Preview PDF'}
                       </button>
+
                       <button
                         onClick={() => handleModerate(note.id, 'approved')}
                         className="p-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all active:scale-95"
@@ -1347,8 +1362,9 @@ export const Admin: React.FC = () => {
                           onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
                           className="px-3 py-1.5 rounded-lg border border-white/[0.08] text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 cursor-pointer"
                         >
-                          Preview
+                          {note.pdfPath === 'external-link' ? 'Open Link' : 'Preview'}
                         </button>
+
                         <button
                           onClick={() => handleDeleteNote(note.id, note.pdfPath)}
                           className="p-2 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all active:scale-95"

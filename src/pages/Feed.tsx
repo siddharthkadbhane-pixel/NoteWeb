@@ -10,6 +10,7 @@ import {
   FileText, 
   Filter, 
   Download,
+  ExternalLink,
   Calendar,
   User,
   GraduationCap,
@@ -296,11 +297,11 @@ export const Feed: React.FC = () => {
       // has been permanently deleted or unapproved by the admin. We should prune it to prevent old data from lingering.
       let finalStoredNotes = [...storedNotes];
       if (fetched.length > 0 && storedNotes.length > 0) {
-        const activeApprovedIds = new Set(fetched.map((n) => n.id));
+        const activeApprovedIds = new Set(fetched.map((n) => String(n.id)));
         finalStoredNotes = storedNotes.filter((sn: any) => {
-          // If it was already approved but isn't in DB's approved list, it was deleted
-          if (sn.status === 'approved') {
-            return activeApprovedIds.has(sn.id);
+          // If it was already approved (or has numeric DB id) but isn't in DB's approved list, it was deleted
+          if (sn.status === 'approved' || !isNaN(Number(sn.id))) {
+            return activeApprovedIds.has(String(sn.id));
           }
           return true; // Keep pending ones for local uploader preview
         });
@@ -320,12 +321,32 @@ export const Feed: React.FC = () => {
         } catch {}
       }
 
+      // Auto-pruning self-healing cache for myUploads:
+      // If we fetched successfully from the database, and myUploads has numeric IDs that are missing from fetched,
+      // then they have been permanently deleted from the database. We must prune them!
+      let finalMyUploads = [...myUploads];
+      if (fetched.length > 0 && myUploads.length > 0) {
+        const activeIds = new Set(fetched.map((n) => String(n.id)));
+        finalMyUploads = myUploads.filter((my: any) => {
+          if (!isNaN(Number(my.id))) {
+            return activeIds.has(String(my.id));
+          }
+          return true; // Keep optimistic/mock pending ones
+        });
+
+        if (finalMyUploads.length !== myUploads.length) {
+          localStorage.setItem('noteweb-my-uploads', JSON.stringify(finalMyUploads));
+          console.log(`[NoteWeb Feed] Cleaned up ${myUploads.length - finalMyUploads.length} deleted notes from my-uploads cache`);
+          myUploads = finalMyUploads;
+        }
+      }
+
       const merged = [...fetched];
       
       // Merge my local uploads first (they have higher precedence and status)
       for (const my of myUploads) {
         const mappedMy = mapDbNoteToNoteDocument(my);
-        if (!merged.some((n) => n.id === mappedMy.id)) {
+        if (!merged.some((n) => String(n.id) === String(mappedMy.id))) {
           merged.push(mappedMy);
         }
       }
@@ -945,7 +966,7 @@ export const Feed: React.FC = () => {
         if (storedNotesStr) {
           const storedNotes = JSON.parse(storedNotesStr);
           if (Array.isArray(storedNotes)) {
-            const filtered = storedNotes.filter((n: any) => n.id !== noteId);
+            const filtered = storedNotes.filter((n: any) => String(n.id) !== String(noteId));
             localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
           }
         }
@@ -959,7 +980,7 @@ export const Feed: React.FC = () => {
         if (myUploadsStr) {
           const myUploads = JSON.parse(myUploadsStr);
           if (Array.isArray(myUploads)) {
-            const filtered = myUploads.filter((n: any) => n.id !== noteId);
+            const filtered = myUploads.filter((n: any) => String(n.id) !== String(noteId));
             localStorage.setItem('noteweb-my-uploads', JSON.stringify(filtered));
           }
         }
@@ -967,7 +988,7 @@ export const Feed: React.FC = () => {
         console.warn("Failed to clear note from local own uploads cache:", cacheErr);
       }
 
-      setNotes((prev) => prev.filter((n) => n.id !== noteId));
+      setNotes((prev) => prev.filter((n) => String(n.id) !== String(noteId)));
       success("Note deleted successfully!");
     } catch (e: any) {
       console.error(e);
@@ -1339,9 +1360,13 @@ export const Feed: React.FC = () => {
                               <button
                                 onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
                                 className="inline-flex items-center justify-center p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 light-mode:text-slate-600 light-mode:hover:text-slate-900 transition-all duration-200 cursor-pointer active:scale-95"
-                                title="Open PDF Document"
+                                title={note.pdfPath === 'external-link' ? "Open Cloud Shared Document" : "Open PDF Document"}
                               >
-                                <Download className="w-3.5 h-3.5" />
+                                {note.pdfPath === 'external-link' ? (
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                ) : (
+                                  <Download className="w-3.5 h-3.5" />
+                                )}
                               </button>
 
                               {/* Delete note button */}
@@ -1563,41 +1588,44 @@ export const Feed: React.FC = () => {
                             {flashcards.map((fc, idx) => {
                               const isFlipped = !!flippedCards[idx];
                               return (
-                                <motion.div
-                                  key={idx}
-                                  layout
+                                <div 
+                                  key={idx} 
+                                  className="perspective-1000 w-full min-h-[140px] cursor-pointer" 
                                   onClick={() => handleToggleFlipCard(idx)}
-                                  className={`p-6 rounded-2xl border cursor-pointer transition-all duration-300 text-left relative overflow-hidden select-none min-h-[120px] flex flex-col justify-center ${
-                                    isFlipped
-                                      ? 'bg-purple-600/10 border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.1)] light-mode:bg-purple-50 light-mode:border-purple-200'
-                                      : 'bg-indigo-600/10 border-indigo-500/20 hover:border-indigo-500/40 shadow-[0_0_10px_rgba(99,102,241,0.05)] light-mode:bg-indigo-50 light-mode:border-indigo-200'
-                                  }`}
                                 >
-                                  {/* Background Glow */}
-                                  <div className={`absolute top-0 right-0 w-24 h-24 rounded-full filter blur-xl opacity-20 transition-all ${
-                                    isFlipped ? 'bg-purple-400' : 'bg-indigo-400'
-                                  }`} />
+                                  <div className={`relative w-full h-full min-h-[140px] transition-all duration-500 preserve-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
+                                    
+                                    {/* FRONT SIDE (Question) */}
+                                    <div className="absolute inset-0 w-full h-full p-6 rounded-2xl border bg-indigo-600/10 border-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.05)] light-mode:bg-indigo-50/80 light-mode:border-indigo-200 backface-hidden flex flex-col justify-center text-left">
+                                      <div className="absolute top-0 right-0 w-24 h-24 rounded-full filter blur-xl opacity-20 bg-indigo-400" />
+                                      <div className="z-10 relative">
+                                        <span className="text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-indigo-500/20 text-indigo-400">
+                                          Question {idx + 1}
+                                        </span>
+                                        <h4 className="text-sm font-extrabold mt-3 leading-relaxed text-white light-mode:text-slate-900">
+                                          {fc.front}
+                                        </h4>
+                                      </div>
+                                    </div>
 
-                                  <div className="z-10 relative">
-                                    <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                                      isFlipped
-                                        ? 'bg-purple-500/20 text-purple-400'
-                                        : 'bg-indigo-500/20 text-indigo-400'
-                                    }`}>
-                                      {isFlipped ? 'Answer/Explanation' : `Question ${idx + 1}`}
-                                    </span>
+                                    {/* BACK SIDE (Answer) */}
+                                    <div className="absolute inset-0 w-full h-full p-6 rounded-2xl border bg-purple-600/10 border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.1)] light-mode:bg-purple-50/80 light-mode:border-purple-200 rotate-y-180 backface-hidden flex flex-col justify-center text-left">
+                                      <div className="absolute top-0 right-0 w-24 h-24 rounded-full filter blur-xl opacity-20 bg-purple-400" />
+                                      <div className="z-10 relative">
+                                        <span className="text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-purple-500/20 text-purple-400">
+                                          Answer/Explanation
+                                        </span>
+                                        <h4 className="text-sm font-extrabold mt-3 leading-relaxed text-purple-300 light-mode:text-purple-900">
+                                          {fc.back}
+                                        </h4>
+                                      </div>
+                                    </div>
 
-                                    <h4 className={`text-sm font-extrabold mt-3 leading-relaxed transition-all ${
-                                      isFlipped
-                                        ? 'text-purple-300 light-mode:text-purple-900'
-                                        : 'text-white light-mode:text-slate-900'
-                                    }`}>
-                                      {isFlipped ? fc.back : fc.front}
-                                    </h4>
                                   </div>
-                                </motion.div>
+                                </div>
                               );
                             })}
+
                           </div>
                         </div>
                       )}
@@ -1741,9 +1769,19 @@ export const Feed: React.FC = () => {
                   onClick={() => openPdfDocument(activeAiNote.pdfUrl || 'db-base64-fetch', activeAiNote.pdfPath || '', activeAiNote.id)}
                   className="w-full h-11 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 text-white flex items-center justify-center font-extrabold text-xs gap-1.5 shadow-lg shadow-indigo-600/10 active:scale-[0.98] transition-all"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  Open Full PDF Document
+                  {activeAiNote.pdfPath === 'external-link' ? (
+                    <>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Open Shared Cloud Document
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5" />
+                      Open Full PDF Document
+                    </>
+                  )}
                 </button>
+
               </div>
             </motion.div>
           </div>
