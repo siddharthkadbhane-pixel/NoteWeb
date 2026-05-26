@@ -618,20 +618,15 @@ export const Upload: React.FC = () => {
           console.warn("Snake_case insert on notes table failed. Trying camelCase fallback...");
           const { data: camelInsertData, error: camelInsertErr } = await supabase.from('notes').insert([noteDocCamel]).select();
           if (camelInsertErr) {
-            console.warn("CamelCase insert fallback also failed. Falling back to P2P Broadcast sync:", camelInsertErr);
-            await handleBroadcastFallback(noteDocCamel);
-            return;
+            throw new Error(`Database write failed: ${camelInsertErr.message}. Ensure your 'notes' table matches the schema columns!`);
           } else {
             // camelCase insert success
             const insertedRow = (camelInsertData && camelInsertData[0]) ? camelInsertData[0] : { ...noteDocCamel, id: 'db-note-' + Date.now() };
             await broadcastSuccessNote(insertedRow);
           }
         } else {
-          // For any other DB error (RLS, type mismatch like 'operator does not exist: text = uuid', or foreign key constraints),
-          // gracefully fallback to P2P Broadcast and local storage so the note is synced and shown immediately!
-          console.warn("Database insert failed. Falling back to P2P Broadcast sync:", insertErr.message);
-          await handleBroadcastFallback(noteDoc);
-          return;
+          // For any other DB error (RLS block, constraint violation), throw the real error so it is displayed in the UI toast
+          throw new Error(`Database write blocked: ${insertErr.message}. Please check your Supabase table schema and RLS policies!`);
         }
       } else {
         // snake_case insert success
