@@ -472,17 +472,21 @@ export const Admin: React.FC = () => {
     if (!isConfirmed) return;
 
     try {
-      if (pdfPath) {
-        const { error: storageErr } = await supabase.storage.from('notes').remove([pdfPath]);
-        if (storageErr) console.warn("Storage PDF delete warning:", storageErr);
-      }
+      const isLocalNote = isNaN(Number(noteId));
 
-      const { error: deleteErr } = await supabase
-        .from('notes')
-        .delete()
-        .eq('id', noteId);
-        
-      if (deleteErr) throw deleteErr;
+      if (!isLocalNote) {
+        if (pdfPath) {
+          const { error: storageErr } = await supabase.storage.from('notes').remove([pdfPath]);
+          if (storageErr) console.warn("Storage PDF delete warning:", storageErr);
+        }
+
+        const { error: deleteErr } = await supabase
+          .from('notes')
+          .delete()
+          .eq('id', noteId);
+          
+        if (deleteErr) throw deleteErr;
+      }
       
       // Remove from local broadcast cache
       try {

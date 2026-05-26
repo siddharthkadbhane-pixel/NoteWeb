@@ -505,11 +505,15 @@ export const Profile: React.FC = () => {
     if (!isConfirmed) return;
 
     try {
-      if (pdfPath) {
-        await supabase.storage.from('notes').remove([pdfPath]);
+      const isLocalNote = isNaN(Number(noteId));
+
+      if (!isLocalNote) {
+        if (pdfPath) {
+          await supabase.storage.from('notes').remove([pdfPath]);
+        }
+        const { error: dbErr } = await supabase.from('notes').delete().eq('id', noteId);
+        if (dbErr) throw dbErr;
       }
-      const { error: dbErr } = await supabase.from('notes').delete().eq('id', noteId);
-      if (dbErr) throw dbErr;
       
       // Remove from local broadcast cache
       try {

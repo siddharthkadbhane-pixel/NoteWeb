@@ -923,17 +923,21 @@ export const Feed: React.FC = () => {
   const handleDeleteNote = async (noteId: string, pdfPath: string) => {
     if (!window.confirm("Are you sure you want to permanently delete this note?")) return;
     try {
-      if (pdfPath) {
-        const { error: storageErr } = await supabase.storage.from('notes').remove([pdfPath]);
-        if (storageErr) console.warn("Storage PDF delete warning:", storageErr);
+      const isLocalNote = isNaN(Number(noteId));
+
+      if (!isLocalNote) {
+        if (pdfPath) {
+          const { error: storageErr } = await supabase.storage.from('notes').remove([pdfPath]);
+          if (storageErr) console.warn("Storage PDF delete warning:", storageErr);
+        }
+
+        const { error: err } = await supabase
+          .from('notes')
+          .delete()
+          .eq('id', noteId);
+
+        if (err) throw err;
       }
-
-      const { error: err } = await supabase
-        .from('notes')
-        .delete()
-        .eq('id', noteId);
-
-      if (err) throw err;
 
       // Remove from local broadcast cache
       try {
