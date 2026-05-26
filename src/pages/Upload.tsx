@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UploadCloud, FileText, Sparkles, AlertTriangle } from 'lucide-react';
+import { UploadCloud, FileText, Sparkles, AlertTriangle, Link, Globe } from 'lucide-react';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -125,6 +125,8 @@ export const Upload: React.FC = () => {
   const [examType, setExamType] = useState('End-Term');
 
   const [file, setFile] = useState<File | null>(null);
+  const [submissionMode, setSubmissionMode] = useState<'file' | 'link'>('file');
+  const [externalLink, setExternalLink] = useState('');
   const [semester, setSemester] = useState('1/2');
   
   // Custom Subject Selection
@@ -244,8 +246,12 @@ export const Upload: React.FC = () => {
       error("You must be logged in as a registered student to upload notes.");
       return;
     }
-    if (!file) {
+    if (submissionMode === 'file' && !file) {
       error("Please choose or drag a PDF notes file");
+      return;
+    }
+    if (submissionMode === 'link' && !externalLink.trim()) {
+      error("Please paste your Google Drive or cloud sharing link");
       return;
     }
     if (!notesName.trim()) {
@@ -313,89 +319,105 @@ export const Upload: React.FC = () => {
         console.error("Error verifying profile existence:", profileCheckErr);
       }
 
-      // 1. Upload PDF to Supabase Storage
-      const uniqueFileName = `${Date.now()}_${file.name}`;
-      let storagePath = `notes/${user.uid}/${uniqueFileName}`;
       let downloadUrl = '';
+      let storagePath = '';
+      let fileNameStr = '';
+      let fileSizeNum = 0;
+      let aiExtractedText = '';
 
-      const { error: storageErr } = await supabase.storage
-        .from('notes')
-        .upload(storagePath, file);
-
-      clearInterval(progressInterval);
-
-      if (storageErr) {
-        let storageErrMsg = storageErr.message || "Failed to upload file to storage";
-        if (storageErrMsg.toLowerCase().includes("bucket") || storageErrMsg.toLowerCase().includes("not found")) {
-          storageErrMsg = "The 'notes' storage bucket is missing in your Supabase project. Please log into your Supabase Dashboard -> Storage, click 'New Bucket', name it exactly 'notes' (and check 'Public').";
-        } else if (storageErrMsg.toLowerCase().includes("policy") || storageErrMsg.toLowerCase().includes("rls") || storageErrMsg.toLowerCase().includes("row-level security")) {
-          storageErrMsg = "Storage upload was blocked by RLS policies. Please ensure you have added Storage policies to allow INSERT/upload for authenticated users on the 'notes' bucket in your Supabase dashboard.";
-        }
-        
-        console.warn("Supabase Storage upload failed. Activating multi-device remote hosting fallback...", storageErrMsg);
-        info("Storage upload policy restricted. Routing PDF through remote hosting fallback...");
-        
-        try {
-          const remoteUrl = await uploadToRemoteFallback(file);
-          downloadUrl = remoteUrl;
-          storagePath = `notes/remote/${Date.now()}_${file.name}`;
-          success("Notes successfully uploaded to secure remote sync server!");
-        } catch (remoteErr: any) {
-          console.warn("Remote hosting fallback failed, converting file to Base64 as database backup:", remoteErr);
-          info("Remote sync server busy. Syncing actual PDF file directly to secure Database backup...");
-          
-          try {
-            const base64Data = await fileToBase64(file);
-            downloadUrl = base64Data;
-            storagePath = `notes/base64/${Date.now()}_${file.name}`;
-            success("Note successfully converted for secure direct database backup!");
-          } catch (base64Err: any) {
-            console.error("Failed to convert PDF file to Base64:", base64Err);
-            error("Direct DB Backup failed. Falling back to unique dummy PDF.");
-            const uniqueMockId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-            downloadUrl = `https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf?mockId=${uniqueMockId}`;
-            storagePath = `notes/mock/${uniqueMockId}_${file.name}`;
-          }
-        }
+      if (submissionMode === 'link') {
+        clearInterval(progressInterval);
+        downloadUrl = externalLink.trim();
+        storagePath = 'external-link';
+        fileNameStr = 'Google Drive Link';
+        fileSizeNum = 0;
+        aiExtractedText = `External shared document link: ${notesName}. Teacher: ${teacher}. Description: ${description}`;
         setUploadProgress(100);
       } else {
-        setUploadProgress(100);
+        if (!file) throw new Error("File missing");
+        fileNameStr = file.name;
+        fileSizeNum = file.size;
 
-        // Get public URL
-        const { data: urlData } = supabase.storage
+        // 1. Upload PDF to Supabase Storage
+        const uniqueFileName = `${Date.now()}_${file.name}`;
+        storagePath = `notes/${user.uid}/${uniqueFileName}`;
+
+        const { error: storageErr } = await supabase.storage
           .from('notes')
-          .getPublicUrl(storagePath);
+          .upload(storagePath, file);
 
-        if (!urlData || !urlData.publicUrl) {
-          throw new Error("Could not retrieve public URL for uploaded notes");
+        clearInterval(progressInterval);
+
+        if (storageErr) {
+          let storageErrMsg = storageErr.message || "Failed to upload file to storage";
+          if (storageErrMsg.toLowerCase().includes("bucket") || storageErrMsg.toLowerCase().includes("not found")) {
+            storageErrMsg = "The 'notes' storage bucket is missing in your Supabase project. Please log into your Supabase Dashboard -> Storage, click 'New Bucket', name it exactly 'notes' (and check 'Public').";
+          } else if (storageErrMsg.toLowerCase().includes("policy") || storageErrMsg.toLowerCase().includes("rls") || storageErrMsg.toLowerCase().includes("row-level security")) {
+            storageErrMsg = "Storage upload was blocked by RLS policies. Please ensure you have added Storage policies to allow INSERT/upload for authenticated users on the 'notes' bucket in your Supabase dashboard.";
+          }
+          
+          console.warn("Supabase Storage upload failed. Activating multi-device remote hosting fallback...", storageErrMsg);
+          info("Storage upload policy restricted. Routing PDF through remote hosting fallback...");
+          
+          try {
+            const remoteUrl = await uploadToRemoteFallback(file);
+            downloadUrl = remoteUrl;
+            storagePath = `notes/remote/${Date.now()}_${file.name}`;
+            success("Notes successfully uploaded to secure remote sync server!");
+          } catch (remoteErr: any) {
+            console.warn("Remote hosting fallback failed, converting file to Base64 as database backup:", remoteErr);
+            info("Remote sync server busy. Syncing actual PDF file directly to secure Database backup...");
+            
+            try {
+              const base64Data = await fileToBase64(file);
+              downloadUrl = base64Data;
+              storagePath = `notes/base64/${Date.now()}_${file.name}`;
+              success("Note successfully converted for secure direct database backup!");
+            } catch (base64Err: any) {
+              console.error("Failed to convert PDF file to Base64:", base64Err);
+              error("Direct DB Backup failed. Falling back to unique dummy PDF.");
+              const uniqueMockId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+              downloadUrl = `https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf?mockId=${uniqueMockId}`;
+              storagePath = `notes/mock/${uniqueMockId}_${file.name}`;
+            }
+          }
+          setUploadProgress(100);
+        } else {
+          setUploadProgress(100);
+
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('notes')
+            .getPublicUrl(storagePath);
+
+          if (!urlData || !urlData.publicUrl) {
+            throw new Error("Could not retrieve public URL for uploaded notes");
+          }
+
+          downloadUrl = urlData.publicUrl;
         }
 
-        downloadUrl = urlData.publicUrl;
-      }
-
-      // Local IndexedDB caching — store under multiple keys for maximum retrieval coverage
-      // This ensures pdfDb.ts can always find the actual file even if the remote URL breaks
-      try {
-        await storeOfflinePdf(storagePath, file);   // key: storage bucket path
-        await storeOfflinePdf(downloadUrl, file);   // key: public download URL
-        // We don't have the DB note ID here yet, but we cache by fileName as a secondary index
-        await storeOfflinePdf(`filename:${file.name}`, file);
-        console.log(`[NoteWeb Upload] PDF cached in IndexedDB under keys: "${storagePath}", "${downloadUrl.substring(0, 60)}...", "filename:${file.name}"`);
-      } catch (cacheErr) {
-        console.warn("Failed to cache PDF file locally in IndexedDB:", cacheErr);
-      }
-      
-      let aiExtractedText = '';
-      setAiStatus('extracting');
-      try {
-        aiExtractedText = await Promise.race([
-          extractTextFromPdf(file),
-          new Promise<string>((_, reject) => 
-            setTimeout(() => reject(new Error("PDF text extraction timed out")), 4000)
-          )
-        ]);
-      } catch (pdfErr) {
-        console.error("Text extraction failed:", pdfErr);
+        // Local IndexedDB caching
+        try {
+          await storeOfflinePdf(storagePath, file);   // key: storage bucket path
+          await storeOfflinePdf(downloadUrl, file);   // key: public download URL
+          await storeOfflinePdf(`filename:${file.name}`, file);
+          console.log(`[NoteWeb Upload] PDF cached in IndexedDB under keys: "${storagePath}", "${downloadUrl.substring(0, 60)}...", "filename:${file.name}"`);
+        } catch (cacheErr) {
+          console.warn("Failed to cache PDF file locally in IndexedDB:", cacheErr);
+        }
+        
+        setAiStatus('extracting');
+        try {
+          aiExtractedText = await Promise.race([
+            extractTextFromPdf(file),
+            new Promise<string>((_, reject) => 
+              setTimeout(() => reject(new Error("PDF text extraction timed out")), 4000)
+            )
+          ]);
+        } catch (pdfErr) {
+          console.error("Text extraction failed:", pdfErr);
+        }
       }
 
       // Custom category creation vs AI Category auto-sorting check inside subject catalog
@@ -461,8 +483,8 @@ export const Upload: React.FC = () => {
         description: finalDescription,
         pdf_url: downloadUrl,
         pdf_path: storagePath,
-        file_name: file.name,
-        file_size: file.size,
+        file_name: fileNameStr,
+        file_size: fileSizeNum,
         uploaded_by: uploadedBy,
         uploader_name: uploaderName,
         uploader_email: uploaderEmail,
@@ -483,8 +505,8 @@ export const Upload: React.FC = () => {
         description: finalDescription,
         pdfUrl: downloadUrl,
         pdfPath: storagePath,
-        fileName: file.name,
-        fileSize: file.size,
+        fileName: fileNameStr,
+        fileSize: fileSizeNum,
         uploadedBy: uploadedBy,
         uploaderName: uploaderName,
         uploaderEmail: uploaderEmail,
@@ -745,68 +767,120 @@ export const Upload: React.FC = () => {
               </button>
             </div>
 
-            {/* Drag & Drop PDF */}
-            <div className="flex flex-col gap-2">
+            {/* Submission Method Toggle */}
+            <div className="flex flex-col gap-2 mb-4">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
-                Select Notes Document (PDF)
+                Submission Method
               </span>
-              {!file ? (
-                <div
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onClick={triggerFileSelect}
+              <div className="flex items-center gap-1.5 p-1 bg-white/[0.02] border border-white/[0.06] rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setSubmissionMode('file')}
                   className={`
-                    border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-4 text-center cursor-pointer transition-all duration-300
-                    ${isDragging 
-                      ? 'border-indigo-500 bg-indigo-500/10 text-white scale-[1.01]' 
-                      : 'border-white/[0.08] hover:border-indigo-500/50 hover:bg-white/[0.02] text-slate-400 light-mode:border-slate-900/10 light-mode:hover:bg-slate-900/[0.01]'}
+                    flex-1 py-2.5 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer
+                    ${submissionMode === 'file'
+                      ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
+                      : 'text-slate-400 hover:text-slate-200'}
                   `}
                 >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="application/pdf"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
-                    <UploadCloud className="w-8 h-8" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-white light-mode:text-slate-850">
-                      Drag & Drop your PDF notes here
-                    </p>
-                    <p className="text-xs text-slate-500 light-mode:text-slate-600 mt-1">
-                      or click to browse local files (PDF only, max 50MB)
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/5 light-mode:border-indigo-500/20">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 flex-shrink-0">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0 flex flex-col">
-                      <span className="text-sm font-semibold text-white truncate light-mode:text-slate-800">
-                        {file.name}
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {(file.size / (1024 * 1024)).toFixed(2)} MB
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleRemoveFile}
-                    className="text-xs font-bold text-rose-400 hover:text-rose-300 p-2 rounded-lg hover:bg-rose-500/10 transition-colors"
-                  >
-                    Change File
-                  </button>
-                </div>
-              )}
+                  <UploadCloud className="w-3.5 h-3.5" /> PDF File Upload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubmissionMode('link')}
+                  className={`
+                    flex-1 py-2.5 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer
+                    ${submissionMode === 'link'
+                      ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
+                      : 'text-slate-400 hover:text-slate-200'}
+                  `}
+                >
+                  <Link className="w-3.5 h-3.5" /> Google Drive / Cloud Link
+                </button>
+              </div>
             </div>
+
+            {/* Drag & Drop PDF or Cloud Link Input */}
+            {submissionMode === 'file' ? (
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
+                  Select Notes Document (PDF)
+                </span>
+                {!file ? (
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={triggerFileSelect}
+                    className={`
+                      border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-4 text-center cursor-pointer transition-all duration-300
+                      ${isDragging 
+                        ? 'border-indigo-500 bg-indigo-500/10 text-white scale-[1.01]' 
+                        : 'border-white/[0.08] hover:border-indigo-500/50 hover:bg-white/[0.02] text-slate-400 light-mode:border-slate-900/10 light-mode:hover:bg-slate-900/[0.01]'}
+                    `}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                      <UploadCloud className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white light-mode:text-slate-850">
+                        Drag & Drop your PDF notes here
+                      </p>
+                      <p className="text-xs text-slate-500 light-mode:text-slate-600 mt-1">
+                        or click to browse local files (PDF only, max 50MB)
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/5 light-mode:border-indigo-500/20">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex flex-col">
+                        <span className="text-sm font-semibold text-white truncate light-mode:text-slate-800">
+                          {file.name}
+                        </span>
+                        <span className="text-xs text-slate-500 font-medium">
+                          {(file.size / (1024 * 1024)).toFixed(2)} MB
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      className="text-xs font-bold text-rose-400 hover:text-rose-300 p-2 rounded-lg hover:bg-rose-500/10 transition-colors"
+                    >
+                      Change File
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1 flex items-center gap-1">
+                  <Globe className="w-3.5 h-3.5 text-indigo-450" /> Paste Shared Cloud Document Link <span className="text-rose-500">*</span>
+                </span>
+                <input
+                  type="url"
+                  value={externalLink}
+                  onChange={(e) => setExternalLink(e.target.value)}
+                  placeholder="Paste Google Drive, OneDrive, or Notion shared document link here..."
+                  className="w-full px-4 py-3 bg-white/[0.02] border border-white/[0.08] focus:border-indigo-550 focus:bg-white/[0.04] rounded-xl outline-none text-slate-200 text-sm focus:ring-1 focus:ring-indigo-500/40 light-mode:bg-white light-mode:border-slate-300 light-mode:text-slate-800"
+                />
+                <p className="text-[10px] text-slate-500 font-medium pl-1 leading-normal">
+                  💡 Make sure you set the link sharing option to <strong>"Anyone with the link can view"</strong> so other students can read your notes instantly!
+                </p>
+              </div>
+            )}
+
 
             {/* Inputs grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
