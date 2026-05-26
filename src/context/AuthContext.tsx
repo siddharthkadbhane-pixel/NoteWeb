@@ -327,7 +327,107 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [isGuest]);
 
-  // Periodic active student session validity guard (Prune protection)
+  // 1. Background profile healing & notes migration to cloud database
+  useEffect(() => {
+    if (!user || isGuest || isMockMode) return;
+
+    const migrateLocalDataToCloud = async () => {
+      console.log("[Auth Sync] Initiating background cloud migration for user:", user.uid);
+
+      // A. Profile Self-Healing
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', user.uid);
+
+        if (!error && (!data || data.length === 0)) {
+          console.log("[Auth Sync] Profile missing from remote database. Restoring profile to cloud...");
+          if (userProfile) {
+            await saveUserProfile(userProfile);
+            console.log("[Auth Sync] Profile successfully restored online!");
+          }
+        }
+      } catch (err) {
+        console.warn("[Auth Sync] Failed to verify/restore profile:", err);
+      }
+
+      // B. Notes Local-to-Cloud Migration
+      try {
+        // Retrieve old notes from local storage lists
+        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
+        const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
+        
+        let localNotes: any[] = [];
+        if (storedNotesStr) {
+          try { localNotes = [...localNotes, ...JSON.parse(storedNotesStr)]; } catch {}
+        }
+        if (myUploadsStr) {
+          try { localNotes = [...localNotes, ...JSON.parse(myUploadsStr)]; } catch {}
+        }
+
+        // De-duplicate local notes by subject/filename
+        const uniqueLocalNotes = localNotes.filter((note, index, self) => 
+          index === self.findIndex((n) => n.subject === note.subject && n.file_name === note.file_name)
+        );
+
+        if (uniqueLocalNotes.length === 0) return;
+
+        console.log(`[Auth Sync] Found ${uniqueLocalNotes.length} local notes. Checking database sync status...`);
+
+        for (const note of uniqueLocalNotes) {
+          // Check if already in remote DB
+          const subjectTitle = note.subject || note.subjectName || '';
+          const { data: dbNotes, error: dbErr } = await supabase
+            .from('notes')
+            .select('id')
+            .eq('subject', subjectTitle)
+            .eq('uploaded_by', user.uid);
+
+          if (!dbErr && (!dbNotes || dbNotes.length === 0)) {
+            console.log(`[Auth Sync] Migrating note "${subjectTitle}" to cloud database...`);
+            
+            const noteDoc = {
+              subject: subjectTitle,
+              branch: note.branch || 'cse',
+              category: note.category || '',
+              semester: note.semester || '1/2',
+              teacher: note.teacher || 'General / Unknown',
+              description: note.description || 'No description provided.',
+              pdf_url: note.pdf_url || note.pdfUrl || '',
+              pdf_path: note.pdf_path || note.pdfPath || '',
+              file_name: note.file_name || note.fileName || 'document.pdf',
+              file_size: note.file_size || note.fileSize || 0,
+              uploaded_by: user.uid,
+              uploader_name: note.uploader_name || note.uploaderName || 'Student',
+              uploader_email: note.uploader_email || note.uploaderEmail || '',
+              created_at: note.created_at || note.createdAt || new Date().toISOString(),
+              status: 'approved',
+              likes: note.likes || [],
+              likes_count: note.likes_count || note.likesCount || 0,
+              bookmarks_count: note.bookmarks_count || note.bookmarksCount || 0,
+              summary: note.summary || null
+            };
+
+            const { error: insErr } = await supabase.from('notes').insert([noteDoc]);
+            if (insErr) {
+              console.warn(`[Auth Sync] Failed to migrate note "${subjectTitle}":`, insErr.message);
+            } else {
+              console.log(`[Auth Sync] Note "${subjectTitle}" successfully migrated to cloud!`);
+            }
+          }
+        }
+      } catch (migrateErr) {
+        console.warn("[Auth Sync] Notes migration error:", migrateErr);
+      }
+    };
+
+    // Run migration in the background 3 seconds after mounting
+    const timer = setTimeout(migrateLocalDataToCloud, 3000);
+    return () => clearTimeout(timer);
+  }, [user, userProfile]);
+
+  // 2. Periodic active student session validity guard (Prune protection)
   useEffect(() => {
     if (!user || isGuest) return;
 
@@ -341,18 +441,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // 2. Real-time active Supabase profile verification
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', user.uid);
-          
-        if (!error && (!data || data.length === 0)) {
-          console.log("[AuthContext] Profile deleted in database by administrator, signing out...");
-          await logout();
+      // If we are running in local Mock Mode, query mockSupabase (which reads local storage safely)
+      if (isMockMode) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', user.uid);
+            
+          if (!error && (!data || data.length === 0)) {
+            console.log("[AuthContext] Profile deleted in database by administrator, signing out...");
+            await logout();
+          }
+        } catch (err) {
+          console.warn("Database profile validity check failed:", err);
         }
-      } catch (err) {
-        console.warn("Database profile validity check failed:", err);
+      } else if (!user.uid.startsWith('mock-')) {
+        // In Live Mode, only query the remote database for real authenticated users (email/phone/oauth)
+        // This prevents anonymous custom username accounts from getting logged out by RLS SELECT blocks
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', user.uid);
+            
+          if (!error && (!data || data.length === 0)) {
+            console.log("[AuthContext] Profile deleted in database by administrator, signing out...");
+            await logout();
+          }
+        } catch (err) {
+          console.warn("Database profile validity check failed:", err);
+        }
       }
     };
 
