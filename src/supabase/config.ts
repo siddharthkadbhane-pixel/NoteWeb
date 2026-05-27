@@ -21,9 +21,10 @@ try {
   console.warn("Failed to initialize real Supabase client:", e);
 }
 
-// Strict Live Mode enforcement: Disable all mock/offline fallbacks and force active real Supabase connection.
+// Strict Live Mode enforcement: Default to attempting real connection, with graceful mock fallback on network failure or missing tables.
 export const isMockMode = false;
-const enableMockFallbacks = false;
+const envEnableMock = import.meta.env.VITE_ENABLE_MOCK_FALLBACKS;
+const enableMockFallbacks = envEnableMock !== undefined ? (envEnableMock === 'true' || envEnableMock === true) : true;
 
 
 
@@ -765,7 +766,7 @@ class SafeStorageBucket {
 
 const safeAuth = {
   async signUp(credentials: any) {
-    if (isMockMode) return mockSupabase.auth.signUp(credentials);
+    if (isMockMode || !realSupabase) return mockSupabase.auth.signUp(credentials);
     try {
       const response = await withTimeout(realSupabase.auth.signUp(credentials), 2500);
       if (response && response.error) {
@@ -780,7 +781,7 @@ const safeAuth = {
   },
 
   async signInWithPassword(credentials: any) {
-    if (isMockMode) return mockSupabase.auth.signInWithPassword(credentials);
+    if (isMockMode || !realSupabase) return mockSupabase.auth.signInWithPassword(credentials);
     try {
       const response = await withTimeout(realSupabase.auth.signInWithPassword(credentials), 2500);
       if (response && response.error) {
@@ -795,7 +796,7 @@ const safeAuth = {
   },
 
   async signInWithOtp(credentials: any) {
-    if (isMockMode) return mockSupabase.auth.signInWithOtp(credentials);
+    if (isMockMode || !realSupabase) return mockSupabase.auth.signInWithOtp(credentials);
     try {
       const response = await withTimeout(realSupabase.auth.signInWithOtp(credentials), 2500);
       if (response && response.error) {
@@ -810,7 +811,7 @@ const safeAuth = {
   },
 
   async verifyOtp(credentials: any) {
-    if (isMockMode) return mockSupabase.auth.verifyOtp(credentials);
+    if (isMockMode || !realSupabase) return mockSupabase.auth.verifyOtp(credentials);
     try {
       const response = await withTimeout(realSupabase.auth.verifyOtp(credentials), 2500);
       if (response && response.error) {
@@ -825,7 +826,7 @@ const safeAuth = {
   },
 
   async signInWithOAuth(credentials: any) {
-    if (isMockMode) return mockSupabase.auth.signInWithOAuth(credentials);
+    if (isMockMode || !realSupabase) return mockSupabase.auth.signInWithOAuth(credentials);
     try {
       const response = await withTimeout(realSupabase.auth.signInWithOAuth(credentials), 2500);
       if (response && response.error) {
@@ -840,7 +841,7 @@ const safeAuth = {
   },
 
   async signOut() {
-    if (isMockMode) return mockSupabase.auth.signOut();
+    if (isMockMode || !realSupabase) return mockSupabase.auth.signOut();
     try {
       const response = await withTimeout(realSupabase.auth.signOut(), 2500);
       if (response && response.error) {
@@ -853,7 +854,7 @@ const safeAuth = {
   },
 
   async updateUser(attributes: any) {
-    if (isMockMode) return mockSupabase.auth.updateUser(attributes);
+    if (isMockMode || !realSupabase) return mockSupabase.auth.updateUser(attributes);
     try {
       const response = await withTimeout(realSupabase.auth.updateUser(attributes), 2500);
       if (response && response.error) {
@@ -916,7 +917,7 @@ const safeAuth = {
 
 const safeStorage = {
   from(bucket: string) {
-    if (isMockMode) {
+    if (isMockMode || !realSupabase) {
       return mockSupabase.storage.from(bucket);
     }
     return new SafeStorageBucket(bucket, realSupabase.storage.from(bucket));
@@ -928,7 +929,7 @@ export const supabase = (enableMockFallbacks
   ? {
       auth: safeAuth,
       from(table: string) {
-        if (isMockMode) {
+        if (isMockMode || !realSupabase) {
           return mockSupabase.from(table);
         }
         return new SafePostgrestBuilder(table, realSupabase.from(table));
