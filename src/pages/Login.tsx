@@ -181,7 +181,7 @@ export const Login: React.FC = () => {
               year: '4',
               branch: 'cse',
               email: 'admin@noteweb.local',
-              cgpa: '10',
+              cgpa: '',
               photoURL: '👑|from-rose-600 via-pink-500 to-indigo-600',
               role: 'admin',
               setupComplete: true,
