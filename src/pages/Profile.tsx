@@ -348,7 +348,7 @@ export const Profile: React.FC = () => {
               // Self-healing prune: If the database returned successfully, and a cached upload has a numeric ID but is missing in the database's returned list, it has been deleted.
               let prunedCached = [...cachedUploads];
               if (!uploadsErr && Array.isArray(uploadsData)) {
-                const fetchedIds = new Set(uploads.map((u) => String(u.id)));
+                const fetchedIds = new Set(uploads.map((u: any) => String(u.id)));
                 prunedCached = cachedUploads.filter((item: any) => {
                   if (!isNaN(Number(item.id))) {
                     return fetchedIds.has(String(item.id));

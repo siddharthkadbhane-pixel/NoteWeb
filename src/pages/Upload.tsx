@@ -518,83 +518,7 @@ export const Upload: React.FC = () => {
         summary: summaryText || null
       };
 
-      const handleBroadcastFallback = async (notePayload: any) => {
-        console.warn("Database insert blocked by Row-Level Security. Using Realtime Broadcast fallback...");
-        
-        let finalUrl = notePayload.pdf_url || notePayload.pdfUrl || '';
-        if (finalUrl && (finalUrl.startsWith('data:') || finalUrl.length > 2000)) {
-          finalUrl = 'db-base64-fetch';
-        }
 
-        const broadcastPayload = {
-          ...notePayload,
-          pdf_url: finalUrl,
-          pdfUrl: finalUrl,
-          id: 'broadcast-note-' + Math.random().toString(36).substr(2, 9),
-          status: 'approved' // Broadcasted notes are instantly approved locally/live
-        };
-
-        // Broadcast using supabase channel
-        try {
-          const channel = supabase.channel('public:notes');
-          await new Promise<void>((resolve) => {
-            channel.subscribe(async (status: any) => {
-              if (status === 'SUBSCRIBED') {
-                await channel.send({
-                  type: 'broadcast',
-                  event: 'new-note',
-                  payload: broadcastPayload
-                });
-                console.log("Broadcasted note successfully!");
-                resolve();
-              } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                resolve();
-              }
-            });
-            // Auto resolve in 1.5 seconds in case of slow connection
-            setTimeout(resolve, 1500);
-          });
-        } catch (broadcastErr) {
-          console.warn("Failed to send broadcast note:", broadcastErr);
-        }
-
-        // Save to localStorage
-        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
-        let storedNotes: any[] = [];
-        if (storedNotesStr) {
-          try {
-            storedNotes = JSON.parse(storedNotesStr);
-          } catch {}
-        }
-        if (!storedNotes.some((n: any) => n.id === broadcastPayload.id)) {
-          storedNotes.push(broadcastPayload);
-          localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(storedNotes));
-        }
-
-        // Also save to my-uploads
-        try {
-          const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
-          let myUploads: any[] = [];
-          if (myUploadsStr) {
-            try { myUploads = JSON.parse(myUploadsStr); } catch {}
-          }
-          if (!myUploads.some((n: any) => n.id === broadcastPayload.id)) {
-            myUploads.push(broadcastPayload);
-            localStorage.setItem('noteweb-my-uploads', JSON.stringify(myUploads));
-          }
-        } catch (myErr) {
-          console.warn("Failed to cache uploader note:", myErr);
-        }
-
-        clearInterval(progressInterval);
-        success("NoteWeb Secure Shield: Note uploaded and synced instantly via P2P Broadcast.");
-        // Signal Feed page to immediately refetch
-        localStorage.setItem('noteweb-last-upload', Date.now().toString());
-        // Wait 800ms to allow broadcast transmission to flush
-        await new Promise((r) => setTimeout(r, 800));
-        // Pass broadcast note to Feed via router state for instant optimistic display
-        navigate('/feed', { state: { newNote: broadcastPayload, timestamp: Date.now() } });
-      };
 
       const broadcastSuccessNote = async (insertedNote: any) => {
         let finalUrl = insertedNote.pdf_url || insertedNote.pdfUrl || '';
@@ -678,8 +602,8 @@ export const Upload: React.FC = () => {
         description: description.trim() || 'No description provided.',
         pdf_url: (() => { const u = downloadUrl; return (u.startsWith('data:') || u.length > 2000) ? 'db-base64-fetch' : u; })(),
         pdf_path: storagePath,
-        file_name: file.name,
-        file_size: file.size,
+        file_name: fileNameStr,
+        file_size: fileSizeNum,
         uploaded_by: user.uid,
         uploader_name: uploaderName,
         uploader_email: uploaderEmail,
