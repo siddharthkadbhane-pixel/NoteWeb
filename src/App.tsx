@@ -24,6 +24,7 @@ import { Feedback } from './pages/Feedback';
 import { FloatingThemeToggle } from './components/Navigation/FloatingThemeToggle';
 import { InteractiveBackground } from './components/ui/InteractiveBackground';
 import { ScreenshotProtection } from './components/ScreenshotProtection';
+import { PageWrapper } from './components/ui/PageWrapper';
 
 export const ChatNotificationListener: React.FC = () => {
   const { user } = useAuth();
@@ -429,18 +430,18 @@ function App() {
                 <main className="flex-1 min-w-0 pt-14 lg:pt-0 pb-24 lg:pb-6 lg:pl-20 px-0 transition-all duration-300 z-10 relative w-full">
                   <Routes>
                     {/* Publicly Accessible Routes */}
-                    <Route path="/" element={<Home />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/categories" element={<Categories />} />
-                    <Route path="/feed" element={<Feed />} />
+                    <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
+                    <Route path="/about" element={<PageWrapper><About /></PageWrapper>} />
+                    <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
+                    <Route path="/categories" element={<PageWrapper><Categories /></PageWrapper>} />
+                    <Route path="/feed" element={<PageWrapper><Feed /></PageWrapper>} />
 
                     {/* Protected Student Features */}
                     <Route
                       path="/upload"
                       element={
                         <ProtectedRoute>
-                          <Upload />
+                          <PageWrapper><Upload /></PageWrapper>
                         </ProtectedRoute>
                       }
                     />
@@ -448,7 +449,7 @@ function App() {
                       path="/profile"
                       element={
                         <ProtectedRoute>
-                          <Profile />
+                          <PageWrapper><Profile /></PageWrapper>
                         </ProtectedRoute>
                       }
                     />
@@ -456,7 +457,7 @@ function App() {
                       path="/profile/:uid"
                       element={
                         <ProtectedRoute>
-                          <Profile />
+                          <PageWrapper><Profile /></PageWrapper>
                         </ProtectedRoute>
                       }
                     />
@@ -464,7 +465,7 @@ function App() {
                       path="/chat"
                       element={
                         <ProtectedRoute>
-                          <Chat />
+                          <PageWrapper><Chat /></PageWrapper>
                         </ProtectedRoute>
                       }
                     />
@@ -472,7 +473,7 @@ function App() {
                       path="/leaderboard"
                       element={
                         <ProtectedRoute>
-                          <Leaderboard />
+                          <PageWrapper><Leaderboard /></PageWrapper>
                         </ProtectedRoute>
                       }
                     />
@@ -480,7 +481,7 @@ function App() {
                       path="/feedback"
                       element={
                         <ProtectedRoute>
-                          <Feedback />
+                          <PageWrapper><Feedback /></PageWrapper>
                         </ProtectedRoute>
                       }
                     />
@@ -490,7 +491,7 @@ function App() {
                       path="/admin"
                       element={
                         <ProtectedRoute adminOnly>
-                          <Admin />
+                          <PageWrapper><Admin /></PageWrapper>
                         </ProtectedRoute>
                       }
                     />
