@@ -10,7 +10,7 @@ const supabaseUrl = (rawSupabaseUrl && !rawSupabaseUrl.includes('placeholder') &
 
 const supabaseKey = (rawSupabaseKey && !rawSupabaseKey.includes('placeholder') && !rawSupabaseKey.includes('mock'))
   ? rawSupabaseKey
-  : 'sb_publishable_I8b9i3SCxfnLBOMxrfrL6Q_0KV9SFiY';
+  : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5cWVnY3VpdGhoYm52dml1amJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzA4NTIsImV4cCI6MjA5NDk0Njg1Mn0.BZSRDkbB9DyXo53xpYajPMUcG3GeYYwEes1mI5_vQCs';
 
 let realSupabase: any = null;
 try {
