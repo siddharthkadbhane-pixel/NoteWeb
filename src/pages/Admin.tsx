@@ -488,33 +488,7 @@ export const Admin: React.FC = () => {
         if (deleteErr) throw deleteErr;
       }
       
-      // Remove from local broadcast cache
-      try {
-        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
-        if (storedNotesStr) {
-          const storedNotes = JSON.parse(storedNotesStr);
-          if (Array.isArray(storedNotes)) {
-            const filtered = storedNotes.filter((n: any) => String(n.id) !== String(noteId));
-            localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
-          }
-        }
-      } catch (cacheErr) {
-        console.warn("Failed to clear note from local broadcast cache:", cacheErr);
-      }
-
-      // Remove from local own uploads cache
-      try {
-        const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
-        if (myUploadsStr) {
-          const myUploads = JSON.parse(myUploadsStr);
-          if (Array.isArray(myUploads)) {
-            const filtered = myUploads.filter((n: any) => String(n.id) !== String(noteId));
-            localStorage.setItem('noteweb-my-uploads', JSON.stringify(filtered));
-          }
-        }
-      } catch (cacheErr) {
-        console.warn("Failed to clear note from local own uploads cache:", cacheErr);
-      }
+      // Database purge completed, updating states directly.
 
       success("Notes document permanently deleted.");
       setAllNotes((prev) => prev.filter((n) => String(n.id) !== String(noteId)));
@@ -680,19 +654,7 @@ export const Admin: React.FC = () => {
 
       if (deleteProfileErr) throw deleteProfileErr;
 
-      // Remove all user's notes from local broadcast cache
-      try {
-        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
-        if (storedNotesStr) {
-          const storedNotes = JSON.parse(storedNotesStr);
-          if (Array.isArray(storedNotes)) {
-            const filtered = storedNotes.filter((n: any) => n.uploaded_by !== targetUid && n.uploadedBy !== targetUid);
-            localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
-          }
-        }
-      } catch (cacheErr) {
-        console.warn("Failed to clear user notes from local broadcast cache:", cacheErr);
-      }
+      // User profiles and uploads successfully deleted from Supabase.
 
       success(`User "${displayName}" and their uploads have been permanently removed!`);
 

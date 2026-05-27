@@ -615,20 +615,7 @@ export const Upload: React.FC = () => {
         summary: summaryText || null
       };
 
-      // Save to own uploads local cache for persistent visibility
-      try {
-        const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
-        let myUploads: any[] = [];
-        if (myUploadsStr) {
-          try { myUploads = JSON.parse(myUploadsStr); } catch {}
-        }
-        if (!myUploads.some((n: any) => n.id === optimisticNote.id)) {
-          myUploads.push(optimisticNote);
-          localStorage.setItem('noteweb-my-uploads', JSON.stringify(myUploads));
-        }
-      } catch (myErr) {
-        console.warn("Failed to cache uploader note:", myErr);
-      }
+      // Optimistic note is passed transiently to feed via navigate state rather than local storage cache.
 
       // Wait 800ms to allow broadcast transmission to flush
       await new Promise((r) => setTimeout(r, 800));

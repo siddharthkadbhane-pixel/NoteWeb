@@ -287,85 +287,8 @@ export const Feed: React.FC = () => {
         }
       }
 
-      // Get broadcasted notes from localStorage (RLS-blocked uploads)
-      const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
-      let storedNotes: any[] = [];
-      if (storedNotesStr) {
-        try { storedNotes = JSON.parse(storedNotesStr); } catch {}
-      }
-      
-      // Auto-pruning self-healing cache: If we successfully fetched approved notes from the database,
-      // any stored note in broadcast cache that has been approved but is no longer in the DB approved list
-      // has been permanently deleted or unapproved by the admin. We should prune it to prevent old data from lingering.
-      let finalStoredNotes = [...storedNotes];
-      if (fetched.length > 0 && storedNotes.length > 0) {
-        const activeApprovedIds = new Set(fetched.map((n) => String(n.id)));
-        finalStoredNotes = storedNotes.filter((sn: any) => {
-          // If it was already approved (or has numeric DB id) but isn't in DB's approved list, it was deleted
-          if (sn.status === 'approved' || !isNaN(Number(sn.id))) {
-            return activeApprovedIds.has(String(sn.id));
-          }
-          return true; // Keep pending ones for local uploader preview
-        });
-
-        if (finalStoredNotes.length !== storedNotes.length) {
-          localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(finalStoredNotes));
-          console.log(`[NoteWeb Feed] Cleaned up ${storedNotes.length - finalStoredNotes.length} deleted/stale notes from local broadcast cache`);
-        }
-      }
-
-      // Get own local uploads (always visible on uploader's device instantly regardless of status/RLS)
-      const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
-      let myUploads: any[] = [];
-      if (myUploadsStr) {
-        try {
-          myUploads = JSON.parse(myUploadsStr);
-        } catch {}
-      }
-
-      // Auto-pruning self-healing cache for myUploads:
-      // If we fetched successfully from the database, and myUploads has numeric IDs that are missing from fetched,
-      // then they have been permanently deleted from the database. We must prune them!
-      let finalMyUploads = [...myUploads];
-      if (fetched.length > 0 && myUploads.length > 0) {
-        const activeIds = new Set(fetched.map((n) => String(n.id)));
-        finalMyUploads = myUploads.filter((my: any) => {
-          if (!isNaN(Number(my.id))) {
-            return activeIds.has(String(my.id));
-          }
-          return true; // Keep optimistic/mock pending ones
-        });
-
-        if (finalMyUploads.length !== myUploads.length) {
-          localStorage.setItem('noteweb-my-uploads', JSON.stringify(finalMyUploads));
-          console.log(`[NoteWeb Feed] Cleaned up ${myUploads.length - finalMyUploads.length} deleted notes from my-uploads cache`);
-          myUploads = finalMyUploads;
-        }
-      }
-
       const merged = [...fetched];
-      
-      // Merge my local uploads first (they have higher precedence and status)
-      for (const my of myUploads) {
-        const mappedMy = mapDbNoteToNoteDocument(my);
-        if (!merged.some((n) => String(n.id) === String(mappedMy.id))) {
-          merged.push(mappedMy);
-        }
-      }
-
-      // Merge other broadcasted local notes
-      for (const sn of finalStoredNotes) {
-        const mappedSn = mapDbNoteToNoteDocument(sn);
-        if (!merged.some((n) => n.id === mappedSn.id)) {
-          merged.push(mappedSn);
-        }
-      }
-
-      if (finalStoredNotes.length > 0) {
-        console.log(`[NoteWeb Feed] Merged ${finalStoredNotes.length} broadcasted notes from localStorage`);
-      }
-
-      console.log(`[NoteWeb Feed] Total after merge: ${merged.length} notes`);
+      console.log(`[NoteWeb Feed] Total notes loaded from database: ${merged.length}`);
 
       // Merge optimistic notes — keep any that haven't arrived from DB yet
       setNotes((prev) => {
@@ -471,34 +394,6 @@ export const Feed: React.FC = () => {
               setRealtimeSynced(true);
               if (payload.old?.id) {
                 setNotes(prev => prev.filter(n => n.id !== payload.old.id));
-                
-                // Remove from local broadcast cache
-                try {
-                  const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
-                  if (storedNotesStr) {
-                    const storedNotes = JSON.parse(storedNotesStr);
-                    if (Array.isArray(storedNotes)) {
-                      const filtered = storedNotes.filter((n: any) => n.id !== payload.old.id);
-                      localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
-                    }
-                  }
-                } catch (e) {
-                  console.warn('[NoteWeb Realtime] Failed to remove deleted note from broadcast cache:', e);
-                }
-
-                // Remove from local own uploads cache
-                try {
-                  const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
-                  if (myUploadsStr) {
-                    const myUploads = JSON.parse(myUploadsStr);
-                    if (Array.isArray(myUploads)) {
-                      const filtered = myUploads.filter((n: any) => n.id !== payload.old.id);
-                      localStorage.setItem('noteweb-my-uploads', JSON.stringify(filtered));
-                    }
-                  }
-                } catch (e) {
-                  console.warn('[NoteWeb Realtime] Failed to remove deleted note from own uploads cache:', e);
-                }
               }
             }
           )
@@ -509,18 +404,6 @@ export const Feed: React.FC = () => {
               console.log('[NoteWeb Broadcast] New note broadcast received:', response);
               if (response?.payload) {
                 const newNote = response.payload;
-                
-                // Save to localStorage for persistence across refreshes
-                const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
-                let storedNotes: any[] = [];
-                if (storedNotesStr) {
-                  try { storedNotes = JSON.parse(storedNotesStr); } catch {}
-                }
-                if (!storedNotes.some((n: any) => n.id === newNote.id)) {
-                  storedNotes.push(newNote);
-                  localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(storedNotes));
-                }
-                
                 const mappedNote = mapDbNoteToNoteDocument(newNote);
                 setNotes((prev) => {
                   if (prev.some((n) => n.id === mappedNote.id)) return prev;
@@ -962,33 +845,7 @@ export const Feed: React.FC = () => {
         if (err) throw err;
       }
 
-      // Remove from local broadcast cache
-      try {
-        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
-        if (storedNotesStr) {
-          const storedNotes = JSON.parse(storedNotesStr);
-          if (Array.isArray(storedNotes)) {
-            const filtered = storedNotes.filter((n: any) => String(n.id) !== String(noteId));
-            localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
-          }
-        }
-      } catch (cacheErr) {
-        console.warn("Failed to clear note from local broadcast cache:", cacheErr);
-      }
-
-      // Remove from local own uploads cache
-      try {
-        const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
-        if (myUploadsStr) {
-          const myUploads = JSON.parse(myUploadsStr);
-          if (Array.isArray(myUploads)) {
-            const filtered = myUploads.filter((n: any) => String(n.id) !== String(noteId));
-            localStorage.setItem('noteweb-my-uploads', JSON.stringify(filtered));
-          }
-        }
-      } catch (cacheErr) {
-        console.warn("Failed to clear note from local own uploads cache:", cacheErr);
-      }
+      // Pure database deletion complete, updating state directly.
 
       setNotes((prev) => prev.filter((n) => String(n.id) !== String(noteId)));
       success("Note deleted successfully!");

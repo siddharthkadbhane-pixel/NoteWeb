@@ -338,41 +338,7 @@ export const Profile: React.FC = () => {
 
       let uploads = (uploadsData || []).map(mapDbNoteToNoteDocument);
 
-      // Merge local storage own uploads cache if viewing self to bypass RLS/mock delays
-      if (isViewingSelf) {
-        try {
-          const cachedUploadsStr = localStorage.getItem('noteweb-my-uploads');
-          if (cachedUploadsStr) {
-            const cachedUploads = JSON.parse(cachedUploadsStr);
-            if (Array.isArray(cachedUploads)) {
-              // Self-healing prune: If the database returned successfully, and a cached upload has a numeric ID but is missing in the database's returned list, it has been deleted.
-              let prunedCached = [...cachedUploads];
-              if (!uploadsErr && Array.isArray(uploadsData)) {
-                const fetchedIds = new Set(uploads.map((u: any) => String(u.id)));
-                prunedCached = cachedUploads.filter((item: any) => {
-                  if (!isNaN(Number(item.id))) {
-                    return fetchedIds.has(String(item.id));
-                  }
-                  return true;
-                });
-                if (prunedCached.length !== cachedUploads.length) {
-                  localStorage.setItem('noteweb-my-uploads', JSON.stringify(prunedCached));
-                  console.log(`[Profile] Pruned ${cachedUploads.length - prunedCached.length} deleted uploads from local cache.`);
-                }
-              }
-
-              prunedCached.forEach((item: any) => {
-                const note = mapDbNoteToNoteDocument(item);
-                if (!uploads.some((n: NoteDocument) => String(n.id) === String(note.id))) {
-                  uploads.push(note);
-                }
-              });
-            }
-          }
-        } catch (cacheErr) {
-          console.warn('[Profile] Failed to merge cached uploads:', cacheErr);
-        }
-      }
+      // Own uploads are loaded directly from remote database queries.
 
       uploads.sort((a: NoteDocument, b: NoteDocument) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setMyUploads(uploads);
@@ -567,33 +533,7 @@ export const Profile: React.FC = () => {
         if (dbErr) throw dbErr;
       }
       
-      // Remove from local broadcast cache
-      try {
-        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
-        if (storedNotesStr) {
-          const storedNotes = JSON.parse(storedNotesStr);
-          if (Array.isArray(storedNotes)) {
-            const filtered = storedNotes.filter((n: any) => String(n.id) !== String(noteId));
-            localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
-          }
-        }
-      } catch (cacheErr) {
-        console.warn("Failed to clear note from local broadcast cache:", cacheErr);
-      }
-
-      // Remove from local own uploads cache
-      try {
-        const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
-        if (myUploadsStr) {
-          const myUploads = JSON.parse(myUploadsStr);
-          if (Array.isArray(myUploads)) {
-            const filtered = myUploads.filter((n: any) => String(n.id) !== String(noteId));
-            localStorage.setItem('noteweb-my-uploads', JSON.stringify(filtered));
-          }
-        }
-      } catch (cacheErr) {
-        console.warn("Failed to clear note from local own uploads cache:", cacheErr);
-      }
+      // database purge complete, update state directly.
 
       setMyUploads((prev) => prev.filter((n) => String(n.id) !== String(noteId)));
       success("Notes document purged successfully!");
