@@ -38,7 +38,14 @@ export const SparkleBurst: React.FC<SparkleProps> = ({ children, active = false 
     }, 850);
   }, []);
 
-  const handleClick = (e: React.MouseEvent) => {
+  // Trigger burst automatically when active state transitions to true
+  React.useEffect(() => {
+    if (active) {
+      trigger();
+    }
+  }, [active, trigger]);
+
+  const handleClick = () => {
     trigger();
   };
 
