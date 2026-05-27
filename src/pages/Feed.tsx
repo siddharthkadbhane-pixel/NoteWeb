@@ -33,6 +33,8 @@ import { Input } from '../components/ui/Input';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { Skeleton } from '../components/ui/Skeleton';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TiltCard } from '../components/ui/TiltCard';
+import { SparkleBurst } from '../components/ui/SparkleBurst';
 import { openPdfDocument } from '../utils/pdfDb';
 import { 
   generateFlashcards, 
@@ -1247,140 +1249,146 @@ export const Feed: React.FC = () => {
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.3 }}
-                          className="glass-card premium-border-glow hover:scale-[1.01] hover:shadow-xl duration-300 flex flex-col justify-between text-left h-[260px] p-5 group relative"
+                          className="w-full h-full"
                         >
-                          {/* Shimmer hovering glow border effect */}
-                          <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-indigo-500/5 via-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />                           {/* Top row */}
-                          <div className="space-y-3 z-10 relative">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/10 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
-                                <FileText className="w-5 h-5" />
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                                  Sem {note.semester}
-                                </span>
-                                {note.status === 'pending' && (
-                                  <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.2)] animate-pulse">
-                                    Under Review
-                                  </span>
-                                )}
-                                {note.status === 'rejected' && (
-                                  <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-[0_0_8px_rgba(244,63,94,0.2)]">
-                                    Rejected
-                                  </span>
-                                )}
-
-                              </div>
-                            </div>
-
-                            <div>
-                              {note.subject.startsWith('[QP -') ? (
-                                <div className="flex flex-col items-start gap-1.5 text-left">
-                                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
-                                    📄 {note.subject.match(/^\[QP - ([^\]]+)\]/)?.[1] || 'Question Paper'}
-                                  </span>
-                                  <h3 className="font-extrabold text-base text-white group-hover:text-indigo-400 transition-colors duration-300 truncate light-mode:text-slate-900 w-full">
-                                    {note.subject.replace(/^\[QP - [^\]]+\] /, '')}
-                                  </h3>
+                          <TiltCard className="glass-card premium-border-glow hover:shadow-xl flex flex-col justify-between text-left h-[260px] p-5 group relative w-full">
+                            {/* Shimmer hovering glow border effect */}
+                            <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-indigo-500/5 via-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                            {/* Top row */}
+                            <div className="space-y-3 z-10 relative">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/10 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                                  <FileText className="w-5 h-5" />
                                 </div>
-                              ) : (
-                                <h3 className="font-extrabold text-base text-white group-hover:text-indigo-400 transition-colors duration-300 truncate light-mode:text-slate-900">
-                                  {note.subject}
-                                </h3>
-                              )}
-                              
-                              <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold mt-1 text-left">
-                                <GraduationCap className="w-3.5 h-3.5" /> {note.subject.startsWith('[QP -') ? 'Exam Board Syllabus' : `Prof. ${note.teacher}`}
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                    Sem {note.semester}
+                                  </span>
+                                  {note.status === 'pending' && (
+                                    <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.2)] animate-pulse">
+                                      Under Review
+                                    </span>
+                                  )}
+                                  {note.status === 'rejected' && (
+                                    <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-[0_0_8px_rgba(244,63,94,0.2)]">
+                                      Rejected
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <p className="text-xs text-slate-400 light-mode:text-slate-500 leading-relaxed line-clamp-2 mt-2 text-left">
-                                {note.description}
-                              </p>
-                            </div>
-                          </div>
 
-                          {/* Middle metadata details */}
-                          <div className="flex items-center justify-between border-t border-white/[0.04] pt-3 text-[10px] font-medium text-slate-500 z-10 relative mt-4">
-                            <span 
-                              onClick={() => note.uploadedBy && navigate(`/profile/${note.uploadedBy}`)}
-                              className="flex items-center gap-1 truncate max-w-[130px] hover:text-indigo-400 cursor-pointer transition-colors duration-200"
-                            >
-                              <User className="w-3 h-3 flex-shrink-0 text-indigo-500" /> {note.uploaderName}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3 flex-shrink-0" /> {getFormatDate(note.createdAt)}
-                            </span>
-                          </div>
-
-                                     {/* Bottom Actions Row */}
-                          <div className="flex items-center justify-between gap-3 border-t border-white/[0.04] pt-3 z-10 relative">
-                            <div className="flex items-center gap-1">
-                              {/* Like toggle */}
-                              <button
-                                onClick={() => handleLikeToggle(note.id, note.likes)}
-                                className={`
-                                  p-2 rounded-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-90
-                                  ${isLiked 
-                                    ? 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 shadow-md shadow-indigo-600/10' 
-                                    : 'text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10'}
-                                `}
-                                title="Like Note"
-                              >
-                                <ThumbsUp className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
-                                <span>{note.likesCount || 0}</span>
-                              </button>
-
-                              {/* Bookmark toggle */}
-                              <button
-                                onClick={() => handleBookmarkToggle(note.id)}
-                                className={`
-                                  p-2 rounded-lg flex items-center text-xs font-bold transition-all active:scale-90
-                                  ${isBookmarked 
-                                    ? 'bg-purple-600/20 border border-purple-500/30 text-purple-400 shadow-md shadow-purple-600/10' 
-                                    : 'text-slate-400 hover:text-purple-400 hover:bg-purple-500/10'}
-                                `}
-                                title="Bookmark Note"
-                              >
-                                <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
-                              </button>
-
-                              {/* AI Companion button */}
-                              <button
-                                onClick={() => handleOpenAiCompanion(note)}
-                                className="p-2 rounded-lg flex items-center gap-1 text-xs font-extrabold bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 transition-all duration-200 cursor-pointer active:scale-90 shadow-sm shadow-indigo-600/10"
-                                title="AI Note Companion"
-                              >
-                                <Sparkles className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">AI Study</span>
-                              </button>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {/* View PDF download */}
-                              <button
-                                onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
-                                className="inline-flex items-center justify-center p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 light-mode:text-slate-600 light-mode:hover:text-slate-900 transition-all duration-200 cursor-pointer active:scale-95"
-                                title={note.pdfPath === 'external-link' ? "Open Cloud Shared Document" : "Open PDF Document"}
-                              >
-                                {note.pdfPath === 'external-link' ? (
-                                  <ExternalLink className="w-3.5 h-3.5" />
+                              <div>
+                                {note.subject.startsWith('[QP -') ? (
+                                  <div className="flex flex-col items-start gap-1.5 text-left">
+                                    <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
+                                      📄 {note.subject.match(/^\[QP - ([^\]]+)\]/)?.[1] || 'Question Paper'}
+                                    </span>
+                                    <h3 className="font-extrabold text-base text-white group-hover:text-indigo-400 transition-colors duration-300 truncate light-mode:text-slate-900 w-full">
+                                      {note.subject.replace(/^\[QP - [^\]]+\] /, '')}
+                                    </h3>
+                                  </div>
                                 ) : (
-                                  <Download className="w-3.5 h-3.5" />
+                                  <h3 className="font-extrabold text-base text-white group-hover:text-indigo-400 transition-colors duration-300 truncate light-mode:text-slate-900">
+                                    {note.subject}
+                                  </h3>
                                 )}
-                              </button>
-
-                              {/* Delete note button */}
-                              {user && userProfile && (note.uploadedBy === user.uid || userProfile.role === 'admin') && (
-                                <button
-                                  onClick={() => handleDeleteNote(note.id, note.pdfPath)}
-                                  className="inline-flex items-center justify-center p-2 rounded-lg border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-all duration-200 cursor-pointer active:scale-95"
-                                  title="Delete Note"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
+                                
+                                <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold mt-1 text-left">
+                                  <GraduationCap className="w-3.5 h-3.5" /> {note.subject.startsWith('[QP -') ? 'Exam Board Syllabus' : `Prof. ${note.teacher}`}
+                                </div>
+                                <p className="text-xs text-slate-400 light-mode:text-slate-500 leading-relaxed line-clamp-2 mt-2 text-left">
+                                  {note.description}
+                                </p>
+                              </div>
                             </div>
-                          </div>
+
+                            {/* Middle metadata details */}
+                            <div className="flex items-center justify-between border-t border-white/[0.04] pt-3 text-[10px] font-medium text-slate-500 z-10 relative mt-4">
+                              <span 
+                                onClick={() => note.uploadedBy && navigate(`/profile/${note.uploadedBy}`)}
+                                className="flex items-center gap-1 truncate max-w-[130px] hover:text-indigo-400 cursor-pointer transition-colors duration-200"
+                              >
+                                <User className="w-3 h-3 flex-shrink-0 text-indigo-500" /> {note.uploaderName}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3 flex-shrink-0" /> {getFormatDate(note.createdAt)}
+                              </span>
+                            </div>
+
+                            {/* Bottom Actions Row */}
+                            <div className="flex items-center justify-between gap-3 border-t border-white/[0.04] pt-3 z-10 relative">
+                              <div className="flex items-center gap-1">
+                                {/* Like toggle */}
+                                <SparkleBurst>
+                                  <button
+                                    onClick={() => handleLikeToggle(note.id, note.likes)}
+                                    className={`
+                                      p-2 rounded-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-90 cursor-pointer
+                                      ${isLiked 
+                                        ? 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 shadow-md shadow-indigo-600/10' 
+                                        : 'text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10'}
+                                    `}
+                                    title="Like Note"
+                                  >
+                                    <ThumbsUp className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
+                                    <span>{note.likesCount || 0}</span>
+                                  </button>
+                                </SparkleBurst>
+
+                                {/* Bookmark toggle */}
+                                <SparkleBurst>
+                                  <button
+                                    onClick={() => handleBookmarkToggle(note.id)}
+                                    className={`
+                                      p-2 rounded-lg flex items-center text-xs font-bold transition-all active:scale-90 cursor-pointer
+                                      ${isBookmarked 
+                                        ? 'bg-purple-600/20 border border-purple-500/30 text-purple-400 shadow-md shadow-purple-600/10' 
+                                        : 'text-slate-400 hover:text-purple-400 hover:bg-purple-500/10'}
+                                    `}
+                                    title="Bookmark Note"
+                                  >
+                                    <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
+                                  </button>
+                                </SparkleBurst>
+
+                                {/* AI Companion button */}
+                                <button
+                                  onClick={() => handleOpenAiCompanion(note)}
+                                  className="p-2 rounded-lg flex items-center gap-1 text-xs font-extrabold bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 transition-all duration-200 cursor-pointer active:scale-90 shadow-sm shadow-indigo-600/10"
+                                  title="AI Note Companion"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">AI Study</span>
+                                </button>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {/* View PDF download */}
+                                <button
+                                  onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
+                                  className="inline-flex items-center justify-center p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 light-mode:text-slate-600 light-mode:hover:text-slate-900 transition-all duration-200 cursor-pointer active:scale-95"
+                                  title={note.pdfPath === 'external-link' ? "Open Cloud Shared Document" : "Open PDF Document"}
+                                >
+                                  {note.pdfPath === 'external-link' ? (
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <Download className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+
+                                {/* Delete note button */}
+                                {user && userProfile && (note.uploadedBy === user.uid || userProfile.role === 'admin') && (
+                                  <button
+                                    onClick={() => handleDeleteNote(note.id, note.pdfPath)}
+                                    className="inline-flex items-center justify-center p-2 rounded-lg border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-all duration-200 cursor-pointer active:scale-95"
+                                    title="Delete Note"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </TiltCard>
                         </motion.div>
                       );
                     })}

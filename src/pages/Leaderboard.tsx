@@ -458,76 +458,81 @@ export const Leaderboard: React.FC = () => {
                 const progressPct = getXPProgress(peer.points);
                 
                 return (
-                  <GlassPanel
+                  <motion.div
                     key={peer.uid}
-                    className={`px-5 py-3.5 flex items-center border hover:scale-[1.005] duration-200 ${
-                      isMe 
-                        ? isDark 
-                          ? 'bg-indigo-600/10 border-indigo-500/30 text-white shadow shadow-indigo-950/10' 
-                          : 'bg-indigo-50 border-indigo-250 text-indigo-900 shadow shadow-indigo-100/50' 
-                        : isDark 
-                          ? 'bg-[#121218]/30 border-white/[0.04] text-white' 
-                          : 'bg-white border-slate-100 shadow-sm text-slate-800'
-                    }`}
+                    layout
+                    transition={{ type: 'spring', stiffness: 220, damping: 25 }}
+                    className="w-full"
                   >
-                    {/* Rank Badge */}
-                    <span className={`w-12 text-sm font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      #{rankNum}
-                    </span>
-
-                    {/* Student Info */}
-                    <div 
-                      onClick={() => peer.uid && navigate(`/profile/${peer.uid}`)} 
-                      className="flex-1 pl-4 flex items-center gap-3 min-w-0 hover:translate-x-0.5 transition-transform duration-200 cursor-pointer group"
+                    <GlassPanel
+                      className={`px-5 py-3.5 flex items-center border hover:scale-[1.005] duration-200 ${
+                        isMe 
+                          ? isDark 
+                            ? 'bg-indigo-600/10 border-indigo-500/30 text-white shadow shadow-indigo-950/10' 
+                            : 'bg-indigo-50 border-indigo-250 text-indigo-900 shadow shadow-indigo-100/50' 
+                          : isDark 
+                            ? 'bg-[#121218]/30 border-white/[0.04] text-white' 
+                            : 'bg-white border-slate-100 shadow-sm text-slate-800'
+                      }`}
                     >
-                      {renderAvatar(peer.photoURL, "w-9 h-9 text-lg")}
-                      <div className="min-w-0 text-left">
-                        <span className={`font-extrabold text-xs leading-none flex items-center gap-1.5 group-hover:text-indigo-500 transition-colors ${isDark ? 'text-white' : 'text-slate-850'}`}>
-                          {peer.displayName}
-                          {isMe && <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-500 border border-indigo-500/30 font-extrabold">YOU</span>}
-                        </span>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`block text-[10px] font-semibold ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>@{peer.username}</span>
-                          <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded border bg-gradient-to-r ${level.color}`}>
-                            {level.badge}
+                      {/* Rank Badge */}
+                      <span className={`w-12 text-sm font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        #{rankNum}
+                      </span>
+
+                      {/* Student Info */}
+                      <div 
+                        onClick={() => peer.uid && navigate(`/profile/${peer.uid}`)} 
+                        className="flex-1 pl-4 flex items-center gap-3 min-w-0 hover:translate-x-0.5 transition-transform duration-200 cursor-pointer group"
+                      >
+                        {renderAvatar(peer.photoURL, "w-9 h-9 text-lg")}
+                        <div className="min-w-0 text-left">
+                          <span className={`font-extrabold text-xs leading-none flex items-center gap-1.5 group-hover:text-indigo-500 transition-colors ${isDark ? 'text-white' : 'text-slate-850'}`}>
+                            {peer.displayName}
+                            {isMe && <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-505 border border-indigo-505/30 font-extrabold">YOU</span>}
                           </span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`block text-[10px] font-semibold ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>@{peer.username}</span>
+                            <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded border bg-gradient-to-r ${level.color}`}>
+                              {level.badge}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Class Year */}
-                    <span className={`w-24 text-center text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      {peer.year} Year
-                    </span>
-
-                    {/* Department tag */}
-                    <div className="w-28 flex justify-center">
-                      <span className={`text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full border ${isDark ? 'border-white/[0.04] bg-white/[0.02] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
-                        {BRANCH_LABELS[peer.branch] || 'CSE'}
+                      {/* Class Year */}
+                      <span className={`w-24 text-center text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-660'}`}>
+                        {peer.year} Year
                       </span>
-                    </div>
 
-                    {/* CGPA */}
-                    <span className={`w-20 text-center text-xs font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      {peer.cgpa > 0 ? peer.cgpa.toFixed(2) : 'N/A'}
-                    </span>
+                      {/* Department tag */}
+                      <div className="w-28 flex justify-center">
+                        <span className={`text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full border ${isDark ? 'border-white/[0.04] bg-white/[0.02] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                          {BRANCH_LABELS[peer.branch] || 'CSE'}
+                        </span>
+                      </div>
 
-                    {/* Sorted score metric + Level Progress Bar */}
-                    <div className="w-24 flex flex-col items-end gap-1 pl-2">
-                      <span className={`text-xs font-extrabold flex items-center justify-end gap-1.5 ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                        {sortBy === 'points' && <Award className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />}
-                        {sortBy === 'uploads' && <BookOpen className="w-3.5 h-3.5 text-indigo-400" />}
-                        {sortBy === 'cgpa' && <ArrowUp className="w-3.5 h-3.5 text-indigo-400 animate-bounce-slow" />}
-                        {getMetricString(peer)}
+                      {/* CGPA */}
+                      <span className={`w-20 text-center text-xs font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-660'}`}>
+                        {peer.cgpa > 0 ? peer.cgpa.toFixed(2) : 'N/A'}
                       </span>
-                      {sortBy === 'points' && (
-                        <div className={`w-16 h-1 border rounded-full overflow-hidden ${isDark ? 'bg-slate-950/80 border-white/5' : 'bg-slate-200 border-slate-350'}`} title={`${progressPct}% towards next level`}>
-                          <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style={{ width: `${progressPct}%` }} />
-                        </div>
-                      )}
-                    </div>
 
-                  </GlassPanel>
+                      {/* Sorted score metric + Level Progress Bar */}
+                      <div className="w-24 flex flex-col items-end gap-1 pl-2">
+                        <span className={`text-xs font-extrabold flex items-center justify-end gap-1.5 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                          {sortBy === 'points' && <Award className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />}
+                          {sortBy === 'uploads' && <BookOpen className="w-3.5 h-3.5 text-indigo-400" />}
+                          {sortBy === 'cgpa' && <ArrowUp className="w-3.5 h-3.5 text-indigo-400 animate-bounce-slow" />}
+                          {getMetricString(peer)}
+                        </span>
+                        {sortBy === 'points' && (
+                          <div className={`w-16 h-1 border rounded-full overflow-hidden ${isDark ? 'bg-slate-950/80 border-white/5' : 'bg-slate-200 border-slate-350'}`} title={`${progressPct}% towards next level`}>
+                            <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style={{ width: `${progressPct}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    </GlassPanel>
+                  </motion.div>
                 );
               })}
             </div>

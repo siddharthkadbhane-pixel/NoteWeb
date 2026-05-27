@@ -21,6 +21,7 @@ import { GlassPanel } from '../components/ui/GlassPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase/config';
 import { useToast } from '../context/ToastContext';
+import { TiltCard } from '../components/ui/TiltCard';
 
 interface BranchType {
   id: string;
@@ -500,37 +501,39 @@ export const Categories: React.FC = () => {
                   key={branch.id}
                   variants={itemVariants}
                   onClick={() => setSelectedBranch(branch)}
-                  className="group cursor-pointer text-left glass-card premium-border-glow hover:scale-[1.02] hover:shadow-2xl duration-300 flex flex-col justify-between p-6 relative h-[240px] overflow-hidden"
-                  style={{
-                    boxShadow: `0 4px 30px ${branch.shadowColor || 'rgba(0,0,0,0.2)'}`
-                  }}
+                  className="w-full h-full"
                 >
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-transparent via-transparent to-white/[0.02] pointer-events-none" />
-                  
-                  <div className="space-y-4">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-tr ${branch.color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                      {getBranchIcon(branch.icon)}
-                    </div>
+                  <TiltCard
+                    className="group cursor-pointer text-left glass-card premium-border-glow hover:shadow-2xl flex flex-col justify-between p-6 relative h-[240px] overflow-hidden w-full bg-[#13131A]/40 border border-white/5"
+                    glowColor={branch.shadowColor || 'rgba(99, 102, 241, 0.25)'}
+                  >
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-transparent via-transparent to-white/[0.02] pointer-events-none" />
                     
-                    <div>
-                      <h3 className="text-lg font-bold text-white light-mode:text-slate-950 group-hover:text-indigo-400 transition-colors duration-300">
-                        {branch.name}
-                      </h3>
-                      <p className="text-xs text-slate-400 light-mode:text-slate-500 mt-2 leading-relaxed line-clamp-3">
-                        {branch.description}
-                      </p>
+                    <div className="space-y-4">
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-tr ${branch.color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                        {getBranchIcon(branch.icon)}
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-lg font-bold text-white light-mode:text-slate-950 group-hover:text-indigo-400 transition-colors duration-300">
+                          {branch.name}
+                        </h3>
+                        <p className="text-xs text-slate-400 light-mode:text-slate-500 mt-2 leading-relaxed line-clamp-3">
+                          {branch.description}
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/[0.05]">
-                    <span className="text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 light-mode:bg-indigo-50/50">
-                      {branch.notesCount} • {subjectsCount} {subjectsCount === 1 ? 'SUBJECT' : 'SUBJECTS'}
-                    </span>
-                    
-                    <span className="text-indigo-400 font-semibold text-xs flex items-center gap-1 group-hover:translate-x-1 transition-transform duration-300">
-                      View Subjects <ArrowRight className="w-3.5 h-3.5" />
-                    </span>
-                  </div>
+                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/[0.05]">
+                      <span className="text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 light-mode:bg-indigo-50/50 animate-pulse">
+                        {branch.notesCount} • {subjectsCount} {subjectsCount === 1 ? 'SUBJECT' : 'SUBJECTS'}
+                      </span>
+                      
+                      <span className="text-indigo-400 font-semibold text-xs flex items-center gap-1 group-hover:translate-x-1 transition-transform duration-300">
+                        View Subjects <ArrowRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </TiltCard>
                 </motion.div>
               );
             })}

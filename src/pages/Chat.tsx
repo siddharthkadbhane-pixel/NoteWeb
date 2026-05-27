@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { renderAvatar } from '../utils/avatar';
 import { GlassPanel } from '../components/ui/GlassPanel';
+import { motion } from 'framer-motion';
 
 import { 
   Send, 
@@ -742,8 +743,11 @@ export const Chat: React.FC = () => {
               messages.map((msg) => {
                 const isMe = msg.sender_uid === user?.uid;
                 return (
-                  <div 
+                  <motion.div 
                     key={msg.id}
+                    initial={{ opacity: 0, scale: 0.85, y: 15 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
                     className={`flex items-end gap-3 ${isMe ? 'flex-row-reverse text-right' : 'text-left'}`}
                   >
                     {/* Avatar */}
@@ -880,7 +884,7 @@ export const Chat: React.FC = () => {
                         {formatTime(msg.created_at)}
                       </span>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })
             )}

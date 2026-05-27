@@ -43,7 +43,6 @@ export const Login: React.FC = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   /* ── Admin verify ── */
-  const [isAdminVerified, setIsAdminVerified] = useState(false);
   const [adminPass, setAdminPass] = useState('');
   const [showAdminPass, setShowAdminPass] = useState(false);
   const [adminPassError, setAdminPassError] = useState('');
@@ -159,15 +158,45 @@ export const Login: React.FC = () => {
 
   /* ── State variables for the two columns ── */
   const [studentUsername, setStudentUsername] = useState('');
-  const [adminUsername, setAdminUsername] = useState('');
 
   /* ─────────────────────────────────────────── Actions */
-  const handleAdminVerify = (e: React.FormEvent) => {
+  const handleAdminVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (adminPass === ADMIN_SECRET) {
       setAdminPassError('');
-      setIsAdminVerified(true);
-      success('Admin passcode verified! 🔐');
+      setIsLoading(true);
+      setSelectedRole('admin');
+      setUsername('admin');
+      try {
+        await loginWithUsername('admin');
+        success('Welcome back, Administrator! 👑');
+        navigate(from, { replace: true });
+      } catch (err: any) {
+        if (err.message?.includes('not found')) {
+          try {
+            await registerUser({
+              username: 'admin',
+              displayName: 'Administrator',
+              mobileNo: '9999999999',
+              year: '4',
+              branch: 'cse',
+              email: 'admin@noteweb.local',
+              cgpa: '10',
+              photoURL: '👑|from-rose-600 via-pink-500 to-indigo-600',
+              role: 'admin',
+              setupComplete: true,
+            });
+            success('Administrator profile initialized! 👑');
+            navigate(from, { replace: true });
+          } catch (regErr: any) {
+            setAdminPassError(regErr.message || 'Failed to create admin profile.');
+          }
+        } else {
+          setAdminPassError(err.message || 'Login failed. Please try again.');
+        }
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       setAdminPassError('Incorrect admin password. Please try again.');
     }
@@ -193,34 +222,6 @@ export const Login: React.FC = () => {
         setUsername(cleanUsername);
         setStep('register');
         success("New username! Let's build your profile.");
-      } else {
-        toastError(err.message || 'Login failed. Please try again.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAdminSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanUsername = adminUsername.trim().replace(/[^a-zA-Z0-9_]/g, '');
-    if (!cleanUsername) {
-      setFormErrors({ adminUsername: 'Admin username is required' });
-      return;
-    }
-    setFormErrors({});
-    setIsLoading(true);
-    setSelectedRole('admin');
-    setUsername(cleanUsername);
-    try {
-      await loginWithUsername(cleanUsername.toLowerCase());
-      success(`Welcome back, Admin ${cleanUsername}! 👑`);
-      navigate(from, { replace: true });
-    } catch (err: any) {
-      if (err.message?.includes('not found')) {
-        setUsername(cleanUsername);
-        setStep('register');
-        success("New admin! Let's build your profile.");
       } else {
         toastError(err.message || 'Login failed. Please try again.');
       }
@@ -397,27 +398,17 @@ export const Login: React.FC = () => {
 
                   {/* RIGHT COLUMN: Admin Section */}
                   <div className={`flex flex-col justify-between p-6 rounded-2xl border-2 transition-all duration-300 ${
-                    isAdminVerified
-                      ? isDark ? 'bg-emerald-950/5 border-emerald-500/20' : 'bg-emerald-50/20 border-emerald-100 shadow-sm'
-                      : isDark ? 'bg-rose-950/5 border-rose-500/10 hover:border-rose-500/30' : 'bg-rose-50/20 border-rose-100 hover:border-rose-400/40 shadow-sm'
+                    isDark ? 'bg-rose-950/5 border-rose-500/10 hover:border-rose-500/30' : 'bg-rose-50/20 border-rose-100 hover:border-rose-400/40 shadow-sm'
                   }`}>
                     <div>
                       <div className="flex items-center gap-3 mb-4">
-                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr flex items-center justify-center shadow-md ${
-                          isAdminVerified 
-                            ? 'from-emerald-500 to-teal-600 shadow-emerald-500/20' 
-                            : 'from-rose-500 to-orange-500 shadow-rose-500/20'
-                        }`}>
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-orange-500 flex items-center justify-center shadow-md shadow-rose-500/20">
                           <ShieldCheck className="w-5.5 h-5.5 text-white" />
                         </div>
                         <div className="text-left">
                           <h3 className={`text-base font-black ${isDark ? 'text-slate-100' : 'text-rose-955'}`}>Admin Gate</h3>
-                          <span className={`text-[10px] font-bold ${
-                            isAdminVerified 
-                              ? 'text-emerald-500 dark:text-emerald-400' 
-                              : 'text-rose-500 dark:text-rose-400'
-                          }`}>
-                            {isAdminVerified ? 'SECRET GATE UNLOCKED' : 'ENTER PASSCODE TO UNLOCK'}
+                          <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400">
+                            ENTER PASSCODE TO UNLOCK
                           </span>
                         </div>
                       </div>
@@ -426,91 +417,44 @@ export const Login: React.FC = () => {
                       </p>
                     </div>
 
-                    {!isAdminVerified ? (
-                      /* Admin Passcode Gate */
-                      <form onSubmit={handleAdminVerify} className="space-y-4 text-left">
-                        <div>
-                          <label className={labelCls}>Admin Gate Password</label>
-                          <div className="relative">
-                            <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                            <input
-                              type={showAdminPass ? 'text' : 'password'}
-                              value={adminPass}
-                              onChange={(e) => { setAdminPass(e.target.value); setAdminPassError(''); }}
-                              placeholder="Enter admin passcode..."
-                              className={inputCls + " pl-10 pr-10"}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowAdminPass(!showAdminPass)}
-                              className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}`}
-                            >
-                              {showAdminPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                          </div>
-                          {adminPassError && (
-                            <p className="mt-1 text-xs text-rose-500 font-semibold">{adminPassError}</p>
-                          )}
-                        </div>
-
-                        <button
-                          type="submit"
-                          className="w-full py-3 rounded-xl font-black text-sm text-white bg-gradient-to-r from-rose-600 to-orange-500 hover:brightness-115 shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                          <ShieldCheck className="w-4 h-4" /> Unlock Gate
-                        </button>
-                      </form>
-                    ) : (
-                      /* Admin Username Login */
-                      <form onSubmit={handleAdminSubmit} className="space-y-4 text-left">
-                        {/* Verified Banner */}
-                        <div className={`p-3 rounded-xl border flex items-center gap-2 mb-1 ${
-                          isDark 
-                            ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' 
-                            : 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                        }`}>
-                          <Check className="w-4 h-4 flex-shrink-0 animate-bounce" />
-                          <span className="text-[11px] font-bold">Gate Unlocked! Choose Username</span>
+                    {/* Admin Passcode Gate */}
+                    <form onSubmit={handleAdminVerify} className="space-y-4 text-left">
+                      <div>
+                        <label className={labelCls}>Admin Gate Password</label>
+                        <div className="relative">
+                          <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                          <input
+                            type={showAdminPass ? 'text' : 'password'}
+                            value={adminPass}
+                            onChange={(e) => { setAdminPass(e.target.value); setAdminPassError(''); }}
+                            placeholder="Enter admin passcode..."
+                            className={inputCls + " pl-10 pr-10"}
+                          />
                           <button
                             type="button"
-                            onClick={() => { setIsAdminVerified(false); setAdminPass(''); }}
-                            className="ml-auto text-[10px] underline hover:text-rose-500 cursor-pointer"
+                            onClick={() => setShowAdminPass(!showAdminPass)}
+                            className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}`}
                           >
-                            Lock
+                            {showAdminPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
+                        {adminPassError && (
+                          <p className="mt-1 text-xs text-rose-500 font-semibold">{adminPassError}</p>
+                        )}
+                      </div>
 
-                        <div>
-                          <label className={labelCls}>Admin Username</label>
-                          <div className="relative">
-                            <User className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                            <input
-                              type="text"
-                              value={adminUsername}
-                              onChange={(e) => setAdminUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
-                              placeholder="e.g. administrator"
-                              className={inputCls + " pl-10"}
-                              autoFocus
-                            />
-                          </div>
-                          {formErrors.adminUsername && (
-                            <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.adminUsername}</p>
-                          )}
-                        </div>
-
-                        <button
-                          type="submit"
-                          disabled={isLoading}
-                          className="w-full py-3 rounded-xl font-black text-sm text-white bg-gradient-to-r from-rose-600 to-orange-500 hover:brightness-115 shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-                        >
-                          {isLoading && selectedRole === 'admin' ? (
-                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          ) : (
-                            <><Lock className="w-4 h-4" /> Admin Access</>
-                          )}
-                        </button>
-                      </form>
-                    )}
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full py-3 rounded-xl font-black text-sm text-white bg-gradient-to-r from-rose-600 to-orange-500 hover:brightness-115 shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                      >
+                        {isLoading && selectedRole === 'admin' ? (
+                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <><Lock className="w-4 h-4" /> Admin Access</>
+                        )}
+                      </button>
+                    </form>
                   </div>
 
                 </div>
