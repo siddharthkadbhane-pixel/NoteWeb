@@ -373,18 +373,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (uniqueLocalNotes.length === 0) return;
 
+        // Helper to remove note from local lists on-demand to prevent stale updates
+        const removeNoteFromLocalLists = (subj: string, fileNameStr: string) => {
+          const rawStored = localStorage.getItem('noteweb-broadcasted-notes');
+          const rawUploads = localStorage.getItem('noteweb-my-uploads');
+          
+          if (rawStored) {
+            try {
+              let updatedStoredNotes = JSON.parse(rawStored);
+              if (Array.isArray(updatedStoredNotes)) {
+                updatedStoredNotes = updatedStoredNotes.filter((n: any) => 
+                  !((n.subject || n.subjectName || '') === subj && (n.file_name || n.fileName || '') === fileNameStr)
+                );
+                if (updatedStoredNotes.length > 0) {
+                  localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(updatedStoredNotes));
+                } else {
+                  localStorage.removeItem('noteweb-broadcasted-notes');
+                }
+              }
+            } catch {}
+          }
+          
+          if (rawUploads) {
+            try {
+              let updatedMyUploads = JSON.parse(rawUploads);
+              if (Array.isArray(updatedMyUploads)) {
+                updatedMyUploads = updatedMyUploads.filter((n: any) => 
+                  !((n.subject || n.subjectName || '') === subj && (n.file_name || n.fileName || '') === fileNameStr)
+                );
+                if (updatedMyUploads.length > 0) {
+                  localStorage.setItem('noteweb-my-uploads', JSON.stringify(updatedMyUploads));
+                } else {
+                  localStorage.removeItem('noteweb-my-uploads');
+                }
+              }
+            } catch {}
+          }
+        };
+
         console.log(`[Auth Sync] Found ${uniqueLocalNotes.length} local notes. Checking database sync status...`);
 
         for (const note of uniqueLocalNotes) {
           // Check if already in remote DB
           const subjectTitle = note.subject || note.subjectName || '';
+          const fileNameStr = note.file_name || note.fileName || '';
           const { data: dbNotes, error: dbErr } = await supabase
             .from('notes')
             .select('id')
             .eq('subject', subjectTitle)
             .eq('uploaded_by', user.uid);
 
-          if (!dbErr && (!dbNotes || dbNotes.length === 0)) {
+          if (!dbErr && dbNotes && dbNotes.length > 0) {
+            // Note already exists in remote DB, clear it from local cache!
+            console.log(`[Auth Sync] Note "${subjectTitle}" already exists in cloud, removing from local cache.`);
+            removeNoteFromLocalLists(subjectTitle, fileNameStr);
+          } else if (!dbErr && (!dbNotes || dbNotes.length === 0)) {
             console.log(`[Auth Sync] Migrating note "${subjectTitle}" to cloud database...`);
             
             const noteDoc = {
@@ -396,7 +439,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               description: note.description || 'No description provided.',
               pdf_url: note.pdf_url || note.pdfUrl || '',
               pdf_path: note.pdf_path || note.pdfPath || '',
-              file_name: note.file_name || note.fileName || 'document.pdf',
+              file_name: fileNameStr || 'document.pdf',
               file_size: note.file_size || note.fileSize || 0,
               uploaded_by: user.uid,
               uploader_name: note.uploader_name || note.uploaderName || 'Student',
@@ -414,6 +457,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.warn(`[Auth Sync] Failed to migrate note "${subjectTitle}":`, insErr.message);
             } else {
               console.log(`[Auth Sync] Note "${subjectTitle}" successfully migrated to cloud!`);
+              removeNoteFromLocalLists(subjectTitle, fileNameStr);
             }
           }
         }

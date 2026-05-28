@@ -26,7 +26,11 @@ import {
   BookOpen,
   MessageSquare,
   Award,
-  RefreshCw
+  RefreshCw,
+  Volume2,
+  Play,
+  Pause,
+  Square
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -690,7 +694,86 @@ export const Feed: React.FC = () => {
 
   // AI Note Companion modal state
   const [activeAiNote, setActiveAiNote] = useState<NoteDocument | null>(null);
-  const [aiCompanionTab, setAiCompanionTab] = useState<'flashcards' | 'quiz' | 'qna'>('flashcards');
+  const [aiCompanionTab, setAiCompanionTab] = useState<'podcast' | 'flashcards' | 'quiz' | 'qna'>('podcast');
+  
+  // Speech Synthesis state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [speechRate, setSpeechRate] = useState<number>(1);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Cleanup speech on unmount
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  const handleCloseAiCompanion = () => {
+    window.speechSynthesis.cancel();
+    setIsPlaying(false);
+    setIsPaused(false);
+    setActiveAiNote(null);
+  };
+
+  const startSpeech = (textToRead: string) => {
+    window.speechSynthesis.cancel();
+    const cleanText = textToRead
+      .replace(/###/g, '')
+      .replace(/##/g, '')
+      .replace(/#/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/- \[ \]/g, '')
+      .replace(/- \[x\]/g, '');
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = speechRate;
+    
+    const voices = window.speechSynthesis.getVoices();
+    const premiumVoice = voices.find(
+      voice => voice.name.includes('Google') || voice.name.includes('Natural') || voice.name.includes('Microsoft Zira')
+    );
+    if (premiumVoice) utterance.voice = premiumVoice;
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setIsPaused(false);
+    };
+    utterance.onerror = () => {
+      setIsPlaying(false);
+      setIsPaused(false);
+    };
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    setIsPlaying(true);
+    setIsPaused(false);
+  };
+
+  const pauseSpeech = () => {
+    window.speechSynthesis.pause();
+    setIsPaused(true);
+  };
+
+  const resumeSpeech = () => {
+    window.speechSynthesis.resume();
+    setIsPaused(false);
+  };
+
+  const stopSpeech = () => {
+    window.speechSynthesis.cancel();
+    setIsPlaying(false);
+    setIsPaused(false);
+  };
+
+  const handleSpeedChange = (rate: number) => {
+    setSpeechRate(rate);
+    if (isPlaying) {
+      // Restart speech with new rate if currently playing
+      startSpeech(activeAiNote?.summary || `${activeAiNote?.subject}. ${activeAiNote?.description}`);
+    }
+  };
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
@@ -707,9 +790,9 @@ export const Feed: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'model'; text: string }>>([]);
   const [chatInput, setChatInput] = useState('');
 
-  const handleOpenAiCompanion = async (note: NoteDocument) => {
+  const handleOpenAiCompanion = (note: NoteDocument) => {
     setActiveAiNote(note);
-    setAiCompanionTab('flashcards');
+    setAiCompanionTab('podcast');
     setAiError(null);
     setFlashcards([]);
     setFlippedCards({});
@@ -718,19 +801,9 @@ export const Feed: React.FC = () => {
     setSubmittedQuiz(false);
     setChatHistory([]);
     setChatInput('');
-    
-    setAiLoading(true);
-    try {
-      const data = await generateFlashcards(note.subject, note.description, note.summary);
-      setFlashcards(data);
-    } catch (err: any) {
-      setAiError(err.message || 'Failed to load study flashcards.');
-    } finally {
-      setAiLoading(false);
-    }
   };
 
-  const handleTabChange = async (tab: 'flashcards' | 'quiz' | 'qna') => {
+  const handleTabChange = async (tab: 'podcast' | 'flashcards' | 'quiz' | 'qna') => {
     setAiCompanionTab(tab);
     setAiError(null);
     
@@ -843,6 +916,48 @@ export const Feed: React.FC = () => {
           .eq('id', noteId);
 
         if (err) throw err;
+      }
+
+      // Also delete from local synchronization cache to prevent background restore
+      try {
+        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
+        const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
+        const noteToDelete = notes.find((n) => String(n.id) === String(noteId));
+        
+        if (storedNotesStr) {
+          try {
+            const localNotes = JSON.parse(storedNotesStr);
+            if (Array.isArray(localNotes)) {
+              const filtered = localNotes.filter((n: any) => 
+                String(n.id) !== String(noteId) && 
+                !(noteToDelete && (n.subject === noteToDelete.subject || (n.file_name && n.file_name === noteToDelete.fileName)))
+              );
+              if (filtered.length > 0) {
+                localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
+              } else {
+                localStorage.removeItem('noteweb-broadcasted-notes');
+              }
+            }
+          } catch {}
+        }
+        if (myUploadsStr) {
+          try {
+            const myUploads = JSON.parse(myUploadsStr);
+            if (Array.isArray(myUploads)) {
+              const filtered = myUploads.filter((n: any) => 
+                String(n.id) !== String(noteId) && 
+                !(noteToDelete && (n.subject === noteToDelete.subject || (n.file_name && n.file_name === noteToDelete.fileName)))
+              );
+              if (filtered.length > 0) {
+                localStorage.setItem('noteweb-my-uploads', JSON.stringify(filtered));
+              } else {
+                localStorage.removeItem('noteweb-my-uploads');
+              }
+            }
+          } catch {}
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to clear note from migration cache:", cacheErr);
       }
 
       // Pure database deletion complete, updating state directly.
@@ -1348,7 +1463,7 @@ export const Feed: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setActiveAiNote(null)}
+              onClick={handleCloseAiCompanion}
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             />
 
@@ -1363,7 +1478,7 @@ export const Feed: React.FC = () => {
               <div>
                 {/* Close Button */}
                 <button
-                  onClick={() => setActiveAiNote(null)}
+                  onClick={handleCloseAiCompanion}
                   className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 light-mode:hover:bg-slate-900/5 transition-all active:scale-90"
                 >
                   <X className="w-5 h-5" />
@@ -1386,6 +1501,17 @@ export const Feed: React.FC = () => {
 
                 {/* Tab selections */}
                 <div className="flex items-center gap-1.5 p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl mb-6 light-mode:bg-slate-900/[0.02]">
+                  <button
+                    onClick={() => handleTabChange('podcast')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      aiCompanionTab === 'podcast'
+                        ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    Podcast
+                  </button>
                   <button
                     onClick={() => handleTabChange('flashcards')}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
@@ -1443,6 +1569,149 @@ export const Feed: React.FC = () => {
 
                   {!aiLoading && !aiError && (
                     <div>
+                      {/* PODCAST TAB */}
+                      {aiCompanionTab === 'podcast' && (
+                        <div className="space-y-6 text-left pl-1 pr-1">
+                          <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
+                            🎙️ Listen to your personalized AI-generated Note summary
+                          </p>
+
+                          {/* Sound studio card */}
+                          <div className="p-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] light-mode:bg-slate-900/[0.02] light-mode:border-slate-200 relative overflow-hidden flex flex-col items-center justify-center text-center">
+                            <div className="absolute top-0 right-0 w-32 h-32 rounded-full filter blur-3xl opacity-10 bg-indigo-500" />
+                            
+                            {/* Visualizer Disk */}
+                            <motion.div 
+                              animate={isPlaying && !isPaused ? { rotate: 360 } : {}}
+                              transition={{ repeat: Infinity, duration: 10, ease: 'linear' }}
+                              className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center relative shadow-lg shadow-indigo-500/20 mb-6"
+                            >
+                              <div className="w-8 h-8 rounded-full bg-[#0D0D10] border border-white/10 flex items-center justify-center text-indigo-400">
+                                <Volume2 className="w-4 h-4 animate-bounce" />
+                              </div>
+                              
+                              {/* Audio waves */}
+                              {isPlaying && !isPaused && (
+                                <div className="absolute -inset-2 rounded-full border border-indigo-400/40 animate-ping opacity-30 pointer-events-none" />
+                              )}
+                            </motion.div>
+
+                            <h4 className="text-base font-extrabold text-white light-mode:text-slate-900 mb-1">
+                              {isPlaying ? (isPaused ? 'Podcast Paused' : 'Playing AI Summary Podcast...') : 'Ready to Broadcast'}
+                            </h4>
+                            <p className="text-xs text-slate-400 light-mode:text-slate-500 mb-6 max-w-sm">
+                              Generated utilizing Google Gemini 2.5. Reads aloud the core checklist and learnings.
+                            </p>
+
+                            {/* Audio Controls */}
+                            <div className="flex items-center gap-4 mb-6">
+                              {!isPlaying ? (
+                                <button
+                                  onClick={() => startSpeech(activeAiNote.summary || `${activeAiNote.subject}. ${activeAiNote.description}`)}
+                                  className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all animate-bounce cursor-pointer"
+                                >
+                                  <Play className="w-5 h-5 fill-current ml-0.5" />
+                                </button>
+                              ) : (
+                                <>
+                                  {isPaused ? (
+                                    <button
+                                      onClick={resumeSpeech}
+                                      className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                                    >
+                                      <Play className="w-5 h-5 fill-current ml-0.5" />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={pauseSpeech}
+                                      className="w-12 h-12 rounded-full bg-amber-600 text-white flex items-center justify-center shadow-lg shadow-amber-600/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                                    >
+                                      <Pause className="w-5 h-5 fill-current" />
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={stopSpeech}
+                                    className="w-12 h-12 rounded-full bg-rose-600/20 border border-rose-500/30 text-rose-400 flex items-center justify-center hover:bg-rose-600 hover:text-white active:scale-95 transition-all cursor-pointer"
+                                  >
+                                    <Square className="w-4 h-4 fill-current" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Speed selector */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-1">Speed:</span>
+                              {([1, 1.25, 1.5] as const).map((rate) => (
+                                <button
+                                  key={rate}
+                                  onClick={() => handleSpeedChange(rate)}
+                                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                                    speechRate === rate
+                                      ? 'bg-indigo-500/20 border border-indigo-500/30 text-indigo-400'
+                                      : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                                  }`}
+                                >
+                                  {rate}x
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Written Summary Outline */}
+                          <div className="space-y-3">
+                            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
+                              Written Summary Outline
+                            </h5>
+                            <div className="p-5 rounded-2xl border border-white/[0.06] bg-white/[0.01] light-mode:bg-slate-900/[0.01] light-mode:border-slate-200 text-slate-300 light-mode:text-slate-700 text-xs leading-relaxed space-y-4 max-h-[300px] overflow-y-auto">
+                              {activeAiNote.summary ? (
+                                <div className="prose prose-invert prose-xs max-w-none text-left">
+                                  {activeAiNote.summary.split('\n').map((line, lIdx) => {
+                                    if (line.startsWith('###')) {
+                                      return (
+                                        <h4 key={lIdx} className="text-sm font-black text-white mt-4 first:mt-0 mb-2 light-mode:text-slate-900">
+                                          {line.replace('###', '').trim()}
+                                        </h4>
+                                      );
+                                    }
+                                    if (line.startsWith('- **') || line.startsWith('- **')) {
+                                      const parts = line.replace('- ', '').split('**:');
+                                      return (
+                                        <p key={lIdx} className="mb-2">
+                                          <strong className="text-indigo-400 font-extrabold">{parts[0]}**:</strong>
+                                          {parts[1]}
+                                        </p>
+                                      );
+                                    }
+                                    if (line.startsWith('- [ ]') || line.startsWith('- [x]')) {
+                                      return (
+                                        <div key={lIdx} className="flex items-center gap-2 my-1.5 pl-1">
+                                          <input 
+                                            type="checkbox" 
+                                            readOnly 
+                                            checked={line.includes('[x]')} 
+                                            className="w-3.5 h-3.5 rounded border-white/[0.1] bg-white/[0.05] text-indigo-500 accent-indigo-500 pointer-events-none" 
+                                          />
+                                          <span className={line.includes('[x]') ? 'line-through text-slate-500' : ''}>
+                                            {line.replace('- [ ]', '').replace('- [x]', '').trim()}
+                                          </span>
+                                        </div>
+                                      );
+                                    }
+                                    return <p key={lIdx} className="my-1">{line}</p>;
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-center text-slate-500 py-4 font-medium italic">
+                                  No AI summary compiled for this note yet.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* FLASHCARDS TAB */}
                       {aiCompanionTab === 'flashcards' && (
                         <div className="space-y-4">

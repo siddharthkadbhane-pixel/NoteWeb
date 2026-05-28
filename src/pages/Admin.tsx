@@ -488,6 +488,49 @@ export const Admin: React.FC = () => {
         if (deleteErr) throw deleteErr;
       }
       
+      // Also delete from local synchronization cache to prevent background restore
+      try {
+        const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
+        const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
+        const noteToDelete = allNotes.find((n) => String(n.id) === String(noteId)) || 
+                             pendingNotes.find((n) => String(n.id) === String(noteId));
+        
+        if (storedNotesStr) {
+          try {
+            const localNotes = JSON.parse(storedNotesStr);
+            if (Array.isArray(localNotes)) {
+              const filtered = localNotes.filter((n: any) => 
+                String(n.id) !== String(noteId) && 
+                !(noteToDelete && (n.subject === noteToDelete.subject || (n.file_name && n.file_name === noteToDelete.fileName)))
+              );
+              if (filtered.length > 0) {
+                localStorage.setItem('noteweb-broadcasted-notes', JSON.stringify(filtered));
+              } else {
+                localStorage.removeItem('noteweb-broadcasted-notes');
+              }
+            }
+          } catch {}
+        }
+        if (myUploadsStr) {
+          try {
+            const myUploadsList = JSON.parse(myUploadsStr);
+            if (Array.isArray(myUploadsList)) {
+              const filtered = myUploadsList.filter((n: any) => 
+                String(n.id) !== String(noteId) && 
+                !(noteToDelete && (n.subject === noteToDelete.subject || (n.file_name && n.file_name === noteToDelete.fileName)))
+              );
+              if (filtered.length > 0) {
+                localStorage.setItem('noteweb-my-uploads', JSON.stringify(filtered));
+              } else {
+                localStorage.removeItem('noteweb-my-uploads');
+              }
+            }
+          } catch {}
+        }
+      } catch (cacheErr) {
+        console.warn("Failed to clear note from migration cache:", cacheErr);
+      }
+
       // Database purge completed, updating states directly.
 
       success("Notes document permanently deleted.");
