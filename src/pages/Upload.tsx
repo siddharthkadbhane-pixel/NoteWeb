@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { extractTextFromPdf } from '../services/pdf';
 import { storeOfflinePdf } from '../utils/pdfDb';
-import { summarizeNotes, classifyNoteCategory } from '../services/gemini';
+import { summarizeNotes, classifyNoteCategory, checkPlagiarismAndSpam } from '../services/gemini';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { GlassPanel } from '../components/ui/GlassPanel';
@@ -141,7 +141,7 @@ export const Upload: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [aiStatus, setAiStatus] = useState<'idle' | 'extracting' | 'summarizing' | 'done'>('idle');
+  const [aiStatus, setAiStatus] = useState<'idle' | 'extracting' | 'moderating' | 'summarizing' | 'done'>('idle');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -440,6 +440,22 @@ export const Upload: React.FC = () => {
         }
       } catch (classifyErr) {
         console.error("AI Category classification failed:", classifyErr);
+      }
+
+      // Security Check: Run automated AI Spam and Plagiarism scanner on extracted PDF text
+      if (aiExtractedText) {
+        try {
+          setAiStatus('moderating');
+          const securityResult = await checkPlagiarismAndSpam(notesName, description, aiExtractedText);
+          console.log("[NoteWeb Security] Auto-moderation check completed:", securityResult);
+          
+          if (!securityResult.isApproved) {
+            throw new Error(`Auto-rejected by AI Moderator: ${securityResult.rejectionReason || 'High spam or copyright violation detected.'} (Spam: ${securityResult.spamScore}%, Plagiary: ${securityResult.plagiarismScore}%)`);
+          }
+        } catch (modErr: any) {
+          console.error("[NoteWeb Security] Note was auto-flagged/rejected:", modErr);
+          throw modErr;
+        }
       }
 
       let summaryText = '';
@@ -973,6 +989,7 @@ export const Upload: React.FC = () => {
                   <div className="mt-3 text-xs font-medium text-purple-400 flex items-center gap-2 animate-pulse pl-1">
                     <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
                     {aiStatus === 'extracting' && 'Extracting text layers from PDF...'}
+                    {aiStatus === 'moderating' && 'AI Moderator is checking note for spam & plagiarism...'}
                     {aiStatus === 'summarizing' && 'Gemini is reading & analyzing contents...'}
                     {aiStatus === 'done' && 'Summary compiled successfully! Saving metadata...'}
                   </div>

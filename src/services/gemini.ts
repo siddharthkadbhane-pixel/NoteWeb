@@ -414,3 +414,119 @@ Provide a clear, helpful, academically rigorous answer. You can use markdown bul
     return `⚠️ Sorry, I encountered an error communicating with the AI host. Please verify your internet connection.`;
   }
 };
+
+export interface SpamCheckResult {
+  isApproved: boolean;
+  rejectionReason: string | null;
+  spamScore: number;
+  plagiarismScore: number;
+}
+
+/**
+ * Checks an uploaded note for spam, nonsense gibberish, and plagiarism.
+ */
+export const checkPlagiarismAndSpam = async (
+  subject: string,
+  description: string,
+  extractedText: string
+): Promise<SpamCheckResult> => {
+  const systemInstruction = `You are NoteWeb's expert AI Security and Plagiarism Moderator. Analyze the text for spam, nonsense/gibberish, copyrighted material, offensive language, or plagiarism.`;
+  
+  const prompt = `Analyze this uploaded student note:
+- Subject: "${subject}"
+- Description: "${description}"
+- Extracted PDF Text (first 5000 chars): "${extractedText.slice(0, 5000)}"
+
+Determine if it contains:
+1. Nonsense, gibberish, spam (e.g. keyboard mashes, repetitive words, blank/empty page contents).
+2. Plagiarized/copyrighted commercial textbook materials directly copied (e.g. publisher notices).
+3. Highly offensive, toxic, or completely inappropriate academic content.
+
+Return a valid raw JSON object. Do NOT wrap it in markdown formatting, code blocks (e.g. no \`\`\`json), or any explanations. Return only the raw JSON.
+The JSON must have exactly these keys:
+- "isApproved": boolean (false if spamScore > 85 or plagiarismScore > 85 or has offensive content)
+- "rejectionReason": string or null (explain why it is rejected, max 100 chars)
+- "spamScore": number (0 to 100, higher means more gibberish/spam/meaningless)
+- "plagiarismScore": number (0 to 100, higher means more copied/publisher book-like text)
+
+Example format:
+{
+  "isApproved": true,
+  "rejectionReason": null,
+  "spamScore": 12,
+  "plagiarismScore": 15
+}`;
+
+  try {
+    const jsonText = await callAiChatCompletion(systemInstruction, prompt);
+    const cleanedJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleanedJson);
+    return {
+      isApproved: parsed.isApproved !== undefined ? !!parsed.isApproved : true,
+      rejectionReason: parsed.rejectionReason || null,
+      spamScore: typeof parsed.spamScore === 'number' ? parsed.spamScore : 0,
+      plagiarismScore: typeof parsed.plagiarismScore === 'number' ? parsed.plagiarismScore : 0,
+    };
+  } catch (error) {
+    console.warn("[NoteWeb Security] AI spam scanner failed, bypassing to true:", error);
+    return {
+      isApproved: true,
+      rejectionReason: null,
+      spamScore: 0,
+      plagiarismScore: 0,
+    };
+  }
+};
+
+export interface ChatModerationResult {
+  isToxic: boolean;
+  explanation: string | null;
+  toxicityScore: number;
+}
+
+/**
+ * Moderates a real-time chat lounge message for toxicity, profanity, or spam.
+ */
+export const moderateChatMessage = async (
+  message: string,
+  senderName: string
+): Promise<ChatModerationResult> => {
+  const systemInstruction = `You are NoteWeb's expert AI Real-time Chat Lounge Moderator. Analyze messages for toxicity, hate speech, severe harassment, extreme profanity, or spam.`;
+  
+  const prompt = `Analyze this sent lounge message:
+- Sender Name: "${senderName}"
+- Message Text: "${message}"
+
+Determine if it contains severe hate speech, direct threats, aggressive bullying, extreme profanity, or blatant scam/spam links.
+
+Return a valid raw JSON object. Do NOT wrap it in markdown formatting, code blocks (e.g. no \`\`\`json), or any explanations. Return only the raw JSON.
+The JSON must have exactly these keys:
+- "isToxic": boolean (true if toxicityScore > 75)
+- "explanation": string or null (max 80 chars, e.g. "Contains severe profanity" or "Spam advertisement detected")
+- "toxicityScore": number (0 to 100, higher means more abusive/toxic/profane)
+
+Example format:
+{
+  "isToxic": true,
+  "explanation": "Contains abusive language",
+  "toxicityScore": 85
+}`;
+
+  try {
+    const jsonText = await callAiChatCompletion(systemInstruction, prompt);
+    const cleanedJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleanedJson);
+    return {
+      isToxic: parsed.isToxic !== undefined ? !!parsed.isToxic : false,
+      explanation: parsed.explanation || null,
+      toxicityScore: typeof parsed.toxicityScore === 'number' ? parsed.toxicityScore : 0,
+    };
+  } catch (error) {
+    console.warn("[NoteWeb Chat Security] Chat moderator failed, bypassing to safe:", error);
+    return {
+      isToxic: false,
+      explanation: null,
+      toxicityScore: 0,
+    };
+  }
+};

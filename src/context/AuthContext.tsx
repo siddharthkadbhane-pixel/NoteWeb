@@ -190,23 +190,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .insert([dbProfileCamel]);
           
           if (camelErr) {
+            const dbProfileCamelUpdate = { ...dbProfileCamel };
+            delete dbProfileCamelUpdate.id;
+            delete dbProfileCamelUpdate.createdAt;
+            
             await supabase
               .from('profiles')
-              .update(dbProfileCamel)
+              .update(dbProfileCamelUpdate)
               .eq('id', profile.uid);
           }
         } else {
-          // If profile already exists, perform update
+          // If profile already exists, perform update (strip key and created_at)
+          const dbProfileUpdate = { ...dbProfile };
+          delete dbProfileUpdate.id;
+          delete dbProfileUpdate.created_at;
+          
           const { error: updateErr } = await supabase
             .from('profiles')
-            .update(dbProfile)
+            .update(dbProfileUpdate)
             .eq('id', profile.uid);
           
           if (updateErr && (updateErr.message?.includes('column') || updateErr.code === '42703')) {
             const dbProfileCamel = profileToDbCamel(profile);
+            const dbProfileCamelUpdate = { ...dbProfileCamel };
+            delete dbProfileCamelUpdate.id;
+            delete dbProfileCamelUpdate.createdAt;
+            
             await supabase
               .from('profiles')
-              .update(dbProfileCamel)
+              .update(dbProfileCamelUpdate)
               .eq('id', profile.uid);
           }
         }
@@ -1037,7 +1049,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...userProfile,
         ...profileUpdates
       };
+      
       const dbProfile = profileToDb(updatedProfile);
+      // Strip primary key and read-only registration timestamp
+      delete dbProfile.id;
+      delete dbProfile.created_at;
       
       const { error } = await supabase
         .from('profiles')
@@ -1045,8 +1061,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', user.uid);
 
       if (error) {
+        console.error('[AuthContext] Update profile first attempt error:', error);
         if (error.message?.includes('column') || error.code === '42703') {
           const dbProfileCamel = profileToDbCamel(updatedProfile);
+          // Strip primary key and read-only registration timestamp
+          delete dbProfileCamel.id;
+          delete dbProfileCamel.createdAt;
+          
           const { error: camelErr } = await supabase
             .from('profiles')
             .update(dbProfileCamel)

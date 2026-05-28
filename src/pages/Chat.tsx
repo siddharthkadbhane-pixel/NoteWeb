@@ -5,8 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { renderAvatar } from '../utils/avatar';
-import { GlassPanel } from '../components/ui/GlassPanel';
 import { motion } from 'framer-motion';
+import { moderateChatMessage } from '../services/gemini';
 
 import { 
   Send, 
@@ -85,7 +85,7 @@ interface ChatMessage {
 }
 
 export const Chat: React.FC = () => {
-  const { user, userProfile, isGuest } = useAuth();
+  const { user, userProfile, isGuest, updatePoints } = useAuth();
   const { isDark } = useTheme();
   const { error: toastError, info } = useToast();
   const navigate = useNavigate();
@@ -432,6 +432,70 @@ export const Chat: React.FC = () => {
         localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(storedBroadcasts));
       }
 
+      // Trigger background AI moderation
+      const runAiModeration = async (realId: any, messageText: string) => {
+        try {
+          const modResult = await moderateChatMessage(messageText, userProfile.displayName || 'Student');
+          if (modResult.isToxic) {
+            console.log(`[AI Chat Moderator] Message flagged for toxicity (Score: ${modResult.toxicityScore}%): ${modResult.explanation}`);
+            
+            // 1. Redact message locally for instant UI update
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === realId || m.id === tempMsgId
+                  ? { ...m, content: '🚫 [Message redacted by AI Moderator for community safety]' }
+                  : m
+              )
+            );
+            
+            // 2. Update Supabase DB to redact message content
+            if (!isMockMode) {
+              await supabase
+                .from('chats')
+                .update({ message: '🚫 [Message redacted by AI Moderator for community safety]' })
+                .eq('id', realId);
+            } else {
+              await supabase
+                .from('chats')
+                .update({ content: '🚫 [Message redacted by AI Moderator for community safety]' })
+                .eq('id', realId);
+            }
+            
+            // 3. Log to flagged_chats table in Supabase
+            try {
+              await supabase.from('flagged_chats').insert([{
+                sender_id: user.uid,
+                sender_name: userProfile.displayName || 'Student',
+                message: messageText,
+                bad_words: modResult.explanation || 'AI Moderated Toxicity',
+                created_at: new Date().toISOString()
+              }]);
+            } catch (flagErr) {
+              console.warn("Failed to insert into flagged_chats:", flagErr);
+            }
+
+            // 4. Broadcast the edited/redacted message to other active chatters instantly
+            if (channelRef.current) {
+              await channelRef.current.send({
+                type: 'broadcast',
+                event: 'edit-message',
+                payload: { id: realId, content: '🚫 [Message redacted by AI Moderator for community safety]' }
+              });
+            }
+
+            // 5. Deduct 20 points from sender profile as community penalty!
+            try {
+              await updatePoints(-20);
+              toastError(`⚠️ AI Moderator redacted your message! Penalty: -20 XP.`);
+            } catch (ptsErr) {
+              console.warn("Failed to deduct points:", ptsErr);
+            }
+          }
+        } catch (err) {
+          console.warn("[AI Moderator] Chat moderation error:", err);
+        }
+      };
+
       // 4. Asynchronously perform background database save to keep it non-blocking
       // IMPORTANT: Do NOT pass a custom 'id' — let the DB auto-generate the real UUID.
       // This prevents ID conflicts and duplicate messages when postgres_changes fires.
@@ -448,6 +512,7 @@ export const Chat: React.FC = () => {
               created_at: msgPayload.created_at,
             };
             await supabase.from('chats').insert([newMessageMock]);
+            runAiModeration(tempMsgId, msgPayload.content);
           } else {
             // New schema format — no custom id, let the DB assign a real UUID
             const newMessageNew = {
@@ -483,6 +548,7 @@ export const Chat: React.FC = () => {
                 setMessages((prev) => prev.map((m) =>
                   m.id === tempMsgId ? { ...m, id: realId } : m
                 ));
+                runAiModeration(realId, msgPayload.content);
               }
             } else if (insertedRows && insertedRows[0]) {
               // Replace temp broadcast message with the real DB-assigned ID
@@ -490,6 +556,7 @@ export const Chat: React.FC = () => {
               setMessages((prev) => prev.map((m) =>
                 m.id === tempMsgId ? { ...m, id: realId } : m
               ));
+              runAiModeration(realId, msgPayload.content);
             }
           }
         } catch (dbErr: any) {
