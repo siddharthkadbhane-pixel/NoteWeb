@@ -902,10 +902,10 @@ export const Feed: React.FC = () => {
   const handleDeleteNote = async (noteId: string, pdfPath: string) => {
     if (!window.confirm("Are you sure you want to permanently delete this note?")) return;
     try {
-      const isLocalNote = isNaN(Number(noteId));
+      const isLocalNote = String(noteId).startsWith('optimistic-');
 
       if (!isLocalNote) {
-        if (pdfPath) {
+        if (pdfPath && pdfPath !== 'external-link') {
           const { error: storageErr } = await supabase.storage.from('notes').remove([pdfPath]);
           if (storageErr) console.warn("Storage PDF delete warning:", storageErr);
         }
@@ -1025,13 +1025,13 @@ export const Feed: React.FC = () => {
             <div className="flex items-center gap-1 glass-panel p-1 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10">
               <button
                 onClick={() => setFeedType('notes')}
-                className={`px-4.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${feedType === 'notes' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-900'}`}
+                className={`px-4.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${feedType === 'notes' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-905'}`}
               >
                 Study Notes
               </button>
               <button
                 onClick={() => setFeedType('papers')}
-                className={`px-4.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${feedType === 'papers' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-900'}`}
+                className={`px-4.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${feedType === 'papers' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-905'}`}
               >
                 PYQ Papers
               </button>
@@ -1041,13 +1041,13 @@ export const Feed: React.FC = () => {
             <div className="flex items-center gap-1 glass-panel p-1 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10">
               <button
                 onClick={() => setSortBy('recent')}
-                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${sortBy === 'recent' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-900'}`}
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${sortBy === 'recent' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-905'}`}
               >
                 Recent
               </button>
               <button
                 onClick={() => setSortBy('popular')}
-                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${sortBy === 'popular' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-900'}`}
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${sortBy === 'popular' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-905'}`}
               >
                 Popular
               </button>
@@ -1187,7 +1187,7 @@ export const Feed: React.FC = () => {
                 // Loader Cards
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {[1, 2, 3, 4].map((i) => (
-                    <GlassPanel key={i} className="h-60 flex flex-col justify-between">
+                    <GlassPanel key={i} className="min-h-[290px] flex flex-col justify-between">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <Skeleton variant="circle" width={32} height={32} />
@@ -1223,7 +1223,7 @@ export const Feed: React.FC = () => {
                           transition={{ duration: 0.3 }}
                           className="w-full h-full"
                         >
-                          <TiltCard className="glass-card premium-border-glow hover:shadow-xl flex flex-col justify-between text-left h-[260px] p-5 group relative w-full">
+                          <TiltCard className="glass-card premium-border-glow hover:shadow-xl flex flex-col justify-between text-left min-h-[290px] h-full p-5 group relative w-full">
                             {/* Shimmer hovering glow border effect */}
                             <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-indigo-500/5 via-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                             {/* Top row */}

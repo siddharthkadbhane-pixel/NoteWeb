@@ -472,10 +472,10 @@ export const Admin: React.FC = () => {
     if (!isConfirmed) return;
 
     try {
-      const isLocalNote = isNaN(Number(noteId));
+      const isLocalNote = String(noteId).startsWith('optimistic-');
 
       if (!isLocalNote) {
-        if (pdfPath) {
+        if (pdfPath && pdfPath !== 'external-link') {
           const { error: storageErr } = await supabase.storage.from('notes').remove([pdfPath]);
           if (storageErr) console.warn("Storage PDF delete warning:", storageErr);
         }

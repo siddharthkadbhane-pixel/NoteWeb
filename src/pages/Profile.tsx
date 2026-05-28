@@ -523,10 +523,10 @@ export const Profile: React.FC = () => {
     if (!isConfirmed) return;
 
     try {
-      const isLocalNote = isNaN(Number(noteId));
+      const isLocalNote = String(noteId).startsWith('optimistic-');
 
       if (!isLocalNote) {
-        if (pdfPath) {
+        if (pdfPath && pdfPath !== 'external-link') {
           await supabase.storage.from('notes').remove([pdfPath]);
         }
         const { error: dbErr } = await supabase.from('notes').delete().eq('id', noteId);
