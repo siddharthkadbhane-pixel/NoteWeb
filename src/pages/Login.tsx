@@ -651,7 +651,7 @@ export const Login: React.FC = () => {
                             <p className={`text-[10px] font-bold px-3 py-1.5 rounded-full border ${isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-650'}`}>
                               📱 Works like Instagram / WhatsApp
                             </p>
-                          </div>
+                          </label>
                         )}
                       </div>
                     )}
