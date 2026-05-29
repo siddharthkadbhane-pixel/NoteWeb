@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UploadCloud, FileText, Sparkles, Link, Globe } from 'lucide-react';
+import { UploadCloud, FileText, Sparkles, AlertTriangle, Link, Globe } from 'lucide-react';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';

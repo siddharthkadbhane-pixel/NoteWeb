@@ -11,11 +11,14 @@ import {
   Volume2,
   VolumeX,
   Award,
+  BookMarked,
   Clock,
   Copy,
   Download,
   Trash2,
-  AlignLeft
+  AlignLeft,
+  ChevronRight,
+  Smile
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
