@@ -1,3 +1,4 @@
+// Diagnostic: Verify local git tracking
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UploadCloud, FileText, Sparkles, AlertTriangle, Link, Globe } from 'lucide-react';
