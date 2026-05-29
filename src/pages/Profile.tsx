@@ -786,14 +786,13 @@ export const Profile: React.FC = () => {
                           className="hidden"
                           onChange={handleProfilePictureUpload}
                         />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => document.getElementById('profile-picture-upload')?.click()}
-                          leftIcon={<UploadCloud className="w-4 h-4" />}
+                        <label
+                          htmlFor="profile-picture-upload"
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] light-mode:bg-slate-100 light-mode:border-slate-200 light-mode:text-slate-700 transition-all cursor-pointer active:scale-[0.98] select-none"
                         >
+                          <UploadCloud className="w-4 h-4 text-indigo-400" />
                           Choose Image File
-                        </Button>
+                        </label>
                         {customPhotoBase64 && (
                           <Button
                             type="button"

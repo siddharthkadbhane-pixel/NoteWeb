@@ -127,8 +127,8 @@ export const Login: React.FC = () => {
       toastError('Please select an image file');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toastError('Photo must be under 5 MB');
+    if (file.size > 25 * 1024 * 1024) {
+      toastError('Photo must be under 25 MB');
       return;
     }
     const reader = new FileReader();
@@ -162,35 +162,24 @@ export const Login: React.FC = () => {
   /* ─────────────────────────────────────────── Actions */
   const handleAdminVerify = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanUsername = username.trim().replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+    if (!cleanUsername) {
+      setAdminPassError('Admin username is required');
+      return;
+    }
     if (adminPass === ADMIN_SECRET) {
       setAdminPassError('');
       setIsLoading(true);
       setSelectedRole('admin');
-      setUsername('admin');
+      setUsername(cleanUsername);
       try {
-        await loginWithUsername('admin');
-        success('Welcome back, Administrator! 👑');
+        await loginWithUsername(cleanUsername);
+        success(`Welcome back, Administrator ${cleanUsername}! 👑`);
         navigate(from, { replace: true });
       } catch (err: any) {
         if (err.message?.includes('not found')) {
-          try {
-            await registerUser({
-              username: 'admin',
-              displayName: 'Administrator',
-              mobileNo: '9999999999',
-              year: '4',
-              branch: 'cse',
-              email: 'admin@noteweb.local',
-              cgpa: '',
-              photoURL: '👑|from-rose-600 via-pink-500 to-indigo-600',
-              role: 'admin',
-              setupComplete: true,
-            });
-            success('Administrator profile initialized! 👑');
-            navigate(from, { replace: true });
-          } catch (regErr: any) {
-            setAdminPassError(regErr.message || 'Failed to create admin profile.');
-          }
+          setStep('register');
+          success("New Admin passcode verified! Let's build your administrator profile.");
         } else {
           setAdminPassError(err.message || 'Login failed. Please try again.');
         }
@@ -420,6 +409,21 @@ export const Login: React.FC = () => {
                     {/* Admin Passcode Gate */}
                     <form onSubmit={handleAdminVerify} className="space-y-4 text-left">
                       <div>
+                        <label className={labelCls}>Admin Username</label>
+                        <div className="relative">
+                          <User className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                          <input
+                            type="text"
+                            value={username}
+                            onChange={(e) => { setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase()); setAdminPassError(''); }}
+                            placeholder="e.g. admin_siddharth"
+                            className={inputCls + " pl-10"}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
                         <label className={labelCls}>Admin Gate Password</label>
                         <div className="relative">
                           <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
@@ -429,6 +433,7 @@ export const Login: React.FC = () => {
                             onChange={(e) => { setAdminPass(e.target.value); setAdminPassError(''); }}
                             placeholder="Enter admin passcode..."
                             className={inputCls + " pl-10 pr-10"}
+                            required
                           />
                           <button
                             type="button"
@@ -587,7 +592,7 @@ export const Login: React.FC = () => {
                       /* Photo upload zone */
                       <div className="flex-1 w-full">
                         <input
-                          ref={photoInputRef}
+                          id="photo-file-input"
                           type="file"
                           accept="image/*"
                           className="hidden"
@@ -601,13 +606,12 @@ export const Login: React.FC = () => {
                               className="w-28 h-28 rounded-2xl object-cover border-2 border-indigo-500/50 shadow-xl"
                             />
                             <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => photoInputRef.current?.click()}
+                              <label
+                                htmlFor="photo-file-input"
                                 className={`px-3 py-1.5 rounded-lg text-[11px] font-black flex items-center gap-1.5 border transition-all cursor-pointer ${isDark ? 'border-white/[0.08] text-slate-300 hover:bg-white/[0.05]' : 'border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                               >
                                 <Camera className="w-3.5 h-3.5" /> Change
-                              </button>
+                              </label>
                               <button
                                 type="button"
                                 onClick={() => setPhotoDataUrl(null)}
@@ -618,11 +622,11 @@ export const Login: React.FC = () => {
                             </div>
                           </div>
                         ) : (
-                          <div
+                          <label
+                            htmlFor="photo-file-input"
                             onDragOver={(e) => { e.preventDefault(); setPhotoDragging(true); }}
                             onDragLeave={() => setPhotoDragging(false)}
                             onDrop={handleDrop}
-                            onClick={() => photoInputRef.current?.click()}
                             className={`
                               relative flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed cursor-pointer transition-all
                               ${photoDragging
