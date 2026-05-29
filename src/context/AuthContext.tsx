@@ -184,6 +184,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         if (error.message?.includes('column') || error.code === '42703') {
+          // Fallback 1: Try snake_case without tracking columns (last_ip, hardware_id)
+          const dbProfileSafe = { ...dbProfile };
+          delete dbProfileSafe.last_ip;
+          delete dbProfileSafe.hardware_id;
+          
+          const { error: safeErr } = await supabase
+            .from('profiles')
+            .insert([dbProfileSafe]);
+            
+          if (!safeErr) {
+            localStorage.setItem(`noteweb-profile-${profile.uid}`, JSON.stringify(profile));
+            return;
+          }
+
+          // Fallback 2: Try camelCase
           const dbProfileCamel = profileToDbCamel(profile);
           const { error: camelErr } = await supabase
             .from('profiles')
@@ -200,27 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .eq('id', profile.uid);
           }
         } else {
-          // If profile already exists, perform update (strip key and created_at)
-          const dbProfileUpdate = { ...dbProfile };
-          delete dbProfileUpdate.id;
-          delete dbProfileUpdate.created_at;
-          
-          const { error: updateErr } = await supabase
-            .from('profiles')
-            .update(dbProfileUpdate)
-            .eq('id', profile.uid);
-          
-          if (updateErr && (updateErr.message?.includes('column') || updateErr.code === '42703')) {
-            const dbProfileCamel = profileToDbCamel(profile);
-            const dbProfileCamelUpdate = { ...dbProfileCamel };
-            delete dbProfileCamelUpdate.id;
-            delete dbProfileCamelUpdate.createdAt;
-            
-            await supabase
-              .from('profiles')
-              .update(dbProfileCamelUpdate)
-              .eq('id', profile.uid);
-          }
+          console.warn("Database profiles save failed, saving locally:", error);
         }
       }
     } catch (e) {
@@ -1063,8 +1058,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('[AuthContext] Update profile first attempt error:', error);
         if (error.message?.includes('column') || error.code === '42703') {
+          // Fallback 1: Try snake_case but strip optional tracking columns (last_ip, hardware_id)
+          const dbProfileSafe = { ...dbProfile };
+          delete dbProfileSafe.last_ip;
+          delete dbProfileSafe.hardware_id;
+          
+          const { error: safeErr } = await supabase
+            .from('profiles')
+            .update(dbProfileSafe)
+            .eq('id', user.uid);
+            
+          if (!safeErr) {
+            console.log('[AuthContext] Profile updated successfully using safe snake_case fallback (stripped tracking columns).');
+            localStorage.setItem(`noteweb-profile-${user.uid}`, JSON.stringify(updatedProfile));
+            setUserProfile(updatedProfile);
+            setUser((prev) => prev ? {
+              ...prev,
+              displayName: updatedProfile.displayName,
+              photoURL: updatedProfile.photoURL,
+              email: updatedProfile.email
+            } : null);
+            return;
+          }
+
+          // Fallback 2: Try camelCase
+          console.warn('[AuthContext] Safe snake_case update failed, trying camelCase fallback...', safeErr);
           const dbProfileCamel = profileToDbCamel(updatedProfile);
-          // Strip primary key and read-only registration timestamp
           delete dbProfileCamel.id;
           delete dbProfileCamel.createdAt;
           
