@@ -64,7 +64,7 @@ export const Login: React.FC = () => {
   const [selectedGradient, setSelectedGradient] = useState(GRADIENTS[0]!.cls);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [photoDragging, setPhotoDragging] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
+
 
   /* ─────────────────────────────────────────── Helpers */
   const bg = isDark
