@@ -705,18 +705,26 @@ export const Feed: React.FC = () => {
   // Cleanup speech on unmount
   useEffect(() => {
     return () => {
-      window.speechSynthesis.cancel();
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, []);
 
   const handleCloseAiCompanion = () => {
-    window.speechSynthesis.cancel();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     setIsPlaying(false);
     setIsPaused(false);
     setActiveAiNote(null);
   };
 
   const startSpeech = (textToRead: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      console.warn("Speech synthesis not supported on this platform/browser.");
+      return;
+    }
     window.speechSynthesis.cancel();
     const cleanText = textToRead
       .replace(/###/g, '')
@@ -752,17 +760,23 @@ export const Feed: React.FC = () => {
   };
 
   const pauseSpeech = () => {
-    window.speechSynthesis.pause();
-    setIsPaused(true);
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.pause();
+      setIsPaused(true);
+    }
   };
 
   const resumeSpeech = () => {
-    window.speechSynthesis.resume();
-    setIsPaused(false);
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.resume();
+      setIsPaused(false);
+    }
   };
 
   const stopSpeech = () => {
-    window.speechSynthesis.cancel();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     setIsPlaying(false);
     setIsPaused(false);
   };
@@ -905,7 +919,7 @@ export const Feed: React.FC = () => {
       const isLocalNote = String(noteId).startsWith('optimistic-');
 
       if (!isLocalNote) {
-        if (pdfPath && pdfPath !== 'external-link') {
+        if (pdfPath && pdfPath !== 'external-link' && !pdfPath.startsWith('cloudinary:')) {
           const { error: storageErr } = await supabase.storage.from('notes').remove([pdfPath]);
           if (storageErr) console.warn("Storage PDF delete warning:", storageErr);
         }
@@ -1060,7 +1074,7 @@ export const Feed: React.FC = () => {
           
           {/* Left Column Filters Sidebar */}
           <div className="lg:col-span-1 flex flex-col gap-6 text-left">
-            <GlassPanel className="p-5 flex flex-col gap-6 bg-[#16161D]/30 light-mode:bg-white/70">
+            <GlassPanel className="p-5 flex flex-col gap-6">
               <div className="flex items-center justify-between border-b border-white/[0.05] pb-3">
                 <h3 className="font-bold text-slate-200 light-mode:text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wider">
                   <Filter className="w-4 h-4 text-indigo-400" /> Filters

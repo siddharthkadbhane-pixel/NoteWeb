@@ -1,6 +1,6 @@
 // Diagnostic: Verify local git tracking
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { UploadCloud, FileText, Sparkles, AlertTriangle, Link, Globe } from 'lucide-react';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
@@ -111,8 +111,10 @@ const SEMESTER_SUBJECTS: Record<string, string[]> = {
 
 export const Upload: React.FC = () => {
   const { user, userProfile, isAdmin } = useAuth();
+
   const { success, error, info } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Branch and Category states
   const [categories, setCategories] = useState<{ id: string; branchId: string; name: string; description?: string }[]>([]);
@@ -131,9 +133,9 @@ export const Upload: React.FC = () => {
   const [semester, setSemester] = useState('1/2');
   
   // Custom Subject Selection
-  const [selectedPredefinedSubject, setSelectedPredefinedSubject] = useState('');
+  const [selectedPredefinedSubject, setSelectedPredefinedSubject] = useState('Engineering Mathematics-I & II');
   const [customSubject, setCustomSubject] = useState('');
-  const [subject, setSubject] = useState('');
+  const [subject, setSubject] = useState('Engineering Mathematics-I & II');
 
   const [teacher, setTeacher] = useState('');
   const [description, setDescription] = useState('');
@@ -145,6 +147,21 @@ export const Upload: React.FC = () => {
   const [aiStatus, setAiStatus] = useState<'idle' | 'extracting' | 'moderating' | 'summarizing' | 'done'>('idle');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto load passed preloaded file when redirecting from other pages via App-Wide Drag & Drop
+  useEffect(() => {
+    const preLoadedFile = location.state?.droppedFile as File;
+    if (preLoadedFile && preLoadedFile.type === 'application/pdf') {
+      setFile(preLoadedFile);
+      setSubmissionMode('file');
+      if (!notesName) {
+        const cleanName = preLoadedFile.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+        setNotesName(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
+      }
+      // Clear location state securely to prevent re-triggering
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   // Synchronize dynamic predefined subject when semester range changes
   useEffect(() => {
@@ -171,12 +188,15 @@ export const Upload: React.FC = () => {
       try {
         const { data: categoriesData } = await supabase.from('categories').select('*');
 
-        let categoriesList = (categoriesData || []).map((c: any) => ({
-          id: c.id,
-          branchId: c.branch_id || c.branchId || '',
-          name: c.name,
-          description: c.description
-        }));
+        let categoriesList: any[] = [];
+        if (Array.isArray(categoriesData)) {
+          categoriesList = categoriesData.map((c: any) => ({
+            id: c?.id || '',
+            branchId: c?.branch_id || c?.branchId || '',
+            name: c?.name || '',
+            description: c?.description || ''
+          })).filter(c => c.id && c.name);
+        }
 
         if (categoriesList.length === 0) {
           categoriesList = [
@@ -339,65 +359,101 @@ export const Upload: React.FC = () => {
         fileNameStr = file.name;
         fileSizeNum = file.size;
 
-        // 1. Upload PDF to Supabase Storage
-        const uniqueFileName = `${Date.now()}_${file.name}`;
-        storagePath = `notes/${user.uid}/${uniqueFileName}`;
+        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+        let cloudinaryUploadSuccess = false;
 
-        const { error: storageErr } = await supabase.storage
-          .from('notes')
-          .upload(storagePath, file);
-
-        clearInterval(progressInterval);
-
-        if (storageErr) {
-          let storageErrMsg = storageErr.message || "Failed to upload file to storage";
-          if (storageErrMsg.toLowerCase().includes("bucket") || storageErrMsg.toLowerCase().includes("not found")) {
-            storageErrMsg = "The 'notes' storage bucket is missing in your Supabase project. Please log into your Supabase Dashboard -> Storage, click 'New Bucket', name it exactly 'notes' (and check 'Public').";
-          } else if (storageErrMsg.toLowerCase().includes("policy") || storageErrMsg.toLowerCase().includes("rls") || storageErrMsg.toLowerCase().includes("row-level security")) {
-            storageErrMsg = "Storage upload was blocked by RLS policies. Please ensure you have added Storage policies to allow INSERT/upload for authenticated users on the 'notes' bucket in your Supabase dashboard.";
-          }
-          
-          console.warn("Supabase Storage upload failed. Activating multi-device remote hosting fallback...", storageErrMsg);
-          info("Storage upload policy restricted. Routing PDF through remote hosting fallback...");
-          
+        if (cloudName && uploadPreset && !cloudName.includes('placeholder') && !cloudName.includes('mock')) {
           try {
-            const remoteUrl = await uploadToRemoteFallback(file);
-            downloadUrl = remoteUrl;
-            storagePath = `notes/remote/${Date.now()}_${file.name}`;
-            success("Notes successfully uploaded to secure remote sync server!");
-          } catch (remoteErr: any) {
-            console.warn("Remote hosting fallback failed, converting file to Base64 as database backup:", remoteErr);
-            info("Remote sync server busy. Syncing actual PDF file directly to secure Database backup...");
-            
-            try {
-              const base64Data = await fileToBase64(file);
-              downloadUrl = base64Data;
-              storagePath = `notes/base64/${Date.now()}_${file.name}`;
-              success("Note successfully converted for secure direct database backup!");
-            } catch (base64Err: any) {
-              console.error("Failed to convert PDF file to Base64:", base64Err);
-              error("Direct DB Backup failed. Falling back to unique dummy PDF.");
-              const uniqueMockId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-              downloadUrl = `https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf?mockId=${uniqueMockId}`;
-              storagePath = `notes/mock/${uniqueMockId}_${file.name}`;
+            console.log("Uploading file to Cloudinary...");
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', uploadPreset);
+
+            // Use the raw upload endpoint of Cloudinary for PDFs
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`, {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!response.ok) {
+              const errData = await response.json();
+              throw new Error(errData.error?.message || `Failed to upload to Cloudinary: ${response.statusText}`);
             }
+
+            const data = await response.json();
+            downloadUrl = data.secure_url || data.url;
+            storagePath = `cloudinary:${data.public_id}`;
+            cloudinaryUploadSuccess = true;
+            
+            clearInterval(progressInterval);
+            setUploadProgress(100);
+            console.log("Uploaded successfully to Cloudinary! URL:", downloadUrl);
+          } catch (cloudinaryErr: any) {
+            console.warn("Cloudinary upload failed, falling back to Supabase:", cloudinaryErr);
           }
-          setUploadProgress(100);
-        } else {
-          setUploadProgress(100);
-
-          // Get public URL
-          const { data: urlData } = supabase.storage
-            .from('notes')
-            .getPublicUrl(storagePath);
-
-          if (!urlData || !urlData.publicUrl) {
-            throw new Error("Could not retrieve public URL for uploaded notes");
-          }
-
-          downloadUrl = urlData.publicUrl;
         }
 
+        if (!cloudinaryUploadSuccess) {
+          // 1. Upload PDF to Supabase Storage
+          const uniqueFileName = `${Date.now()}_${file.name}`;
+          storagePath = `notes/${user.uid}/${uniqueFileName}`;
+
+          const { error: storageErr } = await supabase.storage
+            .from('notes')
+            .upload(storagePath, file);
+
+          clearInterval(progressInterval);
+
+          if (storageErr) {
+            let storageErrMsg = storageErr.message || "Failed to upload file to storage";
+            if (storageErrMsg.toLowerCase().includes("bucket") || storageErrMsg.toLowerCase().includes("not found")) {
+              storageErrMsg = "The 'notes' storage bucket is missing in your Supabase project. Please log into your Supabase Dashboard -> Storage, click 'New Bucket', name it exactly 'notes' (and check 'Public').";
+            } else if (storageErrMsg.toLowerCase().includes("policy") || storageErrMsg.toLowerCase().includes("rls") || storageErrMsg.toLowerCase().includes("row-level security")) {
+              storageErrMsg = "Storage upload was blocked by RLS policies. Please ensure you have added Storage policies to allow INSERT/upload for authenticated users on the 'notes' bucket in your Supabase dashboard.";
+            }
+            
+            console.warn("Supabase Storage upload failed. Activating multi-device remote hosting fallback...", storageErrMsg);
+            info("Storage upload policy restricted. Routing PDF through remote hosting fallback...");
+            
+            try {
+              const remoteUrl = await uploadToRemoteFallback(file);
+              downloadUrl = remoteUrl;
+              storagePath = `notes/remote/${Date.now()}_${file.name}`;
+              success("Notes successfully uploaded to secure remote sync server!");
+            } catch (remoteErr: any) {
+              console.warn("Remote hosting fallback failed, converting file to Base64 as database backup:", remoteErr);
+              info("Remote sync server busy. Syncing actual PDF file directly to secure Database backup...");
+              
+              try {
+                const base64Data = await fileToBase64(file);
+                downloadUrl = base64Data;
+                storagePath = `notes/base64/${Date.now()}_${file.name}`;
+                success("Note successfully converted for secure direct database backup!");
+              } catch (base64Err: any) {
+                console.error("Failed to convert PDF file to Base64:", base64Err);
+                error("Direct DB Backup failed. Falling back to unique dummy PDF.");
+                const uniqueMockId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                downloadUrl = `https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf?mockId=${uniqueMockId}`;
+                storagePath = `notes/mock/${uniqueMockId}_${file.name}`;
+              }
+            }
+            setUploadProgress(100);
+          } else {
+            setUploadProgress(100);
+
+            // Get public URL
+            const { data: urlData } = supabase.storage
+              .from('notes')
+              .getPublicUrl(storagePath);
+
+            if (!urlData || !urlData.publicUrl) {
+              throw new Error("Could not retrieve public URL for uploaded notes");
+            }
+
+            downloadUrl = urlData.publicUrl;
+          }
+        }
         // Local IndexedDB caching
         try {
           await storeOfflinePdf(storagePath, file);   // key: storage bucket path

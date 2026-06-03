@@ -475,7 +475,7 @@ export const Admin: React.FC = () => {
       const isLocalNote = String(noteId).startsWith('optimistic-');
 
       if (!isLocalNote) {
-        if (pdfPath && pdfPath !== 'external-link') {
+        if (pdfPath && pdfPath !== 'external-link' && !pdfPath.startsWith('cloudinary:')) {
           const { error: storageErr } = await supabase.storage.from('notes').remove([pdfPath]);
           if (storageErr) console.warn("Storage PDF delete warning:", storageErr);
         }
@@ -677,7 +677,7 @@ export const Admin: React.FC = () => {
       if (!fetchNotesErr && userNotes && userNotes.length > 0) {
         const pathsToPurge = userNotes
           .map((n: any) => n.pdf_path || n.pdfPath)
-          .filter((p: string) => !!p);
+          .filter((p: string) => !!p && p !== 'external-link' && !p.startsWith('cloudinary:'));
         if (pathsToPurge.length > 0) {
           await supabase.storage.from('notes').remove(pathsToPurge);
         }

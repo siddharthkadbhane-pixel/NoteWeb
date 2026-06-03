@@ -12,7 +12,7 @@ const supabaseKey = (rawSupabaseKey && !rawSupabaseKey.includes('placeholder') &
   ? rawSupabaseKey
   : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5cWVnY3VpdGhoYm52dml1amJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzA4NTIsImV4cCI6MjA5NDk0Njg1Mn0.BZSRDkbB9DyXo53xpYajPMUcG3GeYYwEes1mI5_vQCs';
 
-let realSupabase: any = null;
+export let realSupabase: any = null;
 try {
   if (supabaseUrl && supabaseKey && !supabaseUrl.includes('placeholder') && !supabaseUrl.includes('mock')) {
     realSupabase = createClient(supabaseUrl, supabaseKey);
@@ -21,10 +21,9 @@ try {
   console.warn("Failed to initialize real Supabase client:", e);
 }
 
-// Strict Live Mode enforcement: Default to attempting real connection, with graceful mock fallback on network failure or missing tables.
+// Strict Live Mode enforcement: Turn off mock mode completely and connect directly to the real Supabase database.
 export const isMockMode = false;
-const envEnableMock = import.meta.env.VITE_ENABLE_MOCK_FALLBACKS;
-const enableMockFallbacks = envEnableMock !== undefined ? (envEnableMock === 'true' || envEnableMock === true) : true;
+const enableMockFallbacks = false;
 
 
 
@@ -43,6 +42,8 @@ class MockPostgrestBuilder {
   private isInsert = false;
   private isUpdate = false;
   private isDelete = false;
+  private isUpsert = false;
+  private isSingle = false;
   private payload: any = null;
   private orderByColumn: string | null = null;
   private orderAscending = true;
@@ -83,6 +84,17 @@ class MockPostgrestBuilder {
     return this;
   }
 
+  upsert(rows: any | any[]) {
+    this.isUpsert = true;
+    this.payload = rows;
+    return this;
+  }
+
+  single() {
+    this.isSingle = true;
+    return this;
+  }
+
   eq(column: string, value: any) {
     this.filters.push((row) => {
       const rowVal = row[column] !== undefined ? row[column] : row[camelize(column)];
@@ -95,6 +107,38 @@ class MockPostgrestBuilder {
     this.filters.push((row) => {
       const rowVal = row[column] !== undefined ? row[column] : row[camelize(column)];
       return values.map(String).includes(String(rowVal));
+    });
+    return this;
+  }
+
+  // Basic .or() support — parses simple `col.eq.val` and `col.ilike.%val%` clauses
+  or(filterStr: string) {
+    this.filters.push((row) => {
+      const clauses = filterStr.split(',');
+      return clauses.some((clause) => {
+        const parts = clause.trim().split('.');
+        if (parts.length >= 3) {
+          const col = parts[0];
+          const op = parts[1];
+          const val = parts.slice(2).join('.');
+          const rowVal = row[col] !== undefined ? row[col] : row[camelize(col)];
+          if (op === 'eq') return String(rowVal) === String(val);
+          if (op === 'neq') return String(rowVal) !== String(val);
+          if (op === 'ilike' || op === 'like') {
+            const cleanVal = val.replace(/%/g, '');
+            return String(rowVal || '').toLowerCase().includes(cleanVal.toLowerCase());
+          }
+        }
+        return false;
+      });
+    });
+    return this;
+  }
+
+  neq(column: string, value: any) {
+    this.filters.push((row) => {
+      const rowVal = row[column] !== undefined ? row[column] : row[camelize(column)];
+      return String(rowVal) !== String(value);
     });
     return this;
   }
@@ -174,6 +218,27 @@ class MockPostgrestBuilder {
       this.dataRows = remaining;
       localStorage.setItem(`noteweb-db-${this.table}`, JSON.stringify(remaining));
       resultData = [];
+    } else if (this.isUpsert) {
+      const rowsToUpsert = Array.isArray(this.payload) ? this.payload : [this.payload];
+      const processed = rowsToUpsert.map((row: any) => {
+        const idVal = row.id || row.key || Math.random().toString(36).substr(2, 9);
+        return {
+          id: idVal,
+          created_at: row.created_at || new Date().toISOString(),
+          ...row
+        };
+      });
+      
+      for (const pRow of processed) {
+        const existingIdx = this.dataRows.findIndex(r => String(r.id) === String(pRow.id) || (r.key && String(r.key) === String(pRow.id)));
+        if (existingIdx !== -1) {
+          this.dataRows[existingIdx] = { ...this.dataRows[existingIdx], ...pRow };
+        } else {
+          this.dataRows.push(pRow);
+        }
+      }
+      localStorage.setItem(`noteweb-db-${this.table}`, JSON.stringify(this.dataRows));
+      resultData = processed;
     }
 
     // Apply sorting in memory
@@ -206,7 +271,7 @@ class MockPostgrestBuilder {
       resultData = resultData.slice(0, this.limitCount);
     }
 
-    const response = { data: resultData, error: null };
+    const response = { data: this.isSingle ? (resultData[0] || null) : resultData, error: null };
     return Promise.resolve(response).then(onfulfilled, onrejected);
   }
 }
@@ -657,6 +722,42 @@ class SafePostgrestBuilder {
     return this;
   }
 
+  or(filterStr: string) {
+    this.realBuilder = this.realBuilder.or(filterStr);
+    this.calls.push({ method: 'or', args: [filterStr] });
+    return this;
+  }
+
+  neq(column: string, value: any) {
+    this.realBuilder = this.realBuilder.neq(column, value);
+    this.calls.push({ method: 'neq', args: [column, value] });
+    return this;
+  }
+
+  order(column: string, options?: { ascending?: boolean }) {
+    this.realBuilder = this.realBuilder.order(column, options);
+    this.calls.push({ method: 'order', args: [column, options] });
+    return this;
+  }
+
+  limit(count: number) {
+    this.realBuilder = this.realBuilder.limit(count);
+    this.calls.push({ method: 'limit', args: [count] });
+    return this;
+  }
+
+  single() {
+    this.realBuilder = this.realBuilder.single();
+    this.calls.push({ method: 'single', args: [] });
+    return this;
+  }
+
+  upsert(values: any) {
+    this.realBuilder = this.realBuilder.upsert(values);
+    this.calls.push({ method: 'upsert', args: [values] });
+    return this;
+  }
+
   // Promise-like execution matching real PostgrestBuilder
   then(onfulfilled?: (value: any) => any, onrejected?: (reason: any) => any) {
     const promise = (async () => {
@@ -674,8 +775,32 @@ class SafePostgrestBuilder {
                         errMsg.toLowerCase().includes('policy') ||
                         errCode === '42501';
 
+          // For direct_messages RLS errors on INSERT, use realSupabase client directly
+          // This works when the RLS policy allows anon role inserts
+          if (isRls && this.table === 'direct_messages') {
+            console.warn('[RLS] direct_messages insert blocked by RLS. Retrying with realSupabase client...');
+            try {
+              let retryBuilder = realSupabase.from(this.table);
+              for (const call of this.calls) {
+                retryBuilder = (retryBuilder as any)[call.method](...call.args);
+              }
+              const retryResponse = await retryBuilder;
+              if (!retryResponse?.error) {
+                return retryResponse;
+              }
+              console.error('[RLS] Retry also failed:', retryResponse.error.message);
+              console.error('[RLS FIX] Run this SQL in Supabase Dashboard > SQL Editor:\n' +
+                'DROP POLICY IF EXISTS "Allow users to send messages" ON public.direct_messages;\n' +
+                'CREATE POLICY "anon_insert_dm" ON public.direct_messages FOR INSERT TO anon WITH CHECK (true);\n' +
+                'CREATE POLICY "auth_insert_dm" ON public.direct_messages FOR INSERT TO authenticated WITH CHECK (true);');
+            } catch (retryErr) {
+              console.error('[RLS] Retry threw error:', retryErr);
+            }
+          }
+
           if (
-            !isColumnMismatch && !isRls && (
+            !isRls && (
+              isColumnMismatch ||
               errMsg.includes('relation') ||
               errMsg.includes('does not exist') ||
               errCode === 'P0001' ||
@@ -929,14 +1054,22 @@ export const supabase = (enableMockFallbacks
   ? {
       auth: safeAuth,
       from(table: string) {
-        if (isMockMode || !realSupabase) {
+        const isMockUser = !!localStorage.getItem('noteweb-mock-uid');
+        if (isMockMode || !realSupabase || isMockUser) {
           return mockSupabase.from(table);
         }
         return new SafePostgrestBuilder(table, realSupabase.from(table));
       },
-      storage: safeStorage,
+      get storage() {
+        const isMockUser = !!localStorage.getItem('noteweb-mock-uid');
+        if (isMockMode || !realSupabase || isMockUser) {
+          return mockSupabase.storage;
+        }
+        return safeStorage;
+      },
       channel(name: string, opts?: any) {
-        if (isMockMode || !realSupabase || typeof realSupabase.channel !== 'function') {
+        const isMockUser = !!localStorage.getItem('noteweb-mock-uid');
+        if (isMockMode || !realSupabase || isMockUser || typeof realSupabase.channel !== 'function') {
           return {
             on: function() { return this; },
             send: () => { return Promise.resolve({ error: null }); },
@@ -951,7 +1084,8 @@ export const supabase = (enableMockFallbacks
         return realSupabase.channel(name, opts);
       },
       removeChannel(channel: any) {
-        if (isMockMode || !realSupabase || typeof realSupabase.removeChannel !== 'function') {
+        const isMockUser = !!localStorage.getItem('noteweb-mock-uid');
+        if (isMockMode || !realSupabase || isMockUser || typeof realSupabase.removeChannel !== 'function') {
           return Promise.resolve();
         }
         return realSupabase.removeChannel(channel);
@@ -962,6 +1096,41 @@ export const supabase = (enableMockFallbacks
 
 // Function to seed default branches, categories, and realistic notes locally if empty
 function mockPostgresSeedAndReturnMock() {
+  const profilesSeed = localStorage.getItem('noteweb-db-profiles');
+  if (!profilesSeed) {
+    const defaultProfiles = [
+      {
+        id: 'mock-google-user',
+        username: 'google_student',
+        email: 'google@noteweb.local',
+        display_name: 'Google Student',
+        mobile_no: '+919999999999',
+        year: '3',
+        branch: 'cse',
+        cgpa: '9.2',
+        photo_url: '🧙‍♂️|from-purple-600 via-pink-500 to-indigo-600',
+        role: 'student',
+        setup_complete: true,
+        points: 420
+      },
+      {
+        id: 'mock-phone-919876543210',
+        username: 'phone_student',
+        email: '919876543210@noteweb.local',
+        display_name: 'Student +91 98765 43210',
+        mobile_no: '+919876543210',
+        year: '2',
+        branch: 'ece',
+        cgpa: '8.5',
+        photo_url: '🦊|from-amber-500 via-orange-500 to-rose-600',
+        role: 'student',
+        setup_complete: true,
+        points: 280
+      }
+    ];
+    localStorage.setItem('noteweb-db-profiles', JSON.stringify(defaultProfiles));
+  }
+
   const branchesSeed = localStorage.getItem('noteweb-db-branches');
   if (!branchesSeed) {
     const defaultBranches = [

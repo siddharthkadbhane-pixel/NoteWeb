@@ -130,7 +130,7 @@ export const summarizeNotes = async (notesText: string): Promise<string> => {
   
   const prompt = `Analyze the following course notes:
 \"\"\"
-${notesText.slice(0, 15000)}  // Up to 15k characters for excellent context depth
+${notesText.slice(0, 15000)}
 \"\"\"
 
 Please format your response in clean Markdown exactly as follows:

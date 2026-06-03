@@ -4,19 +4,11 @@
  * using Supabase Realtime Presence API.
  */
 
-// Use the raw Supabase client for Realtime (imported directly)
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://uyqegcuithhbnvviujbv.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_I8b9i3SCxfnLBOMxrfrL6Q_0KV9SFiY';
+// Use the exported raw Supabase client for Realtime to avoid multiple GoTrueClient warnings
+import { realSupabase } from '../supabase/config';
 
 // Dedicated realtime client instance (bypasses mock wrappers)
-let realtimeClient: any = null;
-try {
-  realtimeClient = createClient(supabaseUrl, supabaseKey);
-} catch (e) {
-  console.warn('[Presence] Failed to create realtime client:', e);
-}
+let realtimeClient: any = realSupabase;
 
 export interface OnlineUser {
   uid: string;
@@ -34,7 +26,7 @@ export interface OnlineUser {
 const getDeviceId = (): string => {
   let id = sessionStorage.getItem('noteweb-device-id');
   if (!id) {
-    id = `device-${Math.random().toString(36).substr(2, 12)}-${Date.now()}`;
+    id = `device-${Math.random().toString(36).substring(2, 14)}-${Date.now()}`;
     sessionStorage.setItem('noteweb-device-id', id);
   }
   return id;
@@ -69,8 +61,42 @@ let currentUserPayload: OnlineUser | null = null;
 type PresenceChangeCallback = (users: OnlineUser[]) => void;
 const presenceListeners: PresenceChangeCallback[] = [];
 
+const getMockOnlineUsers = (): OnlineUser[] => {
+  return [
+    {
+      uid: 'mock-google-user',
+      displayName: 'Google Student',
+      email: 'google@noteweb.local',
+      role: 'student',
+      photoURL: '🧙‍♂️|from-purple-600 via-pink-500 to-indigo-600',
+      deviceId: 'device-mock-1',
+      deviceInfo: 'Chrome on Desktop',
+      onlineSince: new Date().toISOString(),
+      lastSeen: new Date().toISOString()
+    },
+    {
+      uid: 'mock-phone-919876543210',
+      displayName: 'Student +91 98765 43210',
+      email: '919876543210@noteweb.local',
+      role: 'student',
+      photoURL: '🦊|from-amber-500 via-orange-500 to-rose-600',
+      deviceId: 'device-mock-2',
+      deviceInfo: 'Safari on Mobile',
+      onlineSince: new Date().toISOString(),
+      lastSeen: new Date().toISOString()
+    }
+  ];
+};
+
 export const subscribeToPresenceChanges = (cb: PresenceChangeCallback): (() => void) => {
   presenceListeners.push(cb);
+  if (!realtimeClient) {
+    cb(getMockOnlineUsers());
+    return () => {
+      const idx = presenceListeners.indexOf(cb);
+      if (idx !== -1) presenceListeners.splice(idx, 1);
+    };
+  }
   // Immediately deliver current state if available
   if (currentOnlineUsers.size > 0) {
     cb(getAllOnlineUsers());

@@ -22,8 +22,8 @@ const GRADIENTS = [
   { name: 'Cyber Abyss',   cls: 'from-gray-800 via-slate-900 to-zinc-950' },
 ];
 
-// Admin secret password
-const ADMIN_SECRET = 'Whitephantom';
+// Admin registration setup token (configurable via environment, defaults to secure backup)
+const ADMIN_REGISTRATION_TOKEN = import.meta.env.VITE_ADMIN_REGISTRATION_TOKEN || 'Whitephantom';
 
 type Step = 'login' | 'register';
 type Role = 'student' | 'admin';
@@ -57,6 +57,8 @@ export const Login: React.FC = () => {
   const [regBranch, setRegBranch] = useState('cse');
   const [regEmail,  setRegEmail]  = useState('');
   const [regCgpa,   setRegCgpa]   = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
 
   /* ── Photo / Avatar ── */
   const [avatarMode, setAvatarMode] = useState<'emoji' | 'photo'>('emoji');
@@ -158,6 +160,8 @@ export const Login: React.FC = () => {
 
   /* ── State variables for the two columns ── */
   const [studentUsername, setStudentUsername] = useState('');
+  const [studentPassword, setStudentPassword] = useState('');
+  const [showStudentPassword, setShowStudentPassword] = useState(false);
 
   /* ─────────────────────────────────────────── Actions */
   const handleAdminVerify = async (e: React.FormEvent) => {
@@ -167,27 +171,31 @@ export const Login: React.FC = () => {
       setAdminPassError('Admin username is required');
       return;
     }
-    if (adminPass === ADMIN_SECRET) {
-      setAdminPassError('');
-      setIsLoading(true);
-      setSelectedRole('admin');
-      setUsername(cleanUsername);
-      try {
-        await loginWithUsername(cleanUsername);
-        success(`Welcome back, Administrator ${cleanUsername}! 👑`);
-        navigate(from, { replace: true });
-      } catch (err: any) {
-        if (err.message?.includes('not found')) {
+    setAdminPassError('');
+    setIsLoading(true);
+    setSelectedRole('admin');
+    setUsername(cleanUsername);
+
+    try {
+      // Attempt login with username and passcode as password
+      await loginWithUsername(cleanUsername, adminPass);
+      success(`Welcome back, Administrator ${cleanUsername}! 👑`);
+      navigate(from, { replace: true });
+    } catch (err: any) {
+      if (err.message?.includes('not found')) {
+        // If profile doesn't exist, they can register ONLY if the admin passcode matches the registration token
+        if (adminPass === ADMIN_REGISTRATION_TOKEN) {
           setStep('register');
+          setRegPassword(adminPass); // Store it for registration submit
           success("New Admin passcode verified! Let's build your administrator profile.");
         } else {
-          setAdminPassError(err.message || 'Login failed. Please try again.');
+          setAdminPassError('Incorrect admin token or password. Please try again.');
         }
-      } finally {
-        setIsLoading(false);
+      } else {
+        setAdminPassError(err.message || 'Login failed. Please try again.');
       }
-    } else {
-      setAdminPassError('Incorrect admin password. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -198,17 +206,22 @@ export const Login: React.FC = () => {
       setFormErrors({ studentUsername: 'Username is required' });
       return;
     }
+    if (!studentPassword) {
+      setFormErrors({ studentPassword: 'Password is required' });
+      return;
+    }
     setFormErrors({});
     setIsLoading(true);
     setSelectedRole('student');
     setUsername(cleanUsername);
     try {
-      await loginWithUsername(cleanUsername.toLowerCase());
+      await loginWithUsername(cleanUsername.toLowerCase(), studentPassword);
       success(`Welcome back, ${cleanUsername}! 🎉`);
       navigate(from, { replace: true });
     } catch (err: any) {
       if (err.message?.includes('not found')) {
         setUsername(cleanUsername);
+        setRegPassword(studentPassword); // Prefill for registration setup
         setStep('register');
         success("New username! Let's build your profile.");
       } else {
@@ -233,6 +246,9 @@ export const Login: React.FC = () => {
     if (regCgpa.trim()) {
       const n = parseFloat(regCgpa);
       if (isNaN(n) || n < 0 || n > 10) errors.cgpa = 'CGPA must be 0–10';
+    }
+    if (!regPassword || regPassword.length < 6) {
+      errors.password = 'Password must be at least 6 characters long';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -260,7 +276,7 @@ export const Login: React.FC = () => {
         // Admin role is assigned only if admin password was verified
         role: selectedRole === 'admin' ? 'admin' : 'student',
         setupComplete: true,
-      });
+      }, regPassword);
       success(`Welcome to NoteWeb, ${regName}! 🎉`);
       navigate(from, { replace: true });
     } catch (err: any) {
@@ -368,6 +384,31 @@ export const Login: React.FC = () => {
                         </div>
                         {formErrors.studentUsername && (
                           <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.studentUsername}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className={labelCls}>Your Password</label>
+                        <div className="relative">
+                          <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                          <input
+                            type={showStudentPassword ? 'text' : 'password'}
+                            value={studentPassword}
+                            onChange={(e) => setStudentPassword(e.target.value)}
+                            placeholder="Enter password..."
+                            className={inputCls + " pl-10 pr-10"}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowStudentPassword(!showStudentPassword)}
+                            className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}`}
+                          >
+                            {showStudentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        {formErrors.studentPassword && (
+                          <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.studentPassword}</p>
                         )}
                       </div>
 
@@ -706,6 +747,29 @@ export const Login: React.FC = () => {
                     <input type="text" placeholder="e.g. 9.15" value={regCgpa} onChange={(e) => setRegCgpa(e.target.value.replace(/[^0-9.]/g, ''))} className={inputCls} />
                     {formErrors.cgpa && <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.cgpa}</p>}
                   </div>
+                </div>
+
+                <div className="w-full">
+                  <label className={labelCls}>Set Password (At least 6 characters) *</label>
+                  <div className="relative">
+                    <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="Create a strong password..."
+                      className={inputCls + " pl-10 pr-10"}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}`}
+                    >
+                      {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {formErrors.password && <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.password}</p>}
                 </div>
 
                 {/* Buttons */}

@@ -44,8 +44,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateProfileDetails: (displayName: string, photoURL?: string) => Promise<void>;
   toggleBookmark: (noteId: string) => Promise<void>;
-  loginWithUsername: (username: string) => Promise<UserProfile>;
-  registerUser: (profileData: Omit<UserProfile, 'uid' | 'createdAt' | 'bookmarks' | 'points'>) => Promise<UserProfile>;
+  loginWithUsername: (username: string, password?: string) => Promise<UserProfile>;
+  registerUser: (profileData: Omit<UserProfile, 'uid' | 'createdAt' | 'bookmarks' | 'points'>, password?: string) => Promise<UserProfile>;
   updatePoints: (additionalPoints: number) => Promise<void>;
   updateFullProfile: (profile: Partial<UserProfile>) => Promise<void>;
 }
@@ -480,9 +480,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 2. Periodic active student session validity guard (Prune protection)
   useEffect(() => {
-    if (!user || isGuest) return;
+    if (!user || !user?.uid || isGuest) return;
 
     const checkProfileValidity = async () => {
+      if (!user?.uid) return;
+
       // 1. Local caching guard check
       const cachedProfile = localStorage.getItem(`noteweb-profile-${user.uid}`);
       if (!cachedProfile) {
@@ -500,23 +502,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .select('id')
             .eq('id', user.uid);
             
-          if (!error && (!data || data.length === 0)) {
+          if (!error && data && data.length === 0) {
             console.log("[AuthContext] Profile deleted in database by administrator, signing out...");
             await logout();
           }
         } catch (err) {
           console.warn("Database profile validity check failed:", err);
         }
-      } else if (!user.uid.startsWith('mock-')) {
+      } else if (user?.uid && !user.uid.startsWith('mock-')) {
         // In Live Mode, only query the remote database for real authenticated users (email/phone/oauth)
         // This prevents anonymous custom username accounts from getting logged out by RLS SELECT blocks
         try {
+          if (navigator.onLine === false) return; // Skip online query if completely offline
+          
           const { data, error } = await supabase
             .from('profiles')
             .select('id')
             .eq('id', user.uid);
             
-          if (!error && (!data || data.length === 0)) {
+          if (!error && data && data.length === 0) {
             console.log("[AuthContext] Profile deleted in database by administrator, signing out...");
             await logout();
           }
@@ -526,7 +530,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    const interval = setInterval(checkProfileValidity, 8000); // Check user existence every 8 seconds
+    const interval = setInterval(checkProfileValidity, 120000); // Check user existence every 2 minutes (saves data & battery)
     return () => clearInterval(interval);
   }, [user, isGuest]);
 
@@ -866,7 +870,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithUsername = async (username: string): Promise<UserProfile> => {
+  const loginWithUsername = async (username: string, password?: string): Promise<UserProfile> => {
     setLoading(true);
     setIsGuest(false);
     localStorage.removeItem('noteweb-is-guest');
@@ -885,6 +889,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const profile = dbToProfile(data[0]);
+
+      // If a password was provided, verify it securely via Supabase Auth
+      if (password) {
+        const loginEmail = profile.email || `${sanitizedUsername}@noteweb.local`;
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: loginEmail,
+          password: password,
+        });
+
+        if (authError) {
+          throw new Error(authError.message || 'Incorrect password. Please try again.');
+        }
+
+        // Securely sync the user id from authenticated session to profile if they mismatched (mock to real transition)
+        if (authData?.user && authData.user.id !== profile.uid) {
+          profile.uid = authData.user.id;
+        }
+      }
       
       // Capture and update IP address on login
       let userIp = '';
@@ -933,7 +955,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const registerUser = async (
-    profileData: Omit<UserProfile, 'uid' | 'createdAt' | 'bookmarks' | 'points'>
+    profileData: Omit<UserProfile, 'uid' | 'createdAt' | 'bookmarks' | 'points'>,
+    password?: string
   ): Promise<UserProfile> => {
     setLoading(true);
     setIsGuest(false);
@@ -954,9 +977,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Username is already taken.');
       }
 
-      const uid = `mock-user-${Math.random().toString(36).substr(2, 9)}`;
-      // Role is set by the caller. Admin role is already gated behind the secret
-      // password ("Whantom") in the Login page UI before registerUser is called.
+      const regEmail = profileData.email || `${sanitizedUsername}@noteweb.local`;
+      let uid = `mock-user-${Math.random().toString(36).substr(2, 9)}`;
+
+      // If a password was provided, perform a real cryptographic signUp in Supabase Auth
+      if (password) {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: regEmail,
+          password: password,
+          options: {
+            data: {
+              display_name: profileData.displayName,
+              photo_url: profileData.photoURL
+            }
+          }
+        });
+
+        if (authError) {
+          throw new Error(authError.message || 'Registration failed under Supabase Auth.');
+        }
+
+        if (authData?.user) {
+          uid = authData.user.id;
+        }
+      }
+
       const role: 'student' | 'admin' = profileData.role === 'admin' ? 'admin' : 'student';
 
       // Fetch latest IP address for registration
@@ -974,7 +1019,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newProfile: UserProfile = {
         uid,
         username: sanitizedUsername,
-        email: profileData.email || `${sanitizedUsername}@noteweb.local`,
+        email: regEmail,
         displayName: profileData.displayName,
         mobileNo: profileData.mobileNo,
         year: profileData.year,

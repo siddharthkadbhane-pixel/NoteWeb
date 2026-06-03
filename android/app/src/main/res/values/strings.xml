@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NoteWeb</string>
+    <string name="title_activity_main">NoteWeb</string>
+    <string name="package_name">com.noteweb.app</string>
+    <string name="custom_url_scheme">com.noteweb.app</string>
+</resources>

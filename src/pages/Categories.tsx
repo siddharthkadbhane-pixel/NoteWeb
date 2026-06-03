@@ -504,7 +504,7 @@ export const Categories: React.FC = () => {
                   className="w-full h-full"
                 >
                   <TiltCard
-                    className="group cursor-pointer text-left glass-card premium-border-glow hover:shadow-2xl flex flex-col justify-between p-6 relative h-[240px] overflow-hidden w-full bg-[#13131A]/40 border border-white/5"
+                    className="group cursor-pointer text-left glass-card premium-border-glow hover:shadow-2xl flex flex-col justify-between p-6 relative h-[240px] overflow-hidden w-full"
                     glowColor={branch.shadowColor || 'rgba(99, 102, 241, 0.25)'}
                   >
                     <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-transparent via-transparent to-white/[0.02] pointer-events-none" />

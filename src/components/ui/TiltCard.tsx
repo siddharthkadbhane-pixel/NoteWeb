@@ -58,7 +58,7 @@ export const TiltCard: React.FC<TiltCardProps> = ({ children, className = '', gl
         rotateY,
         transformStyle: 'preserve-3d',
       }}
-      className={`relative rounded-2xl transition-all duration-200 cursor-pointer overflow-hidden ${className}`}
+      className={`relative rounded-3xl transition-all duration-200 cursor-pointer overflow-hidden ${className}`}
     >
       {/* Moving Highlight Spotlight Glow */}
       {isHovered && (
@@ -76,7 +76,7 @@ export const TiltCard: React.FC<TiltCardProps> = ({ children, className = '', gl
       )}
       
       {/* Premium subtle glassmorphic outline */}
-      <div className="absolute inset-0 rounded-2xl border border-white/10 pointer-events-none z-10" />
+      <div className="absolute inset-0 rounded-3xl border border-white/10 pointer-events-none z-10" />
 
       {/* Internal Content (preserve 3D space) */}
       <div style={{ transform: 'translateZ(10px)' }} className="relative z-10 w-full h-full">

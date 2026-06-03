@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isMockMode } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -8,6 +8,8 @@ import { renderAvatar } from '../utils/avatar';
 import { motion } from 'framer-motion';
 import { moderateChatMessage } from '../services/gemini';
 import { GlassPanel } from '../components/ui/GlassPanel';
+import { subscribeToPresenceChanges } from '../services/presence';
+import type { OnlineUser } from '../services/presence';
 
 import { 
   Send, 
@@ -18,12 +20,40 @@ import {
   MessageSquare,
   Lock,
   X,
-  Edit
+  Edit,
+  Search,
+  Users,
+  MessageCircle,
+  ChevronLeft,
+  UserCheck,
+  Phone,
+  Video,
+  Pin,
+  PinOff,
+  Star,
+  Plus,
+  Shield,
+  ShieldAlert,
+  VolumeX,
+  Volume2,
+  Smile,
+  Eye,
+  EyeOff,
+  Paintbrush,
+  BarChart2,
+  Paperclip,
+  Download,
+  PhoneOff,
+  Mic,
+  MicOff,
+  VideoOff,
+  FileText,
+  Quote
 } from 'lucide-react';
 
 const BAD_WORDS = [
   'abuse', 'fuck', 'shit', 'asshole', 'bitch', 'crap', 'cunt', 'dick', 'bastard', 'vulgar', 
-  'ass', 'dumb', 'idiot', 'stupid', 'slut', 'whore', 'piss', 'vulgar'
+  'ass', 'dumb', 'idiot', 'stupid', 'slut', 'whore', 'piss'
 ];
 
 export const containsBadWords = (text: string): boolean => {
@@ -73,7 +103,6 @@ const compressImage = (base64Str: string, maxWidth = 400, maxHeight = 400, quali
   });
 };
 
-
 interface ChatMessage {
   id: string;
   sender_uid: string;
@@ -83,15 +112,84 @@ interface ChatMessage {
   content: string;
   image_url?: string;
   created_at: string;
+  starred?: boolean;
+}
+
+interface DirectMessage {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  message: string;
+  photo_url?: string;
+  created_at: string;
+  is_read: boolean;
+  reply_to?: {
+    id: string;
+    senderName: string;
+    content: string;
+  };
+  reactions?: Record<string, string[]>; // emoji -> list of sender_uids
+  shared_note_id?: string;
+  is_vanish?: boolean;
+  is_view_once?: boolean;
+  poll_data?: {
+    question: string;
+    options: string[];
+    votes: Record<string, string[]>; // optionIndex -> list of sender_uids
+  };
+}
+
+interface DMContact {
+  uid: string;
+  displayName: string;
+  photoURL: string;
+  branch: string;
+  username: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
+}
+
+interface UserProfile {
+  id: string;
+  uid?: string;
+  username: string;
+  display_name?: string;
+  displayName?: string;
+  photo_url?: string;
+  photoURL?: string;
+  branch: string;
+  year?: string;
+  role?: string;
 }
 
 export const Chat: React.FC = () => {
   const { user, userProfile, isGuest, updatePoints } = useAuth();
   const { isDark } = useTheme();
-  const { error: toastError, info } = useToast();
+  const { error: toastError, info, success: toastSuccess } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   
+  // Tab control: 'global' | 'dm'
+  const [activeTab, setActiveTab] = useState<'global' | 'dm'>('global');
+  
+  // Mobile UI navigation for DM: 'list' | 'chat'
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
+
+  // Global Chat States
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  
+  // DM States
+  const [dmContacts, setDmContacts] = useState<DMContact[]>([]);
+  const [selectedDmUser, setSelectedDmUser] = useState<UserProfile | null>(null);
+  const [dmMessages, setDmMessages] = useState<DirectMessage[]>([]);
+  
+  // Search Users
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Common Input States
   const [inputText, setInputText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -99,10 +197,91 @@ export const Chat: React.FC = () => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  // Advanced Messaging Upgrades State Hooks
+  const [pinnedUids, setPinnedUids] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('noteweb-pinned-chats');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const [mutedUids, setMutedUids] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('noteweb-muted-chats');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const [blockedUids, setBlockedUids] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('noteweb-blocked-chats');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const [chatThemes, setChatThemes] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('noteweb-chat-themes');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
+  const [vanishMode, setVanishMode] = useState<boolean>(false);
+  const [isViewOnceSelected, setIsViewOnceSelected] = useState<boolean>(false);
+  
+  // View once state tracking
+  const [viewOnceTimer, setViewOnceTimer] = useState<Record<string, number>>({});
+  const [viewOnceViewing, setViewOnceViewing] = useState<Record<string, boolean>>({});
+  const [viewOnceRevealed, setViewOnceRevealed] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('noteweb-viewed-once-messages');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  // Star and Reply
+  const [replyingTo, setReplyingTo] = useState<DirectMessage | null>(null);
+  const [isStarDrawerOpen, setIsStarDrawerOpen] = useState(false);
+  const [starredMessages, setStarredMessages] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('noteweb-starred-messages');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  // Note Sharing picker
+  const [isNoteShareModalOpen, setIsNoteShareModalOpen] = useState(false);
+  const [searchNoteQuery, setSearchNoteQuery] = useState('');
+  const [noteSearchResults, setNoteSearchResults] = useState<any[]>([]);
+
+  // Poll
+  const [isPollModalOpen, setIsPollModalOpen] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+
+  // WebRTC Calling
+  const [callState, setCallState] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle');
+  const [callerProfile, setCallerProfile] = useState<any>(null);
+  const [callType, setCallType] = useState<'voice' | 'video'>('video');
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [isMicMuted, setIsMicMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
+  
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const channelRef = useRef<any>(null);
+  const channelDmRef = useRef<any>(null);
+  
+  // Realtime Presence & Typing States
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [partnerIsTyping, setPartnerIsTyping] = useState(false);
+  const [myTypingState, setMyTypingState] = useState(false);
+  const typingTimeoutRef = useRef<any>(null);
 
   const getSafeTime = (dateStr: any, id?: string) => {
     if (id && id.startsWith('broadcast-')) {
@@ -136,7 +315,7 @@ export const Chat: React.FC = () => {
       const activeMsgs = rawMsgs
         .filter((m: any) => getSafeTime(m.created_at, m.id) >= cutoffTime)
         .map((m: any) => ({
-          id: m.id,
+          id: String(m.id),
           sender_uid: m.sender_id || m.sender_uid || '',
           sender_name: m.sender_name || '',
           sender_avatar: m.sender_avatar || '',
@@ -208,11 +387,210 @@ export const Chat: React.FC = () => {
     }
   };
 
+  // Fetch DM Contacts List
+  const fetchDmContacts = async () => {
+    if (!user) return;
+    try {
+      // 1. Fetch DMs related to me
+      const { data: dms, error } = await supabase
+        .from('direct_messages')
+        .select('*')
+        .or(`sender_id.eq.${user.uid},recipient_id.eq.${user.uid}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const rawDms: DirectMessage[] = (dms || []).map((m: any) => ({
+        id: String(m.id),
+        sender_id: m.sender_id,
+        recipient_id: m.recipient_id,
+        message: m.message,
+        photo_url: m.photo_url || undefined,
+        created_at: m.created_at,
+        is_read: m.is_read !== undefined ? m.is_read : true
+      }));
+
+      // 2. Extract unique classmate UIDs
+      const partnerUids = Array.from(
+        new Set(
+          rawDms.map((m) => (m.sender_id === user.uid ? m.recipient_id : m.sender_id))
+        )
+      ).filter(Boolean);
+
+      if (partnerUids.length === 0) {
+        setDmContacts([]);
+        return;
+      }
+
+      // 3. Fetch profiles for these partners
+      const { data: profiles, error: pErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', partnerUids);
+
+      if (pErr) throw pErr;
+
+      const profileList: UserProfile[] = (profiles || []).map((p: any) => ({
+        id: p.id || p.uid,
+        username: p.username || '',
+        displayName: p.display_name || p.displayName || 'Campus Classmate',
+        photoURL: p.photo_url || p.photoURL || '',
+        branch: p.branch || 'cse',
+        year: p.year || '1',
+        role: p.role || 'student'
+      }));
+
+      // 4. Map DMs details to each contact
+      const contacts: DMContact[] = profileList
+        .filter((p) => !blockedUids.includes(p.id)) // Filter out blocked users
+        .map((p) => {
+          const partnerDms = rawDms.filter(
+            (m) => m.sender_id === p.id || m.recipient_id === p.id
+          );
+          const lastDm = partnerDms[0]; // ordered desc, so first is latest
+          const unreadCount = partnerDms.filter(
+            (m) => m.sender_id === p.id && !m.is_read
+          ).length;
+
+          return {
+            uid: p.id,
+            displayName: p.displayName || 'Classmate',
+            photoURL: p.photoURL || '',
+            branch: p.branch,
+            username: p.username,
+            lastMessage: lastDm ? (lastDm.photo_url ? '📷 Shared a photo' : lastDm.message) : 'No messages',
+            lastMessageTime: lastDm ? lastDm.created_at : new Date().toISOString(),
+            unreadCount: unreadCount
+          };
+        });
+
+      // Sort contacts by pinned first, then by latest message time
+      contacts.sort((a, b) => {
+        const aPinned = pinnedUids.includes(a.uid);
+        const bPinned = pinnedUids.includes(b.uid);
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+        return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
+      });
+      setDmContacts(contacts);
+    } catch (e) {
+      console.error('Error fetching DM contacts:', e);
+    }
+  };
+
+  // Fetch DM messages for the selected user
+  const fetchDmMessages = async (partnerId: string) => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('direct_messages')
+        .select('*')
+        .or(`and(sender_id.eq.${user.uid},recipient_id.eq.${partnerId}),and(sender_id.eq.${partnerId},recipient_id.eq.${user.uid})`)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const messagesList = (data || []).map((m: any) => ({
+        id: String(m.id),
+        sender_id: m.sender_id,
+        recipient_id: m.recipient_id,
+        message: m.message,
+        photo_url: m.photo_url || undefined,
+        created_at: m.created_at,
+        is_read: m.is_read !== undefined ? m.is_read : true,
+        reply_to: m.reply_to || undefined,
+        reactions: m.reactions || {},
+        shared_note_id: m.shared_note_id || undefined,
+        is_vanish: m.is_vanish || false,
+        is_view_once: m.is_view_once || false,
+        poll_data: m.poll_data || undefined
+      }));
+
+      setDmMessages(messagesList);
+
+      // Mark unread messages as read
+      const unreadIds = messagesList
+        .filter((m: DirectMessage) => m.sender_id === partnerId && !m.is_read)
+        .map((m: DirectMessage) => m.id);
+
+      if (unreadIds.length > 0) {
+        // Perform non-blocking database update
+        const numIds = unreadIds.map((id: string) => {
+          const num = parseInt(id, 10);
+          return isNaN(num) ? id : num;
+        });
+
+        const query = supabase.from('direct_messages').update({ is_read: true });
+        
+        // Handle both UUID/bigint support
+        if (typeof numIds[0] === 'number') {
+          await query.in('id', numIds);
+        } else {
+          await query.in('id', unreadIds);
+        }
+
+        // Refresh contacts list to reflect zero unread badge
+        fetchDmContacts();
+      }
+    } catch (e) {
+      console.error('Error fetching DM messages:', e);
+    }
+  };
+
+  // Initialize selected profile from URL search query (?dm=uid)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const dmUid = params.get('dm');
+    
+    if (dmUid && user) {
+      setActiveTab('dm');
+      setMobileView('chat');
+      
+      const loadTargetUserProfile = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', dmUid)
+            .single();
+          
+          if (error) throw error;
+          if (data) {
+            const profile: UserProfile = {
+              id: data.id || data.uid,
+              username: data.username || '',
+              displayName: data.display_name || data.displayName || 'Classmate',
+              photoURL: data.photo_url || data.photoURL || '',
+              branch: data.branch || 'cse',
+              year: data.year || '1',
+              role: data.role || 'student'
+            };
+            setSelectedDmUser(profile);
+            fetchDmMessages(profile.id);
+          }
+        } catch (e) {
+          console.warn("Failed to load url target profile:", e);
+          // Fallback
+          setSelectedDmUser({
+            id: dmUid,
+            username: 'student_' + dmUid.substring(0, 5),
+            displayName: 'Classmate',
+            branch: 'cse'
+          });
+        }
+      };
+      
+      loadTargetUserProfile();
+    }
+  }, [location.search, user]);
+
+  // Subscribe to channels and poll fallback
   useEffect(() => {
     setIsLoading(true);
     fetchMessages();
+    fetchDmContacts();
 
-    // 1. Set up Realtime subscription for chats table postgres events and broadcast events
+    // 1. Setup Global chats channel
     let channel: any = null;
     try {
       if (typeof supabase.channel === 'function') {
@@ -230,7 +608,6 @@ export const Chat: React.FC = () => {
             'broadcast',
             { event: 'message' },
             (response: any) => {
-              console.log('Broadcast received in chats channel:', response);
               if (response?.payload) {
                 const msg = response.payload;
                 
@@ -247,7 +624,7 @@ export const Chat: React.FC = () => {
                   localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(storedBroadcasts));
                 }
 
-                 setMessages((prev) => {
+                setMessages((prev) => {
                   if (prev.some((m) => m.id === msg.id)) return prev;
                   const cutoffTime = Date.now() - 7 * 24 * 3600 * 1000;
                   if (getSafeTime(msg.created_at, msg.id) < cutoffTime) return prev;
@@ -290,31 +667,816 @@ export const Chat: React.FC = () => {
       console.warn("Realtime subscription failed on Chat:", err);
     }
 
-    // 2. Keep a passive 15-second polling fallback to save CPU and network bandwidth
-    // 8-second polling for better real-time coverage as fallback
-    const interval = setInterval(fetchMessages, 8000);
+    const playBubbleSound = () => {
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      } catch {}
+    };
+
+    // 2. Setup Direct Messages Realtime Channel
+    let channelDm: any = null;
+    try {
+      if (typeof supabase.channel === 'function') {
+        channelDm = supabase
+          .channel('public:direct_messages_sync')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'direct_messages' },
+            (payload: any) => {
+              console.log('Realtime change in direct_messages:', payload);
+              const newRow = payload.new;
+              
+              if (payload.eventType === 'INSERT' && newRow) {
+                const isFromMe = newRow.sender_id === user?.uid;
+                const isBlocked = blockedUids.includes(newRow.sender_id);
+                const isMuted = mutedUids.includes(newRow.sender_id);
+                
+                if (!isFromMe && !isBlocked) {
+                  if (!isMuted) {
+                    playBubbleSound();
+                    if (!selectedDmUser || selectedDmUser.id !== newRow.sender_id) {
+                      info(`💬 Message received from a classmate!`);
+                    }
+                  }
+                }
+              }
+
+              fetchDmContacts();
+              
+              if (selectedDmUser) {
+                const partnerId = selectedDmUser.id;
+                if (newRow && (
+                  (newRow.sender_id === user?.uid && newRow.recipient_id === partnerId) ||
+                  (newRow.sender_id === partnerId && newRow.recipient_id === user?.uid)
+                )) {
+                  fetchDmMessages(partnerId);
+                }
+              }
+            }
+          )
+          .on(
+            'broadcast',
+            { event: 'typing' },
+            (response: any) => {
+              const { sender_id, recipient_id, is_typing } = response.payload || {};
+              if (recipient_id === user?.uid && sender_id === selectedDmUser?.id) {
+                setPartnerIsTyping(is_typing);
+              }
+            }
+          )
+          .on(
+            'broadcast',
+            { event: 'screenshot' },
+            (response: any) => {
+              const { recipient_id } = response.payload || {};
+              if (recipient_id === user?.uid) {
+                toastError(`⚠️ [Privacy Alert] classmate took a screenshot or minimized/blurred the chat window!`);
+              }
+            }
+          )
+          .on(
+            'broadcast',
+            { event: 'call:offer' },
+            async (response: any) => {
+              const { sender_id, recipient_id, sdp, callType: cType, callerName, callerAvatar } = response.payload || {};
+              if (recipient_id === user?.uid) {
+                if (callState !== 'idle') {
+                  // busy signal
+                  channelDm.send({
+                    type: 'broadcast',
+                    event: 'call:hangup',
+                    payload: { sender_id: user?.uid || '', recipient_id: sender_id }
+                  });
+                  return;
+                }
+                setCallerProfile({ id: sender_id, displayName: callerName, photoURL: callerAvatar });
+                setCallType(cType);
+                setCallState('incoming');
+                (window as any)._incomingSdpOffer = sdp;
+              }
+            }
+          )
+          .on(
+            'broadcast',
+            { event: 'call:answer' },
+            async (response: any) => {
+              const { recipient_id, sdp } = response.payload || {};
+              if (recipient_id === user?.uid && pcRef.current) {
+                try {
+                  await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+                  setCallState('connected');
+                } catch (err) {
+                  console.error("Failed to set remote call description:", err);
+                }
+              }
+            }
+          )
+          .on(
+            'broadcast',
+            { event: 'call:ice-candidate' },
+            async (response: any) => {
+              const { recipient_id, candidate } = response.payload || {};
+              if (recipient_id === user?.uid && pcRef.current) {
+                try {
+                  await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (err) {
+                  console.warn("Failed to add ICE candidate:", err);
+                }
+              }
+            }
+          )
+          .on(
+            'broadcast',
+            { event: 'call:hangup' },
+            (response: any) => {
+              const { recipient_id } = response.payload || {};
+              if (recipient_id === user?.uid) {
+                handleEndCallLocally();
+                info("The call has ended.");
+              }
+            }
+          )
+          .subscribe();
+
+        channelDmRef.current = channelDm;
+      }
+    } catch (dmErr) {
+      console.warn("Direct Messages Realtime subscription failed:", dmErr);
+    }
+
+    // 3. Fallback polling for backup (every 6 seconds)
+    const interval = setInterval(() => {
+      fetchMessages();
+      fetchDmContacts();
+      if (selectedDmUser) {
+        fetchDmMessages(selectedDmUser.id);
+      }
+    }, 6000);
 
     return () => {
       clearInterval(interval);
-      if (channel) {
+      if (channelRef.current) {
         try {
-          if (typeof supabase.removeChannel === 'function') {
-            supabase.removeChannel(channel);
-          } else {
-            channel.unsubscribe();
-          }
-        } catch (e) {
-          console.warn("Failed to unsubscribe chats channel:", e);
-        }
+          supabase.removeChannel(channelRef.current);
+        } catch {}
       }
-      channelRef.current = null;
+      if (channelDmRef.current) {
+        try {
+          supabase.removeChannel(channelDmRef.current);
+        } catch {}
+      }
     };
-  }, []);
+  }, [selectedDmUser?.id, user?.uid, blockedUids, mutedUids, callState]);
 
-  // Auto-scroll to the bottom of the feed
+  // Register Realtime Presence listener
+  useEffect(() => {
+    const unsubscribe = subscribeToPresenceChanges((users) => {
+      if (user) {
+        setOnlineUsers(users.filter((u) => u.uid !== user.uid));
+      } else {
+        setOnlineUsers(users);
+      }
+    });
+    return () => {
+      unsubscribe();
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [user?.uid]);
+
+  // Auto-scroll to message feed bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, dmMessages, activeTab]);
+
+  // Handle Search users
+  const handleSearchUsers = async (val: string) => {
+    setSearchQuery(val);
+    if (!val.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`display_name.ilike.%${val}%,username.ilike.%${val}%`)
+        .limit(15);
+
+      if (error) throw error;
+
+      let profiles: UserProfile[] = (data || []).map((p: any) => ({
+        id: p.id || p.uid,
+        username: p.username || '',
+        displayName: p.display_name || p.displayName || 'Classmate',
+        photoURL: p.photo_url || p.photoURL || '',
+        branch: p.branch || 'cse',
+        year: p.year || '1'
+      })).filter((p: UserProfile) => p.id !== user?.uid); // exclude self
+
+      // Sort search results: show names/usernames starting with search term first
+      const lowerVal = val.toLowerCase();
+      profiles.sort((a, b) => {
+        const aName = a.displayName.toLowerCase();
+        const aUser = a.username.toLowerCase();
+        const bName = b.displayName.toLowerCase();
+        const bUser = b.username.toLowerCase();
+
+        const aStarts = aName.startsWith(lowerVal) || aUser.startsWith(lowerVal);
+        const bStarts = bName.startsWith(lowerVal) || bUser.startsWith(lowerVal);
+
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        
+        // If both start with it or both don't, sort alphabetically
+        return a.displayName.localeCompare(b.displayName);
+      });
+
+      // Keep only top 10 results
+      setSearchResults(profiles.slice(0, 10));
+    } catch (e) {
+      console.error("Peer search failed:", e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // ════════════════════════════════════════════════════════════
+  // ADVANCED MESSAGING IMPLEMENTATION HANDLERS (PHASES 2, 3, & 4)
+  // ════════════════════════════════════════════════════════════
+
+  // WebRTC End Call Cleanup Helper
+  const handleEndCallLocally = () => {
+    setCallState('idle');
+    setCallerProfile(null);
+    setIsMicMuted(false);
+    setIsCameraOff(false);
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+    if (remoteStream) {
+      remoteStream.getTracks().forEach((track) => track.stop());
+      setRemoteStream(null);
+    }
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    (window as any)._incomingSdpOffer = null;
+  };
+
+  // WebRTC Initiator
+  const startWebRtcCall = async (type: 'voice' | 'video') => {
+    if (!selectedDmUser || !user) return;
+    try {
+      setCallType(type);
+      setCallState('calling');
+      setCallerProfile(selectedDmUser);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: type === 'video',
+        audio: true
+      });
+      setLocalStream(stream);
+
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+      pcRef.current = pc;
+
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && channelDmRef.current) {
+          channelDmRef.current.send({
+            type: 'broadcast',
+            event: 'call:ice-candidate',
+            payload: {
+              sender_id: user.uid,
+              recipient_id: selectedDmUser.id,
+              candidate: event.candidate
+            }
+          });
+        }
+      };
+
+      pc.ontrack = (event) => {
+        if (event.streams && event.streams[0]) {
+          setRemoteStream(event.streams[0]);
+        }
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      if (channelDmRef.current) {
+        channelDmRef.current.send({
+          type: 'broadcast',
+          event: 'call:offer',
+          payload: {
+            sender_id: user.uid,
+            recipient_id: selectedDmUser.id,
+            sdp: offer,
+            callType: type,
+            callerName: userProfile?.displayName || 'Classmate',
+            callerAvatar: userProfile?.photoURL || ''
+          }
+        });
+      }
+    } catch (err: any) {
+      toastError("Failed to initiate call: " + err.message);
+      handleEndCallLocally();
+    }
+  };
+
+  // WebRTC Answer
+  const acceptIncomingCall = async () => {
+    if (!callerProfile || !user) return;
+    try {
+      const incomingOffer = (window as any)._incomingSdpOffer;
+      if (!incomingOffer) throw new Error("No incoming call request metadata found.");
+
+      setCallState('connected');
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: callType === 'video',
+        audio: true
+      });
+      setLocalStream(stream);
+
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+      pcRef.current = pc;
+
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && channelDmRef.current) {
+          channelDmRef.current.send({
+            type: 'broadcast',
+            event: 'call:ice-candidate',
+            payload: {
+              sender_id: user.uid,
+              recipient_id: callerProfile.id,
+              candidate: event.candidate
+            }
+          });
+        }
+      };
+
+      pc.ontrack = (event) => {
+        if (event.streams && event.streams[0]) {
+          setRemoteStream(event.streams[0]);
+        }
+      };
+
+      await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      if (channelDmRef.current) {
+        channelDmRef.current.send({
+          type: 'broadcast',
+          event: 'call:answer',
+          payload: {
+            sender_id: user.uid,
+            recipient_id: callerProfile.id,
+            sdp: answer
+          }
+        });
+      }
+    } catch (err: any) {
+      toastError("Failed to accept call: " + err.message);
+      handleEndCallLocally();
+    }
+  };
+
+  const declineIncomingCall = () => {
+    if (callerProfile && channelDmRef.current) {
+      channelDmRef.current.send({
+        type: 'broadcast',
+        event: 'call:hangup',
+        payload: {
+          sender_id: user?.uid,
+          recipient_id: callerProfile.id
+        }
+      });
+    }
+    handleEndCallLocally();
+  };
+
+  const endActiveCall = () => {
+    if (callerProfile && channelDmRef.current) {
+      channelDmRef.current.send({
+        type: 'broadcast',
+        event: 'call:hangup',
+        payload: {
+          sender_id: user?.uid,
+          recipient_id: callerProfile.id
+        }
+      });
+    }
+    handleEndCallLocally();
+  };
+
+  // Video Ref Auto-Attachers
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, callState]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream, callState]);
+
+  // Vanish Mode cleanup effect
+  useEffect(() => {
+    return () => {
+      if (selectedDmUser && user) {
+        const partnerId = selectedDmUser.id;
+        const deleteVanishMsgs = async () => {
+          try {
+            await supabase
+              .from('direct_messages')
+              .delete()
+              .eq('is_vanish', true)
+              .or(`and(sender_id.eq.${user.uid},recipient_id.eq.${partnerId}),and(sender_id.eq.${partnerId},recipient_id.eq.${user.uid})`);
+          } catch(e) {
+            console.warn("Vanish mode cleanup error:", e);
+          }
+        };
+        deleteVanishMsgs();
+      }
+    };
+  }, [selectedDmUser?.id, user?.uid]);
+
+  // Screenshot alert focus/blur effect
+  useEffect(() => {
+    if (activeTab !== 'dm' || !selectedDmUser || !user) return;
+
+    const handleWindowBlur = () => {
+      if (channelDmRef.current) {
+        channelDmRef.current.send({
+          type: 'broadcast',
+          event: 'screenshot',
+          payload: {
+            sender_id: user.uid,
+            recipient_id: selectedDmUser.id
+          }
+        });
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'PrintScreen' || (e.metaKey && e.shiftKey && e.key === 'S') || (e.ctrlKey && e.key === 'p')) {
+        handleWindowBlur();
+      }
+    };
+
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeTab, selectedDmUser?.id, user?.uid]);
+
+  // PIN, MUTE, BLOCK handlers
+  const handleTogglePin = (partnerId: string) => {
+    let updated;
+    if (pinnedUids.includes(partnerId)) {
+      updated = pinnedUids.filter(id => id !== partnerId);
+    } else {
+      updated = [...pinnedUids, partnerId];
+    }
+    setPinnedUids(updated);
+    localStorage.setItem('noteweb-pinned-chats', JSON.stringify(updated));
+    fetchDmContacts();
+    toastSuccess(pinnedUids.includes(partnerId) ? "Chat unpinned." : "Chat pinned to top.");
+  };
+
+  const handleToggleMute = (partnerId: string) => {
+    let updated;
+    if (mutedUids.includes(partnerId)) {
+      updated = mutedUids.filter(id => id !== partnerId);
+    } else {
+      updated = [...mutedUids, partnerId];
+    }
+    setMutedUids(updated);
+    localStorage.setItem('noteweb-muted-chats', JSON.stringify(updated));
+    toastSuccess(mutedUids.includes(partnerId) ? "Notifications unmuted." : "Notifications muted (DND).");
+  };
+
+  const handleToggleBlock = (partnerId: string) => {
+    const confirmText = blockedUids.includes(partnerId)
+      ? "Are you sure you want to unblock this classmate?"
+      : "Are you sure you want to block this classmate? You won't see their chats or receive their messages.";
+    if (!window.confirm(confirmText)) return;
+
+    let updated;
+    if (blockedUids.includes(partnerId)) {
+      updated = blockedUids.filter(id => id !== partnerId);
+      toastSuccess("Classmate unblocked.");
+    } else {
+      updated = [...blockedUids, partnerId];
+      setSelectedDmUser(null);
+      setMobileView('list');
+      toastSuccess("Classmate blocked.");
+    }
+    setBlockedUids(updated);
+    localStorage.setItem('noteweb-blocked-chats', JSON.stringify(updated));
+    fetchDmContacts();
+  };
+
+  // STAR MESSAGES (Lounge + DMs)
+  const handleToggleStar = (msg: any) => {
+    const isDM = !!msg.sender_id;
+    const msgId = msg.id;
+    const exists = starredMessages.some(m => m.id === msgId);
+    let updated;
+    if (exists) {
+      updated = starredMessages.filter(m => m.id !== msgId);
+      toastSuccess("Message unstarred.");
+    } else {
+      updated = [...starredMessages, {
+        id: msgId,
+        sender_name: isDM ? (msg.sender_id === user?.uid ? 'You' : (selectedDmUser?.displayName || 'Classmate')) : msg.sender_name,
+        sender_avatar: isDM ? (msg.sender_id === user?.uid ? userProfile?.photoURL : selectedDmUser?.photoURL) : msg.sender_avatar,
+        content: isDM ? msg.message : msg.content,
+        photo_url: isDM ? msg.photo_url : msg.image_url,
+        created_at: msg.created_at,
+        isDM,
+        partnerId: isDM ? (msg.sender_id === user?.uid ? msg.recipient_id : msg.sender_id) : undefined
+      }];
+      toastSuccess("Message starred locally.");
+    }
+    setStarredMessages(updated);
+    localStorage.setItem('noteweb-starred-messages', JSON.stringify(updated));
+  };
+
+  // EMOJI REACTIONS
+  const handleAddReaction = async (msgId: string, emoji: string) => {
+    if (!user) return;
+    try {
+      const msg = dmMessages.find(m => m.id === msgId);
+      if (!msg) return;
+
+      const currentReactions = msg.reactions || {};
+      const emojiReactedUids = currentReactions[emoji] || [];
+      let updatedUids;
+      if (emojiReactedUids.includes(user.uid)) {
+        updatedUids = emojiReactedUids.filter(id => id !== user.uid);
+      } else {
+        updatedUids = [...emojiReactedUids, user.uid];
+      }
+
+      const updatedReactions = {
+        ...currentReactions,
+        [emoji]: updatedUids
+      };
+
+      if (updatedUids.length === 0) {
+        delete updatedReactions[emoji];
+      }
+
+      setDmMessages(prev => prev.map(m => m.id === msgId ? { ...m, reactions: updatedReactions } : m));
+
+      await supabase
+        .from('direct_messages')
+        .update({ reactions: updatedReactions })
+        .eq('id', msgId);
+
+      if (channelDmRef.current && selectedDmUser) {
+        channelDmRef.current.send({
+          type: 'broadcast',
+          event: 'reaction-changed',
+          payload: {
+            msgId,
+            reactions: updatedReactions,
+            recipient_id: selectedDmUser.id
+          }
+        });
+      }
+    } catch (e: any) {
+      console.error("Failed to add reaction:", e);
+    }
+  };
+
+  // NOTE SEARCH AND ATTACH
+  const handleSearchNotes = async (val: string) => {
+    setSearchNoteQuery(val);
+    if (!val.trim()) {
+      setNoteSearchResults([]);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .ilike('subject', `%${val}%`)
+        .eq('status', 'approved')
+        .limit(10);
+      if (error) throw error;
+      setNoteSearchResults(data || []);
+    } catch (e) {
+      console.warn("Notes query failed:", e);
+    }
+  };
+
+  const handleShareNoteMessage = async (note: any) => {
+    if (!selectedDmUser || !user) return;
+    try {
+      const tempDmId = `dm-temp-${Date.now()}`;
+      const dmPayload: DirectMessage = {
+        id: tempDmId,
+        sender_id: user.uid,
+        recipient_id: selectedDmUser.id,
+        message: `📚 Shared Study Note: ${note.subject}`,
+        created_at: new Date().toISOString(),
+        is_read: false,
+        shared_note_id: note.id,
+        reactions: {}
+      };
+
+      setDmMessages((prev) => [...prev, dmPayload]);
+      setIsNoteShareModalOpen(false);
+      setSearchNoteQuery('');
+      setNoteSearchResults([]);
+
+      const dbPayload = {
+        sender_id: user.uid,
+        recipient_id: selectedDmUser.id,
+        message: dmPayload.message,
+        created_at: dmPayload.created_at,
+        is_read: false,
+        shared_note_id: note.id,
+        reactions: {}
+      };
+
+      const { data, error } = await supabase.from('direct_messages').insert([dbPayload]).select();
+      if (error) throw error;
+      if (data && data[0]) {
+        setDmMessages(prev => prev.map(m => m.id === tempDmId ? { ...m, id: String(data[0].id) } : m));
+      }
+      fetchDmContacts();
+    } catch(e: any) {
+      toastError("Failed to share note: " + e.message);
+    }
+  };
+
+  // POLL CREATION AND VOTING
+  const handleCreatePollMessage = async () => {
+    if (!selectedDmUser || !user) return;
+    const cleanOptions = pollOptions.filter(o => o.trim() !== '');
+    if (!pollQuestion.trim() || cleanOptions.length < 2) {
+      toastError("Please enter a question and at least 2 options.");
+      return;
+    }
+
+    try {
+      const tempDmId = `dm-temp-${Date.now()}`;
+      const pollData = {
+        question: pollQuestion.trim(),
+        options: cleanOptions,
+        votes: cleanOptions.reduce((acc, _, idx) => {
+          acc[String(idx)] = [];
+          return acc;
+        }, {} as Record<string, string[]>)
+      };
+
+      const dmPayload: DirectMessage = {
+        id: tempDmId,
+        sender_id: user.uid,
+        recipient_id: selectedDmUser.id,
+        message: `📊 Poll: ${pollQuestion.trim()}`,
+        created_at: new Date().toISOString(),
+        is_read: false,
+        poll_data: pollData,
+        reactions: {}
+      };
+
+      setDmMessages((prev) => [...prev, dmPayload]);
+      setIsPollModalOpen(false);
+      setPollQuestion('');
+      setPollOptions(['', '']);
+
+      const dbPayload = {
+        sender_id: user.uid,
+        recipient_id: selectedDmUser.id,
+        message: dmPayload.message,
+        created_at: dmPayload.created_at,
+        is_read: false,
+        poll_data: pollData,
+        reactions: {}
+      };
+
+      const { data, error } = await supabase.from('direct_messages').insert([dbPayload]).select();
+      if (error) throw error;
+      if (data && data[0]) {
+        setDmMessages(prev => prev.map(m => m.id === tempDmId ? { ...m, id: String(data[0].id) } : m));
+      }
+      fetchDmContacts();
+    } catch (e: any) {
+      toastError("Failed to create poll: " + e.message);
+    }
+  };
+
+  const handleCastPollVote = async (msgId: string, optionIdx: number) => {
+    if (!user) return;
+    try {
+      const msg = dmMessages.find(m => m.id === msgId);
+      if (!msg || !msg.poll_data) return;
+
+      const currentVotes = { ...msg.poll_data.votes };
+      const optKey = String(optionIdx);
+
+      // Remove user from all option votes first
+      Object.keys(currentVotes).forEach(key => {
+        currentVotes[key] = (currentVotes[key] || []).filter(uid => uid !== user.uid);
+      });
+
+      // Add vote
+      currentVotes[optKey] = [...(currentVotes[optKey] || []), user.uid];
+
+      const updatedPollData = {
+        ...msg.poll_data,
+        votes: currentVotes
+      };
+
+      setDmMessages(prev => prev.map(m => m.id === msgId ? { ...m, poll_data: updatedPollData } : m));
+
+      await supabase
+        .from('direct_messages')
+        .update({ poll_data: updatedPollData })
+        .eq('id', msgId);
+
+      if (channelDmRef.current && selectedDmUser) {
+        channelDmRef.current.send({
+          type: 'broadcast',
+          event: 'poll-vote-cast',
+          payload: {
+            msgId,
+            poll_data: updatedPollData,
+            recipient_id: selectedDmUser.id
+          }
+        });
+      }
+    } catch(e: any) {
+      console.warn("Failed to cast vote:", e);
+    }
+  };
+
+  const emitTypingStatus = (isTyping: boolean) => {
+    if (!channelDmRef.current || !user || !selectedDmUser) return;
+    try {
+      channelDmRef.current.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: {
+          sender_id: user.uid,
+          recipient_id: selectedDmUser.id,
+          is_typing: isTyping
+        }
+      });
+    } catch (err) {
+      console.warn("Failed to broadcast typing status:", err);
+    }
+  };
+
+  const handleInputChange = (val: string) => {
+    setInputText(val);
+    
+    if (activeTab === 'dm' && selectedDmUser) {
+      if (!myTypingState) {
+        setMyTypingState(true);
+        emitTypingStatus(true);
+      }
+      
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        setMyTypingState(false);
+        emitTypingStatus(false);
+      }, 2500);
+    }
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -326,246 +1488,178 @@ export const Chat: React.FC = () => {
     if (!user || !userProfile) return;
 
     setIsSending(true);
-    try {
-      const tempMsgId = `broadcast-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-      
-      const msgPayload: ChatMessage = {
-        id: tempMsgId,
-        sender_uid: user.uid,
-        sender_name: userProfile.displayName || 'Student',
-        sender_avatar: userProfile.photoURL || '',
-        sender_branch: userProfile.branch || 'cse',
-        content: inputText.trim(),
-        image_url: selectedImage || undefined,
-        created_at: new Date().toISOString(),
-      };
+    
+    // Profanity screening
+    const hasBadWords = containsBadWords(inputText.trim());
+    const inputContent = inputText.trim();
 
-      // Bad words detection
-      const hasBadWords = containsBadWords(inputText.trim());
-      if (hasBadWords) {
-        const detected = BAD_WORDS.filter(w => new RegExp(`\\b${w}\\b`, 'i').test(inputText.toLowerCase())).join(', ');
-        const flaggedPayload = {
-          id: `flagged-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-          chat_id: tempMsgId,
+    try {
+      if (activeTab === 'global') {
+        // Global message flow
+        const tempMsgId = `broadcast-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        const msgPayload: ChatMessage = {
+          id: tempMsgId,
           sender_uid: user.uid,
           sender_name: userProfile.displayName || 'Student',
           sender_avatar: userProfile.photoURL || '',
           sender_branch: userProfile.branch || 'cse',
-          content: inputText.trim(),
-          bad_word_detected: detected,
-          created_at: new Date().toISOString()
+          content: inputContent,
+          image_url: selectedImage || undefined,
+          created_at: new Date().toISOString(),
         };
 
-        // Save flagged message to localStorage
-        const storedFlaggedStr = localStorage.getItem('noteweb-flagged-chats');
-        let storedFlagged = [];
-        if (storedFlaggedStr) {
-          try { storedFlagged = JSON.parse(storedFlaggedStr); } catch {}
-        }
-        storedFlagged.push(flaggedPayload);
-        localStorage.setItem('noteweb-flagged-chats', JSON.stringify(storedFlagged));
-
-        // Trigger a custom storage event for other tabs to detect
-        window.dispatchEvent(new Event('storage'));
-
-        // Try non-blocking insert into flagged_chats table in Supabase
-        try {
-          await supabase.from('flagged_chats').insert([{
-            sender_id: user.uid,
-            sender_name: userProfile.displayName || 'Student',
-            message: inputText.trim(),
-            bad_words: detected,
-            created_at: flaggedPayload.created_at
-          }]);
-        } catch (dbFlagErr) {
-          console.warn("Flagged chat database insert skipped:", dbFlagErr);
-        }
-
-        // Send a broadcast notification for real-time admin flashing
-        if (channelRef.current) {
+        if (hasBadWords) {
+          const detected = BAD_WORDS.filter(w => new RegExp(`\\b${w}\\b`, 'i').test(inputText.toLowerCase())).join(', ');
           try {
-            await channelRef.current.send({
-              type: 'broadcast',
-              event: 'flagged-chat',
-              payload: flaggedPayload
-            });
-          } catch (broadcastErr) {
-            console.warn("Failed to broadcast profanity alert:", broadcastErr);
-          }
+            await supabase.from('flagged_chats').insert([{
+              sender_id: user.uid,
+              sender_name: userProfile.displayName || 'Student',
+              message: inputContent,
+              bad_words: detected,
+              created_at: msgPayload.created_at
+            }]);
+          } catch {}
         }
-      }
 
-      // 1. Optimistic UI update: show message immediately
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === msgPayload.id)) return prev;
-        return [...prev, msgPayload];
-      });
+        // Optimistic append
+        setMessages((prev) => [...prev, msgPayload]);
+        setInputText('');
+        setSelectedImage(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
 
-      // Clear input fields immediately
-      setInputText('');
-      setSelectedImage(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-
-      // 2. P2P Broadcast instantly
-      if (channelRef.current) {
-        try {
+        // Broadcast realtime P2P
+        if (channelRef.current) {
           await channelRef.current.send({
             type: 'broadcast',
             event: 'message',
             payload: msgPayload
           });
-          console.log("Real-time chat message broadcasted successfully!");
-        } catch (broadcastErr) {
-          console.warn("Failed to send chat broadcast:", broadcastErr);
         }
-      }
 
-      // 3. Save to localStorage backup
-      const storedBroadcastsStr = localStorage.getItem('noteweb-broadcasted-chats');
-      let storedBroadcasts: ChatMessage[] = [];
-      if (storedBroadcastsStr) {
-        try {
-          storedBroadcasts = JSON.parse(storedBroadcastsStr);
-        } catch {}
-      }
-      if (!storedBroadcasts.some((m) => m.id === msgPayload.id)) {
+        // Local storage backup
+        const storedBroadcastsStr = localStorage.getItem('noteweb-broadcasted-chats');
+        let storedBroadcasts: ChatMessage[] = [];
+        if (storedBroadcastsStr) {
+          try { storedBroadcasts = JSON.parse(storedBroadcastsStr); } catch {}
+        }
         storedBroadcasts.push(msgPayload);
         localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(storedBroadcasts));
-      }
 
-      // Trigger background AI moderation
-      const runAiModeration = async (realId: any, messageText: string) => {
-        try {
-          const modResult = await moderateChatMessage(messageText, userProfile.displayName || 'Student');
-          if (modResult.isToxic) {
-            console.log(`[AI Chat Moderator] Message flagged for toxicity (Score: ${modResult.toxicityScore}%): ${modResult.explanation}`);
-            
-            // 1. Redact message locally for instant UI update
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === realId || m.id === tempMsgId
-                  ? { ...m, content: '🚫 [Message redacted by AI Moderator for community safety]' }
-                  : m
-              )
-            );
-            
-            // 2. Update Supabase DB to redact message content
-            if (!isMockMode) {
-              await supabase
-                .from('chats')
-                .update({ message: '🚫 [Message redacted by AI Moderator for community safety]' })
-                .eq('id', realId);
-            } else {
-              await supabase
-                .from('chats')
-                .update({ content: '🚫 [Message redacted by AI Moderator for community safety]' })
-                .eq('id', realId);
-            }
-            
-            // 3. Log to flagged_chats table in Supabase
-            try {
-              await supabase.from('flagged_chats').insert([{
-                sender_id: user.uid,
-                sender_name: userProfile.displayName || 'Student',
-                message: messageText,
-                bad_words: modResult.explanation || 'AI Moderated Toxicity',
-                created_at: new Date().toISOString()
-              }]);
-            } catch (flagErr) {
-              console.warn("Failed to insert into flagged_chats:", flagErr);
-            }
-
-            // 4. Broadcast the edited/redacted message to other active chatters instantly
-            if (channelRef.current) {
-              await channelRef.current.send({
-                type: 'broadcast',
-                event: 'edit-message',
-                payload: { id: realId, content: '🚫 [Message redacted by AI Moderator for community safety]' }
-              });
-            }
-
-            // 5. Deduct 20 points from sender profile as community penalty!
-            try {
-              await updatePoints(-20);
-              toastError(`⚠️ AI Moderator redacted your message! Penalty: -20 XP.`);
-            } catch (ptsErr) {
-              console.warn("Failed to deduct points:", ptsErr);
-            }
-          }
-        } catch (err) {
-          console.warn("[AI Moderator] Chat moderation error:", err);
-        }
-      };
-
-      // 4. Asynchronously perform background database save to keep it non-blocking
-      // IMPORTANT: Do NOT pass a custom 'id' — let the DB auto-generate the real UUID.
-      // This prevents ID conflicts and duplicate messages when postgres_changes fires.
-      const saveToDatabase = async () => {
-        try {
-          if (isMockMode) {
-            const newMessageMock = {
-              sender_uid: user.uid,
-              sender_name: userProfile.displayName || 'Student',
-              sender_avatar: userProfile.photoURL || '',
-              sender_branch: userProfile.branch || 'cse',
-              content: msgPayload.content,
-              image_url: msgPayload.image_url || undefined,
-              created_at: msgPayload.created_at,
-            };
-            await supabase.from('chats').insert([newMessageMock]);
-            runAiModeration(tempMsgId, msgPayload.content);
-          } else {
-            // New schema format — no custom id, let the DB assign a real UUID
-            const newMessageNew = {
+        // Background db save
+        const saveToDatabase = async () => {
+          try {
+            const dbPayload = {
               sender_id: user.uid,
               sender_name: userProfile.displayName || 'Student',
               sender_avatar: userProfile.photoURL || '',
               sender_branch: userProfile.branch || 'cse',
-              message: msgPayload.content,
-              photo_url: msgPayload.image_url || null,
+              message: inputContent,
+              photo_url: selectedImage || null,
               created_at: msgPayload.created_at,
             };
-            const { data: insertedRows, error: newErr } = await supabase.from('chats').insert([newMessageNew]).select();
-            
-            if (newErr && (
-              newErr.message?.toLowerCase().includes('column') || 
-              newErr.message?.toLowerCase().includes('schema cache') || 
-              newErr.code === '42703'
-            )) {
-              console.warn("New chat schema background insert failed. Trying old schema...");
-              const newMessageOld = {
-                sender_uid: user.uid,
-                sender_name: userProfile.displayName || 'Student',
-                sender_avatar: userProfile.photoURL || '',
-                sender_branch: userProfile.branch || 'cse',
-                content: msgPayload.content,
-                image_url: msgPayload.image_url || undefined,
-                created_at: msgPayload.created_at,
-              };
-              const { data: oldRows } = await supabase.from('chats').insert([newMessageOld]).select();
-              // Replace temp broadcast message with the real DB row ID to prevent duplicates
-              if (oldRows && oldRows[0]) {
-                const realId = oldRows[0].id;
-                setMessages((prev) => prev.map((m) =>
-                  m.id === tempMsgId ? { ...m, id: realId } : m
-                ));
-                runAiModeration(realId, msgPayload.content);
-              }
-            } else if (insertedRows && insertedRows[0]) {
-              // Replace temp broadcast message with the real DB-assigned ID
-              const realId = insertedRows[0].id;
-              setMessages((prev) => prev.map((m) =>
-                m.id === tempMsgId ? { ...m, id: realId } : m
-              ));
-              runAiModeration(realId, msgPayload.content);
-            }
-          }
-        } catch (dbErr: any) {
-          console.warn("Background chat save failed (non-blocking):", dbErr);
-        }
-      };
 
-      saveToDatabase();
+            const { data } = await supabase.from('chats').insert([dbPayload]).select();
+            
+            if (data && data[0]) {
+              const realId = String(data[0].id);
+              setMessages((prev) => prev.map((m) => m.id === tempMsgId ? { ...m, id: realId } : m));
+              runAiModeration(realId, inputContent, 'chats', 'message');
+            }
+          } catch (dbErr) {
+            console.warn("Global chat background save skipped:", dbErr);
+          }
+        };
+
+        saveToDatabase();
+      } else {
+        // DM private message flow
+        if (!selectedDmUser) return;
+        const targetId = selectedDmUser.id;
+
+        const tempDmId = `dm-temp-${Date.now()}`;
+        const dmPayload: DirectMessage = {
+          id: tempDmId,
+          sender_id: user.uid,
+          recipient_id: targetId,
+          message: inputContent,
+          photo_url: selectedImage || undefined,
+          created_at: new Date().toISOString(),
+          is_read: false,
+          reply_to: replyingTo ? { 
+            id: replyingTo.id, 
+            senderName: replyingTo.sender_id === user.uid ? 'You' : (selectedDmUser.displayName || 'Classmate'), 
+            content: replyingTo.message 
+          } : undefined,
+          is_vanish: vanishMode,
+          is_view_once: isViewOnceSelected && !!selectedImage,
+          reactions: {}
+        };
+
+        // Optimistic UI updates
+        setDmMessages((prev) => [...prev, dmPayload]);
+        setInputText('');
+        setSelectedImage(null);
+        setReplyingTo(null);
+        setIsViewOnceSelected(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+
+        // Write DM to Supabase database
+        const dbPayload = {
+          sender_id: user.uid,
+          recipient_id: targetId,
+          message: inputContent,
+          photo_url: dmPayload.photo_url || null,
+          created_at: dmPayload.created_at,
+          is_read: false,
+          reply_to: dmPayload.reply_to || null,
+          is_vanish: dmPayload.is_vanish,
+          is_view_once: dmPayload.is_view_once,
+          reactions: {}
+        };
+
+        const { data, error: dbErr } = await supabase.from('direct_messages').insert([dbPayload]).select();
+        
+        if (dbErr) throw dbErr;
+
+        if (data && data[0]) {
+          const realId = String(data[0].id);
+          setDmMessages((prev) => prev.map((m) => m.id === tempDmId ? { ...m, id: realId } : m));
+          
+          // Trigger DM AI Moderation
+          runAiModeration(realId, inputContent, 'direct_messages', 'message');
+        }
+
+        // Fetch contacts again to update snippet
+        fetchDmContacts();
+
+        // 🚀 Mock Auto-Reply trigger in Mock Mode for enhanced demo UX
+        if (isMockMode) {
+          setTimeout(async () => {
+            const mockResponses = [
+              "Achaa, understood! I am checking my DSA notes now.",
+              "Sure, let me check and get back to you.",
+              "Yes! AVL Trees insertion can be tricky, check AVL_Trees_Lec4.pdf uploader.",
+              "Hey there! I am offline right now, will message you back soon.",
+              "Nice study streak you have there! Keep studying."
+            ];
+            const randReply = mockResponses[Math.floor(Math.random() * mockResponses.length)];
+            
+            const replyPayload = {
+              sender_id: targetId,
+              recipient_id: user.uid,
+              message: randReply,
+              created_at: new Date().toISOString(),
+              is_read: false
+            };
+            
+            await supabase.from('direct_messages').insert([replyPayload]);
+            fetchDmMessages(targetId);
+            fetchDmContacts();
+            
+            info(`💬 Message received from ${selectedDmUser.displayName}!`);
+          }, 2000);
+        }
+      }
     } catch (e: any) {
       console.error(e);
       toastError('Failed to send message: ' + e.message);
@@ -574,58 +1668,89 @@ export const Chat: React.FC = () => {
     }
   };
 
+  // AI Moderation background task
+  const runAiModeration = async (realId: string, messageText: string, table: string, contentField: string) => {
+    try {
+      const modResult = await moderateChatMessage(messageText, userProfile?.displayName || 'Student');
+      if (modResult.isToxic) {
+        console.log(`[AI Chat Moderator] Message flagged on ${table} (Toxicity Score: ${modResult.toxicityScore}%): ${modResult.explanation}`);
+        const redactedText = '🚫 [Message redacted by AI Moderator for community safety]';
+
+        if (table === 'chats') {
+          setMessages((prev) =>
+            prev.map((m) => m.id === realId ? { ...m, content: redactedText } : m)
+          );
+        } else {
+          setDmMessages((prev) =>
+            prev.map((m) => m.id === realId ? { ...m, message: redactedText } : m)
+          );
+        }
+
+        // Update database table
+        await supabase
+          .from(table)
+          .update({ [contentField]: redactedText })
+          .eq('id', realId);
+
+        // Deduct points
+        try {
+          await updatePoints(-20);
+          toastError(`⚠️ AI Moderator redacted your message! Penalty: -20 XP.`);
+        } catch {}
+
+        // Broadcast to other tabs/channels
+        if (table === 'chats' && channelRef.current) {
+          await channelRef.current.send({
+            type: 'broadcast',
+            event: 'edit-message',
+            payload: { id: realId, content: redactedText }
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("AI Moderation handler error:", err);
+    }
+  };
+
   const handleDeleteChat = async (msgId: string) => {
-    const isConfirmed = window.confirm("Are you sure you want to permanently delete this chat message?");
+    const isConfirmed = window.confirm("Are you sure you want to permanently delete this message?");
     if (!isConfirmed) return;
 
     try {
-      // 1. Delete from Supabase Database
+      const table = activeTab === 'global' ? 'chats' : 'direct_messages';
+      
       const { error: dbErr } = await supabase
-        .from('chats')
+        .from(table)
         .delete()
         .eq('id', msgId);
 
       if (dbErr) {
         const numId = parseInt(msgId, 10);
         if (!isNaN(numId)) {
-          await supabase.from('chats').delete().eq('id', numId);
+          await supabase.from(table).delete().eq('id', numId);
         }
       }
 
-      // 2. Broadcast deletion instantly to other connected clients
-      if (channelRef.current) {
-        try {
-          await channelRef.current.send({
-            type: 'broadcast',
-            event: 'delete-message',
-            payload: { id: msgId }
-          });
-        } catch (e) {
-          console.warn("Failed to broadcast delete action:", e);
+      if (activeTab === 'global') {
+        setMessages((prev) => prev.filter((m) => m.id !== msgId));
+        // Broadcast deletion
+        if (channelRef.current) {
+          try {
+            await channelRef.current.send({
+              type: 'broadcast',
+              event: 'delete-message',
+              payload: { id: msgId }
+            });
+          } catch {}
         }
-      }
-
-      // 3. Update local state
-      setMessages((prev) => prev.filter((m) => m.id !== msgId));
-      
-      // 4. Remove from local broadcast storage
-      try {
-        const storedStr = localStorage.getItem('noteweb-broadcasted-chats');
-        if (storedStr) {
-          const stored = JSON.parse(storedStr);
-          if (Array.isArray(stored)) {
-            const filtered = stored.filter((m: any) => m.id !== msgId);
-            localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(filtered));
-          }
-        }
-      } catch (cacheErr) {
-        console.warn("Failed to clear chat from local broadcast cache:", cacheErr);
+      } else {
+        setDmMessages((prev) => prev.filter((m) => m.id !== msgId));
+        fetchDmContacts();
       }
 
       info("Message deleted successfully.");
     } catch (e: any) {
-      console.error(e);
-      toastError("Failed to delete chat message: " + e.message);
+      toastError("Failed to delete message: " + e.message);
     }
   };
 
@@ -634,60 +1759,38 @@ export const Chat: React.FC = () => {
     if (!newContent.trim()) return;
 
     try {
-      // 1. Update in Supabase Database (if not a temporary broadcast message)
-      if (!msgId.startsWith('broadcast-')) {
-        const { error: dbErr } = await supabase
-          .from('chats')
-          .update({ message: newContent.trim() })
-          .eq('id', msgId);
-        
-        if (dbErr) {
-          // Try camelCase fallback
-          await supabase
-            .from('chats')
-            .update({ content: newContent.trim() })
-            .eq('id', msgId);
-        }
-      }
+      const table = activeTab === 'global' ? 'chats' : 'direct_messages';
+      const updateField = activeTab === 'global' ? 'message' : 'message';
 
-      // 2. Broadcast edited message instantly to other connected clients
-      if (channelRef.current) {
-        try {
-          await channelRef.current.send({
-            type: 'broadcast',
-            event: 'edit-message',
-            payload: { id: msgId, content: newContent.trim() }
-          });
-        } catch (e) {
-          console.warn("Failed to broadcast edit action:", e);
-        }
-      }
+      await supabase
+        .from(table)
+        .update({ [updateField]: newContent.trim() })
+        .eq('id', msgId);
 
-      // 3. Update local state
-      setMessages((prev) =>
-        prev.map((m) => (m.id === msgId ? { ...m, content: newContent.trim() } : m))
-      );
-
-      // 4. Update in local broadcast storage
-      try {
-        const storedStr = localStorage.getItem('noteweb-broadcasted-chats');
-        if (storedStr) {
-          const stored = JSON.parse(storedStr);
-          if (Array.isArray(stored)) {
-            const updated = stored.map((m: any) =>
-              m.id === msgId ? { ...m, content: newContent.trim() } : m
-            );
-            localStorage.setItem('noteweb-broadcasted-chats', JSON.stringify(updated));
-          }
+      if (activeTab === 'global') {
+        setMessages((prev) =>
+          prev.map((m) => m.id === msgId ? { ...m, content: newContent.trim() } : m)
+        );
+        // Broadcast edits
+        if (channelRef.current) {
+          try {
+            await channelRef.current.send({
+              type: 'broadcast',
+              event: 'edit-message',
+              payload: { id: msgId, content: newContent.trim() }
+            });
+          } catch {}
         }
-      } catch (cacheErr) {
-        console.warn("Failed to update edited chat in local broadcast cache:", cacheErr);
+      } else {
+        setDmMessages((prev) =>
+          prev.map((m) => m.id === msgId ? { ...m, message: newContent.trim() } : m)
+        );
+        fetchDmContacts();
       }
 
       info("Message edited successfully.");
     } catch (e: any) {
-      console.error(e);
-      toastError("Failed to edit chat message: " + e.message);
+      toastError("Failed to edit message: " + e.message);
     }
   };
 
@@ -695,32 +1798,28 @@ export const Chat: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Strict validation
     if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-      toastError('PDF sharing is strictly restricted in chat room. Photos only!');
-      // Flash a standard red input flash
+      toastError('PDF sharing is strictly restricted in chat rooms. Photos only!');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     if (!file.type.startsWith('image/')) {
-      toastError('Invalid file type! You can only share image formats (JPG, PNG, WEBP).');
+      toastError('Invalid file type! Share image formats only.');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
-    // Convert image to base64 and compress for mockup in-memory display
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64Str = reader.result as string;
       try {
-        info('Compressing image for instant real-time delivery...');
+        info('Compressing image for fast delivery...');
         const compressed = await compressImage(base64Str);
         setSelectedImage(compressed);
-        info('Image compressed successfully.');
+        toastSuccess('Image compressed successfully.');
       } catch (err) {
         setSelectedImage(base64Str);
-        console.error("Compression failed, using raw image:", err);
       }
     };
     reader.readAsDataURL(file);
@@ -736,7 +1835,7 @@ export const Chat: React.FC = () => {
       const date = new Date(isoString);
       return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     } catch {
-      return '10:00 AM';
+      return 'Recent';
     }
   };
 
@@ -752,293 +1851,964 @@ export const Chat: React.FC = () => {
     }
   };
 
+  // Open Chat thread with a searched user
+  const handleStartDmChat = (peerProfile: UserProfile) => {
+    setSelectedDmUser(peerProfile);
+    setSearchQuery('');
+    setSearchResults([]);
+    setMobileView('chat');
+    fetchDmMessages(peerProfile.id);
+  };
+
+  // View once countdown trigger
+  const startViewOnceTimer = (msgId: string) => {
+    setViewOnceViewing(prev => ({ ...prev, [msgId]: true }));
+    setViewOnceTimer(prev => ({ ...prev, [msgId]: 5 }));
+    
+    const interval = setInterval(() => {
+      setViewOnceTimer(prev => {
+        const rem = prev[msgId] - 1;
+        if (rem <= 0) {
+          clearInterval(interval);
+          const updatedRevealed = [...viewOnceRevealed, msgId];
+          setViewOnceRevealed(updatedRevealed);
+          localStorage.setItem('noteweb-viewed-once-messages', JSON.stringify(updatedRevealed));
+          setViewOnceViewing(v => ({ ...v, [msgId]: false }));
+          
+          // Background delete from DB
+          supabase.from('direct_messages').delete().eq('id', msgId).then(() => {});
+        }
+        return { ...prev, [msgId]: rem };
+      });
+    }, 1000);
+  };
+
+  const getThemeClasses = () => {
+    if (activeTab !== 'dm' || !selectedDmUser) return '';
+    const themeName = chatThemes[selectedDmUser.id] || 'Default';
+    switch (themeName) {
+      case 'Midnight Purple': return 'bg-gradient-to-br from-slate-950 via-indigo-950/40 to-purple-950/30 border-purple-500/20';
+      case 'Emerald Forest': return 'bg-gradient-to-br from-slate-950 via-emerald-950/30 to-slate-900 border-emerald-500/20';
+      case 'Sunset Crimson': return 'bg-gradient-to-br from-slate-950 via-rose-950/30 to-orange-950/20 border-rose-500/20';
+      case 'Cyberpunk Neon': return 'bg-black border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]';
+      default: return '';
+    }
+  };
+
+  const getMyBubbleTheme = () => {
+    if (activeTab !== 'dm' || !selectedDmUser) return 'bg-indigo-600 border-indigo-500 text-white';
+    const themeName = chatThemes[selectedDmUser.id] || 'Default';
+    switch (themeName) {
+      case 'Midnight Purple': return 'bg-purple-650 border-purple-600 text-white shadow shadow-purple-600/20';
+      case 'Emerald Forest': return 'bg-emerald-650 border-emerald-600 text-white shadow shadow-emerald-600/20';
+      case 'Sunset Crimson': return 'bg-rose-650 border-rose-600 text-white shadow shadow-rose-600/20';
+      case 'Cyberpunk Neon': return 'bg-cyan-950/40 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(34,211,238,0.2)]';
+      default: return 'bg-indigo-600 border-indigo-500 text-white';
+    }
+  };
+
   return (
-    <div className={`min-h-[calc(100dvh-4rem)] w-full py-8 px-4 md:px-8 relative overflow-hidden flex flex-col items-center transition-colors duration-300 ${isDark ? 'bg-[#0A0A0C] text-[#E2E8F0]' : 'bg-slate-50 text-slate-800'}`}>
-      {/* Visual background accents */}
+    <div className={`min-h-[calc(100dvh-4rem)] w-full py-6 px-4 md:px-8 relative overflow-hidden flex flex-col items-center transition-colors duration-300 ${isDark ? 'bg-[#0A0A0C] text-[#E2E8F0]' : 'bg-slate-50 text-slate-800'}`}>
+      
+      {/* Background accents */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" />
 
-      <div className="w-full max-w-4xl flex-1 flex flex-col gap-4 z-10 relative">
+      <div className="w-full max-w-5xl flex-1 flex flex-col gap-4 z-10 relative">
         
-        {/* Chat Warning Banner */}
-        <GlassPanel className={`p-4 border rounded-2xl flex items-center justify-between gap-3 text-left ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200 shadow-sm'}`}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className={`text-sm font-bold flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                Campus Chat Lounge
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  LIVE FEED
-                </span>
-              </h3>
-              <p className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Connect and coordinate with fellow engineers across all college departments</p>
-            </div>
+        {/* Toggle navigation header */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex p-1 bg-white/[0.02] border border-white/[0.04] rounded-2xl w-full sm:w-auto">
+            <button
+              onClick={() => {
+                setActiveTab('global');
+                // Remove parameter from URL securely
+                navigate('/chat', { replace: true });
+              }}
+              className={`flex-1 sm:flex-initial py-2.5 px-6 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === 'global' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Campus Lounge
+            </button>
+            <button
+              onClick={() => setActiveTab('dm')}
+              className={`flex-1 sm:flex-initial py-2.5 px-6 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === 'dm' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <MessageCircle className="w-4 h-4" />
+              Private DMs
+              {dmContacts.reduce((acc, c) => acc + c.unreadCount, 0) > 0 && (
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+              )}
+            </button>
           </div>
+
           <div className="hidden sm:flex items-center gap-1.5 text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl text-xs font-bold">
             <Clock className="w-3.5 h-3.5" />
-            <span>7d Expiry Shield Active</span>
+            <span>7d Auto Expiry Shield</span>
           </div>
-        </GlassPanel>
-
-        {/* Self-Destruct Ticker info */}
-        <div className={`flex items-center gap-2 p-3 border rounded-xl text-xs text-left ${isDark ? 'bg-rose-500/5 border-rose-500/10 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700 font-medium'}`}>
-          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-450" />
-          <p>
-            <strong>Self-Destruct System:</strong> Messages will automatically expire and permanently self-destruct from the database after 7 days. PDF sharing is strictly prohibited (Photos only).
-          </p>
         </div>
 
-        {/* Chat window body */}
-        <GlassPanel className={`flex-1 min-h-[400px] rounded-3xl p-6 flex flex-col justify-between overflow-hidden relative border ${isDark ? 'bg-[#121218]/30 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'}`}>
-          
-          {/* Scrollable messages zone */}
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[500px]">
-            {isLoading ? (
-              <div className="h-full flex items-center justify-center text-slate-500 text-xs font-bold">
-                🔐 Accessing campus feed secure layer...
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-slate-500 py-16">
-                <div className="w-12 h-12 rounded-full bg-slate-900 border border-white/5 flex items-center justify-center text-indigo-400 text-xl">💬</div>
-                <div>
-                  <h4 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>Quiet Room...</h4>
-                  <p className="text-xs text-slate-500 mt-1 max-w-xs">No active chats in the last 7 days. Send a message to start the campus vibe!</p>
-                </div>
-              </div>
-            ) : (
-              messages.map((msg) => {
-                const isMe = msg.sender_uid === user?.uid;
-                return (
-                  <motion.div 
-                    key={msg.id}
-                    initial={{ opacity: 0, scale: 0.85, y: 15 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                    className={`flex items-end gap-3 ${isMe ? 'flex-row-reverse text-right' : 'text-left'}`}
-                  >
-                    {/* Avatar */}
-                    <div 
-                      onClick={() => msg.sender_uid && navigate(`/profile/${msg.sender_uid}`)} 
-                      className="flex-shrink-0 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-                    >
-                      {renderAvatar(msg.sender_avatar, "w-9 h-9 text-lg")}
-                    </div>
-
-                    {/* Chat Bubble */}
-                    <div className="max-w-[70%] space-y-1">
-                      {/* Name Header */}
-                      <div className={`flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'} ${isMe ? 'justify-end' : ''}`}>
-                        <span 
-                          onClick={() => msg.sender_uid && navigate(`/profile/${msg.sender_uid}`)} 
-                          className="hover:text-indigo-500 transition-colors cursor-pointer"
-                        >
-                          {msg.sender_name}
-                        </span>
-                        <span>{getBranchIcon(msg.sender_branch)}</span>
-                        {userProfile?.role === 'admin' && (
-                          <span className="text-[8px] font-extrabold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-455 border border-amber-500/30">
-                            ADMIN
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Content Card with edit/delete control for sender, and delete button for admin */}
-                      <div className="flex items-center gap-2 group/msg w-full relative">
-                        {isMe && (
-                          <div className="flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-all duration-200 flex-shrink-0">
-                            {/* Edit Button */}
-                            <button
-                              onClick={() => {
-                                setEditingMsgId(msg.id);
-                                setEditingText(msg.content);
-                              }}
-                              className="p-1.5 rounded-lg bg-white/10 hover:bg-indigo-600 text-slate-350 hover:text-white transition-all cursor-pointer active:scale-95 border border-white/10"
-                              title="Edit message"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            {/* Delete Button */}
-                            <button
-                              onClick={() => handleDeleteChat(msg.id)}
-                              className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all cursor-pointer active:scale-95 border border-rose-500/20"
-                              title="Delete message"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-
-                        <div className={`p-3.5 rounded-2xl border text-xs font-medium leading-relaxed break-words text-left flex-1 ${
-                          isMe 
-                            ? 'bg-indigo-600 border-indigo-500 text-white rounded-br-none shadow shadow-indigo-600/10' 
-                            : isDark
-                              ? 'bg-[#181824]/80 border-white/[0.04] text-slate-200 rounded-bl-none'
-                              : 'bg-slate-50 border-slate-200 text-slate-800 rounded-bl-none shadow-sm'
-                        }`}>
-                          {editingMsgId === msg.id ? (
-                            <div className="flex flex-col gap-2 min-w-[200px]">
-                              <input
-                                type="text"
-                                value={editingText}
-                                onChange={(e) => setEditingText(e.target.value)}
-                                className="w-full py-1.5 px-3 rounded-lg bg-black/25 text-white text-xs border border-white/20 focus:outline-none focus:border-indigo-400"
-                                autoFocus
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    handleEditMessage(msg.id, editingText);
-                                    setEditingMsgId(null);
-                                  } else if (e.key === 'Escape') {
-                                    setEditingMsgId(null);
-                                  }
-                                }}
-                              />
-                              <div className="flex justify-end gap-1.5 text-[10px]">
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingMsgId(null)}
-                                  className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-all font-bold text-white cursor-pointer"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleEditMessage(msg.id, editingText);
-                                    setEditingMsgId(null);
-                                  }}
-                                  className="px-2 py-1 rounded bg-indigo-500 hover:bg-indigo-400 transition-all font-bold text-white cursor-pointer"
-                                >
-                                  Save
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              {msg.content}
-                              
-                              {/* Attached Image inside Bubble */}
-                              {msg.image_url && (
-                                <div 
-                                  onClick={() => setZoomedImage(msg.image_url || null)}
-                                  className="mt-2.5 rounded-xl overflow-hidden border border-white/10 max-w-xs shadow-lg bg-black/40 cursor-zoom-in hover:opacity-90 active:scale-[0.99] transition-all"
-                                  title="Click to zoom in"
-                                >
-                                  <img 
-                                    src={msg.image_url} 
-                                    alt="Shared attachment" 
-                                    className="max-h-60 w-full object-cover select-none"
-                                  />
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-
-                        {!isMe && userProfile?.role === 'admin' && (
-                          <button
-                            onClick={() => handleDeleteChat(msg.id)}
-                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all opacity-0 group-hover/msg:opacity-100 cursor-pointer flex-shrink-0 active:scale-95 border border-rose-500/20"
-                            title="Delete message"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Time footer */}
-                      <span className="block text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">
-                        {formatTime(msg.created_at)}
-                      </span>
-                    </div>
-                  </motion.div>
-                );
-              })
-            )}
-            <div ref={messagesEndRef} />
+        {/* Lounge banner warning */}
+        {activeTab === 'global' && (
+          <div className={`flex items-center gap-2 p-3 border rounded-xl text-xs text-left ${isDark ? 'bg-rose-500/5 border-rose-500/10 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700 font-medium'}`}>
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-450" />
+            <p>
+              <strong>Lounge Notice:</strong> Global messages expire in 7 days. PDF sharing is prohibited in lounge. Respect your peers.
+            </p>
           </div>
+        )}
 
-          {/* Image preview drawer */}
-          {selectedImage && (
-            <div className={`p-3 border rounded-2xl mb-4 flex items-center justify-between gap-4 ${isDark ? 'bg-slate-950/50 border-white/[0.06]' : 'bg-slate-100 border-slate-200'}`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-lg overflow-hidden border ${isDark ? 'border-white/10 bg-black/50' : 'border-slate-250 bg-white'}`}>
-                  <img src={selectedImage} alt="Attachment Thumbnail" className="w-full h-full object-cover" />
-                </div>
-                <div className="text-left">
-                  <span className={`block text-xs font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>Attachment Loaded</span>
-                  <span className="block text-[9px] text-emerald-400 font-semibold uppercase tracking-wider">Ready to upload</span>
-                </div>
-              </div>
-              <button 
-                onClick={removeSelectedImage}
-                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all active:scale-95 cursor-pointer"
-                title="Remove attachment"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Footer controls input bar */}
-          <form 
-            onSubmit={handleSendMessage}
-            className={`mt-4 pt-4 border-t flex items-center gap-2 relative ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}
-          >
-            {isGuest ? (
-              <div className={`w-full py-3 border rounded-2xl text-xs font-semibold text-slate-500 flex items-center justify-center gap-1.5 ${isDark ? 'bg-slate-950/40 border-white/[0.04]' : 'bg-slate-100 border-slate-200'}`}>
-                <Lock className="w-3.5 h-3.5" /> Guest Mode: Access is Read-Only. Register to join the chat.
-              </div>
-            ) : (
-              <>
-                {/* Photo Attach Trigger */}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageSelect}
-                  ref={fileInputRef}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
-                  title="Attach Photo"
-                >
-                  <ImageIcon className="w-5 h-5" />
-                </button>
-
-                {/* Input text */}
+        {/* Chat layout grid */}
+        <div className="flex-1 min-h-[500px] flex gap-4 overflow-hidden max-h-[600px] relative">
+          
+          {/* DM LIST SIDEBAR (Only visible when activeTab === 'dm') */}
+          {activeTab === 'dm' && (
+            <GlassPanel className={`w-full md:w-80 rounded-3xl p-4 flex flex-col gap-4 border ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
+              mobileView === 'chat' && selectedDmUser ? 'hidden md:flex' : 'flex'
+            }`}>
+              
+              {/* Users search */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
                   type="text"
-                  placeholder="Share a study update, ask a question..."
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  className={`flex-1 border rounded-2xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-500 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+                  placeholder="Search classmate to DM..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearchUsers(e.target.value)}
+                  className={`w-full border rounded-xl py-2 pl-9 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-600 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
                 />
+              </div>
 
-                {/* Submit button */}
-                <button
-                  type="submit"
-                  disabled={isSending || (!inputText.trim() && !selectedImage)}
-                  className="p-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all disabled:opacity-50 disabled:hover:bg-indigo-600 cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-95"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </>
+              {/* Search results drawer overlay */}
+              {searchQuery.trim() !== '' && (
+                <div className={`flex-1 overflow-y-auto space-y-2 border-t pt-2 ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}>
+                  <span className="block text-[10px] font-black text-slate-500 uppercase tracking-widest text-left pl-1 mb-2">Search Results</span>
+                  {isSearching ? (
+                    <div className="text-xs text-slate-500 font-bold p-3 text-center">Searching peers...</div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="text-xs text-slate-500 font-bold p-3 text-center">No classmates found</div>
+                  ) : (
+                    searchResults.map((peer) => (
+                      <button
+                        key={peer.id}
+                        onClick={() => handleStartDmChat(peer)}
+                        className={`w-full p-2.5 rounded-xl flex items-center gap-3 border text-left cursor-pointer transition-all ${
+                          isDark ? 'border-white/[0.04] bg-[#161622]/40 hover:bg-indigo-600/10' : 'border-slate-100 bg-slate-50 hover:bg-slate-100'
+                        }`}
+                      >
+                        {renderAvatar(peer.photoURL || '', "w-8 h-8 text-md")}
+                        <div className="flex-1 min-w-0">
+                          <span className={`block text-xs font-bold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{peer.displayName}</span>
+                          <span className="block text-[10px] text-slate-500">@{peer.username}</span>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Contacts List */}
+              {searchQuery.trim() === '' && (
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                  
+                  {/* Active Bubbles scrollbar */}
+                  {onlineUsers.length > 0 && (
+                    <div className="flex flex-col gap-2 text-left border-b pb-3 mb-2 border-white/[0.06] light-mode:border-slate-200">
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">Online Now</span>
+                      <div className="flex items-center gap-3 overflow-x-auto pb-1.5 scrollbar-none horizontal-scroll-list">
+                        {onlineUsers.map((online) => (
+                          <button
+                            key={online.uid}
+                            onClick={() => {
+                              setSelectedDmUser({
+                                id: online.uid,
+                                displayName: online.displayName,
+                                photoURL: online.photoURL,
+                                username: online.displayName.toLowerCase().replace(/ /g, '_'),
+                                branch: 'cse'
+                              });
+                              setMobileView('chat');
+                              fetchDmMessages(online.uid);
+                            }}
+                            className="flex flex-col items-center gap-1 flex-shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-all group"
+                          >
+                            <div className="relative">
+                              {renderAvatar(online.photoURL || '', "w-10 h-10 text-lg border-2 border-indigo-500/20 group-hover:border-indigo-500/60 transition-all")}
+                              <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#121218] animate-pulse" />
+                            </div>
+                            <span className="text-[9px] font-semibold max-w-[50px] truncate text-slate-400 group-hover:text-white transition-colors">{online.displayName.split(' ')[0]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <span className="block text-[10px] font-black text-slate-500 uppercase tracking-widest text-left pl-1 mb-2">Active Chats</span>
+                  {dmContacts.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center gap-2 text-slate-500 py-12">
+                      <MessageSquare className="w-8 h-8 text-slate-600 animate-pulse" />
+                      <span className="text-[11px] font-extrabold text-slate-500">No private chats yet.</span>
+                      <span className="text-[9px] text-slate-600 max-w-[180px]">Find classmates on Leaderboard or search them above to DM!</span>
+                    </div>
+                  ) : (
+                    dmContacts.map((contact) => {
+                      const isSelected = selectedDmUser?.id === contact.uid;
+                      const isContactOnline = onlineUsers.some(u => u.uid === contact.uid);
+                      const isPinned = pinnedUids.includes(contact.uid);
+                      return (
+                        <div key={contact.uid} className="relative group/contact">
+                          <button
+                            onClick={() => {
+                              setSelectedDmUser({
+                                id: contact.uid,
+                                displayName: contact.displayName,
+                                photoURL: contact.photoURL,
+                                username: contact.username,
+                                branch: contact.branch
+                              });
+                              setMobileView('chat');
+                              fetchDmMessages(contact.uid);
+                            }}
+                            className={`w-full p-3 pr-12 rounded-2xl flex items-center gap-3 border text-left transition-all cursor-pointer relative ${
+                              isSelected 
+                                ? 'bg-indigo-600 border-indigo-500 text-white' 
+                                : isDark 
+                                  ? 'bg-[#181822]/40 border-white/[0.04] text-slate-300 hover:bg-[#1A1A24]/75' 
+                                  : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
+                            }`}
+                          >
+                            <div className="relative">
+                              {renderAvatar(contact.photoURL, "w-10 h-10 text-xl")}
+                              {isContactOnline ? (
+                                <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-555 border-2 border-[#121218]" />
+                              ) : (
+                                <span className="absolute -bottom-1 -right-1 text-xs">{getBranchIcon(contact.branch)}</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className={`text-xs font-extrabold truncate ${isSelected ? 'text-white' : isDark ? 'text-white' : 'text-slate-805'}`}>{contact.displayName}</span>
+                                <span className={`text-[8px] font-bold ${isSelected ? 'text-indigo-200' : 'text-slate-500'}`}>{formatTime(contact.lastMessageTime)}</span>
+                              </div>
+                              <p className={`text-[10px] truncate mt-0.5 ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
+                                {contact.lastMessage}
+                              </p>
+                            </div>
+                            
+                            {/* Unread bubble count */}
+                            {contact.unreadCount > 0 && !isSelected && (
+                              <span className="absolute right-10 top-1/2 -translate-y-1/2 min-w-4 h-4 rounded-full bg-rose-500 text-white font-extrabold text-[9px] flex items-center justify-center px-1 animate-pulse">
+                                {contact.unreadCount}
+                              </span>
+                            )}
+
+                            {/* Pin chat button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleTogglePin(contact.uid);
+                              }}
+                              className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-lg opacity-0 group-hover/contact:opacity-100 transition-all active:scale-90 ${
+                                isPinned 
+                                  ? 'opacity-100 text-indigo-400' 
+                                  : isDark ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-750'
+                              }`}
+                              title={isPinned ? "Unpin chat" : "Pin chat to top"}
+                            >
+                              {isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                            </button>
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </GlassPanel>
+          )}
+
+          {/* CHAT AREA (Main Display) */}
+          <GlassPanel className={`flex-1 flex flex-col p-4 md:p-6 rounded-3xl border ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
+            activeTab === 'dm' && (!selectedDmUser || mobileView === 'list') ? 'hidden md:flex' : 'flex'
+          }`}>
+            
+
+            {activeTab === 'dm' && selectedDmUser && (
+              <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b mb-3 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      setMobileView('list');
+                      setSelectedDmUser(null);
+                      // Clear the URL parameter cleanly
+                      navigate('/chat', { replace: true });
+                    }}
+                    className={`p-2 rounded-xl border md:hidden active:scale-95 cursor-pointer ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div 
+                    onClick={() => navigate(`/profile/${selectedDmUser.id}`)}
+                    className="flex items-center gap-2.5 text-left cursor-pointer hover:scale-[1.01] transition-all"
+                  >
+                    {renderAvatar(selectedDmUser.photoURL || '', "w-9 h-9 text-lg")}
+                    <div>
+                      <h4 className={`text-xs font-black flex items-center gap-1 leading-none ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        {selectedDmUser.displayName}
+                        <span className="text-[10px]">{getBranchIcon(selectedDmUser.branch)}</span>
+                      </h4>
+                      <span className="text-[9px] text-slate-500 mt-0.5 block">
+                        {partnerIsTyping ? (
+                          <span className="text-indigo-400 font-extrabold italic animate-pulse">typing...</span>
+                        ) : onlineUsers.some(u => u.uid === selectedDmUser.id) ? (
+                          <span className="text-emerald-400 font-extrabold flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-550 animate-pulse" /> Active Now
+                          </span>
+                        ) : (
+                          `@${selectedDmUser.username} • Offline`
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Advanced Action Bar */}
+                <div className="flex items-center gap-1.5 justify-end flex-wrap">
+                  {/* Call Actions */}
+                  <button
+                    onClick={() => startWebRtcCall('voice')}
+                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
+                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-350' : 'border-slate-200 hover:bg-slate-100 text-slate-650'
+                    }`}
+                    title="Start voice call"
+                  >
+                    <Phone className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => startWebRtcCall('video')}
+                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
+                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-355' : 'border-slate-200 hover:bg-slate-100 text-slate-655'
+                    }`}
+                    title="Start video call"
+                  >
+                    <Video className="w-4 h-4" />
+                  </button>
+
+                  <div className="h-4 w-px bg-white/10 mx-1" />
+
+                  {/* Wallpaper Theme Picker */}
+                  <div className="relative group/theme">
+                    <button
+                      className={`p-2 rounded-xl transition-all border ${
+                        isDark ? 'border-white/10 hover:bg-white/5 text-slate-360' : 'border-slate-200 hover:bg-slate-100 text-slate-660'
+                      }`}
+                      title="Select wallpaper theme"
+                    >
+                      <Paintbrush className="w-4 h-4" />
+                    </button>
+                    <div className="absolute right-0 top-full mt-2 w-40 rounded-xl bg-slate-900 border border-white/10 p-1 hidden group-hover/theme:block z-30 shadow-2xl text-left">
+                      {['Default', 'Midnight Purple', 'Emerald Forest', 'Sunset Crimson', 'Cyberpunk Neon'].map((themeName) => (
+                        <button
+                          key={themeName}
+                          onClick={() => {
+                            const updated = { ...chatThemes, [selectedDmUser.id]: themeName };
+                            setChatThemes(updated);
+                            localStorage.setItem('noteweb-chat-themes', JSON.stringify(updated));
+                            toastSuccess(`${themeName} theme applied!`);
+                          }}
+                          className="w-full text-left px-3 py-1.5 rounded-lg text-[10px] font-bold text-slate-300 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
+                        >
+                          {themeName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Starred Drawer Folder */}
+                  <button
+                    onClick={() => setIsStarDrawerOpen(true)}
+                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
+                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-365' : 'border-slate-200 hover:bg-slate-100 text-slate-665'
+                    }`}
+                    title="View Starred Messages"
+                  >
+                    <Star className="w-4 h-4" />
+                  </button>
+
+                  <div className="h-4 w-px bg-white/10 mx-1" />
+
+                  {/* Vanish Mode Switcher */}
+                  <button
+                    onClick={() => {
+                      setVanishMode(!vanishMode);
+                      toastSuccess(!vanishMode ? "Vanish Mode activated! Messages will delete when closing chat." : "Vanish Mode deactivated.");
+                    }}
+                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
+                      vanishMode
+                        ? 'border-indigo-500 bg-indigo-600/20 text-indigo-400'
+                        : isDark ? 'border-white/10 hover:bg-white/5 text-slate-350' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
+                    }`}
+                    title="Vanish Mode Toggle"
+                  >
+                    <ShieldAlert className="w-4 h-4" />
+                  </button>
+
+                  {/* Local Mute Chat */}
+                  <button
+                    onClick={() => handleToggleMute(selectedDmUser.id)}
+                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
+                      mutedUids.includes(selectedDmUser.id)
+                        ? 'border-rose-500 bg-rose-600/20 text-rose-400'
+                        : isDark ? 'border-white/10 hover:bg-white/5 text-slate-350' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
+                    }`}
+                    title={mutedUids.includes(selectedDmUser.id) ? "Unmute chat notifications" : "Mute notifications (DND)"}
+                  >
+                    {mutedUids.includes(selectedDmUser.id) ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  </button>
+
+                  {/* Local Block Chat */}
+                  <button
+                    onClick={() => handleToggleBlock(selectedDmUser.id)}
+                    className="p-2 rounded-xl transition-all cursor-pointer active:scale-95 border border-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white"
+                    title="Block this classmate"
+                  >
+                    <Shield className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             )}
-          </form>
-        </GlassPanel>
+
+            {/* Direct Messages - Empty Slate Prompt */}
+            {activeTab === 'dm' && !selectedDmUser ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 text-slate-500 py-16">
+                <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <UserCheck className="w-8 h-8" />
+                </div>
+                <div>
+                  <h4 className={`font-black text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>Select a Classmate</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Click on a classmate from search or the sidebar contacts to start a secure private discussion room.</p>
+                </div>
+              </div>
+            ) : (
+              /* Scrollable Message Timeline area */
+              <div className={`flex-1 overflow-y-auto space-y-4 pr-1 max-h-[480px] p-2 transition-all rounded-2xl ${activeTab === 'dm' && selectedDmUser ? getThemeClasses() : ''}`}>
+                {isLoading ? (
+                  <div className="h-full flex items-center justify-center text-slate-500 text-xs font-bold">
+                    🔐 Accessing secure keys...
+                  </div>
+                ) : (activeTab === 'global' ? messages.length === 0 : dmMessages.length === 0) ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-slate-500 py-16">
+                    <div className="w-12 h-12 rounded-full bg-slate-900 border border-white/5 flex items-center justify-center text-indigo-400 text-xl">💬</div>
+                    <div>
+                      <h4 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>Empty Room...</h4>
+                      <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Send a message or a photo to start the chat vibe!</p>
+                    </div>
+                  </div>
+                ) : (
+                  (activeTab === 'global' ? messages : dmMessages).map((msg: any) => {
+                    const isMe = activeTab === 'global' 
+                      ? msg.sender_uid === user?.uid 
+                      : msg.sender_id === user?.uid;
+                    
+                    const senderUid = activeTab === 'global' ? msg.sender_uid : msg.sender_id;
+                    const senderName = activeTab === 'global' ? msg.sender_name : (isMe ? 'You' : selectedDmUser?.displayName);
+                    const senderAvatar = activeTab === 'global' ? msg.sender_avatar : (isMe ? userProfile?.photoURL : selectedDmUser?.photoURL);
+                    const senderBranch = activeTab === 'global' ? msg.sender_branch : (isMe ? userProfile?.branch : selectedDmUser?.branch);
+                    const messageContent = activeTab === 'global' ? msg.content : msg.message;
+                    const imageUrl = activeTab === 'global' ? msg.image_url : msg.photo_url;
+
+                    return (
+                      <motion.div 
+                        key={msg.id}
+                        initial={{ opacity: 0, scale: 0.85, y: 15 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                        onDoubleClick={() => {
+                          if (activeTab === 'dm') {
+                            handleAddReaction(msg.id, '❤️');
+                          }
+                        }}
+                        className={`flex items-end gap-3 ${isMe ? 'flex-row-reverse text-right' : 'text-left'}`}
+                      >
+                        {/* Avatar */}
+                        <div 
+                          onClick={() => senderUid && navigate(`/profile/${senderUid}`)} 
+                          className="flex-shrink-0 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                        >
+                          {renderAvatar(senderAvatar || '', "w-9 h-9 text-lg")}
+                        </div>
+
+                        {/* Chat Bubble */}
+                        <div className="max-w-[70%] space-y-1">
+                          {/* Name Header */}
+                          <div className={`flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'} ${isMe ? 'justify-end' : ''}`}>
+                            <span 
+                              onClick={() => senderUid && navigate(`/profile/${senderUid}`)} 
+                              className="hover:text-indigo-500 transition-colors cursor-pointer"
+                            >
+                              {senderName}
+                            </span>
+                            <span>{getBranchIcon(senderBranch || 'cse')}</span>
+                          </div>
+
+                          {/* Content Card with edit/delete control for sender, and delete button for admin */}
+                          <div className="flex items-center gap-2 group/msg w-full relative">
+                            {/* Hover controls for emoji reactions, star, and reply */}
+                            <div className={`flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-all duration-205 flex-shrink-0 ${isMe ? 'order-first mr-1' : 'order-last ml-1'}`}>
+                              {activeTab === 'dm' && (
+                                <>
+                                  <button
+                                    onClick={() => setReplyingTo(msg)}
+                                    className="p-1 rounded-lg bg-white/10 hover:bg-indigo-600 text-slate-350 hover:text-white transition-all cursor-pointer active:scale-90"
+                                    title="Reply to message"
+                                  >
+                                    <Quote className="w-3.5 h-3.5" />
+                                  </button>
+                                  
+                                  {/* Fast reaction picker hover dropdown */}
+                                  <div className="relative group/react">
+                                    <button
+                                      className="p-1 rounded-lg bg-white/10 hover:bg-indigo-600 text-slate-350 hover:text-white transition-all cursor-pointer"
+                                      title="React"
+                                    >
+                                      <Smile className="w-3.5 h-3.5" />
+                                    </button>
+                                    <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 rounded-xl bg-slate-900 border border-white/10 p-1 flex gap-1 hidden group-hover/react:flex z-40 shadow-2xl">
+                                      {['❤️', '👍', '😂', '😮', '😢', '🙏'].map(emoji => (
+                                        <button
+                                          key={emoji}
+                                          onClick={() => handleAddReaction(msg.id, emoji)}
+                                          className="text-xs hover:scale-125 transition-all p-1 cursor-pointer"
+                                        >
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                              
+                              <button
+                                onClick={() => handleToggleStar(msg)}
+                                className={`p-1 rounded-lg bg-white/10 hover:bg-amber-500 text-slate-300 hover:text-white transition-all cursor-pointer active:scale-90 ${
+                                  starredMessages.some(m => m.id === msg.id) ? 'text-amber-400 fill-current' : ''
+                                }`}
+                                title="Star message locally"
+                              >
+                                  <Star className="w-3.5 h-3.5" />
+                              </button>
+
+                              {isMe && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setEditingMsgId(msg.id);
+                                      setEditingText(messageContent);
+                                    }}
+                                    className="p-1 rounded-lg bg-white/10 hover:bg-indigo-600 text-slate-355 hover:text-white transition-all cursor-pointer active:scale-90"
+                                    title="Edit message"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteChat(msg.id)}
+                                    className="p-1 rounded-lg bg-rose-550/15 hover:bg-rose-500 text-rose-400 hover:text-white transition-all cursor-pointer active:scale-90"
+                                    title="Delete message"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+
+                            <div className={`p-3.5 rounded-2xl border text-xs font-medium leading-relaxed break-words text-left flex-1 ${
+                              isMe 
+                                ? getMyBubbleTheme() + ' rounded-br-none shadow shadow-indigo-600/10' 
+                                : isDark
+                                  ? 'bg-[#181824]/80 border-white/[0.04] text-slate-200 rounded-bl-none'
+                                  : 'bg-slate-50 border-slate-200 text-slate-800 rounded-bl-none shadow-sm'
+                            }`}>
+                              {/* Quoted reply render */}
+                              {msg.reply_to && (
+                                <div className="mb-2.5 p-2 rounded-lg bg-black/20 border-l-4 border-indigo-550 text-[10px] text-slate-300 text-left truncate flex flex-col gap-0.5">
+                                  <span className="font-extrabold text-[9px] text-indigo-400">Replying to {msg.reply_to.senderName}</span>
+                                  <span>{msg.reply_to.content}</span>
+                                </div>
+                              )}
+
+                              {editingMsgId === msg.id ? (
+                                <div className="flex flex-col gap-2 min-w-[200px]">
+                                  <input
+                                    type="text"
+                                    value={editingText}
+                                    onChange={(e) => setEditingText(e.target.value)}
+                                    className="w-full py-1.5 px-3 rounded-lg bg-black/25 text-white text-xs border border-white/20 focus:outline-none focus:border-indigo-400"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleEditMessage(msg.id, editingText);
+                                        setEditingMsgId(null);
+                                      } else if (e.key === 'Escape') {
+                                        setEditingMsgId(null);
+                                      }
+                                    }}
+                                  />
+                                  <div className="flex justify-end gap-1.5 text-[10px]">
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingMsgId(null)}
+                                      className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-all font-bold text-white cursor-pointer"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleEditMessage(msg.id, editingText);
+                                        setEditingMsgId(null);
+                                      }}
+                                      className="px-2 py-1 rounded bg-indigo-500 hover:bg-indigo-400 transition-all font-bold text-white cursor-pointer"
+                                    >
+                                      Save
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {messageContent}
+                                  
+                                  {/* View Once Media card */}
+                                  {msg.is_view_once && imageUrl && (
+                                    <div className="mt-2.5 max-w-xs text-left">
+                                      {viewOnceRevealed.includes(msg.id) ? (
+                                        <div className="p-3 border border-white/10 rounded-xl bg-black/45 text-slate-400 text-[10px] flex items-center gap-2">
+                                          <EyeOff className="w-4 h-4 text-rose-500" />
+                                          <span>📷 View Once image expired</span>
+                                        </div>
+                                      ) : viewOnceViewing[msg.id] ? (
+                                        <div className="relative rounded-xl overflow-hidden border border-white/10 shadow-lg bg-black/40">
+                                          <img 
+                                            src={imageUrl} 
+                                            alt="View Once attachment" 
+                                            className="max-h-60 w-full object-cover select-none"
+                                          />
+                                          <div className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur text-white text-[9px] font-bold flex items-center gap-1 animate-pulse">
+                                            <Clock className="w-3 h-3 text-indigo-450" />
+                                            <span>Self destructs in {viewOnceTimer[msg.id] || 5}s</span>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => startViewOnceTimer(msg.id)}
+                                          className="p-3 border border-indigo-500/20 rounded-xl bg-indigo-600/10 hover:bg-indigo-650/20 text-indigo-300 text-[10px] flex items-center gap-2 font-bold transition-all active:scale-98 cursor-pointer"
+                                        >
+                                          <Eye className="w-4 h-4 animate-pulse" />
+                                          <span>📷 Tap to View Once (5 seconds)</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Standard attachment image */}
+                                  {!msg.is_view_once && imageUrl && (
+                                    <div 
+                                      onClick={() => setZoomedImage(imageUrl || null)}
+                                      className="mt-2.5 rounded-xl overflow-hidden border border-white/10 max-w-xs shadow-lg bg-black/40 cursor-zoom-in hover:opacity-90 active:scale-[0.99] transition-all"
+                                      title="Click to zoom in"
+                                    >
+                                      <img 
+                                        src={imageUrl} 
+                                        alt="Shared attachment" 
+                                        className="max-h-60 w-full object-cover select-none"
+                                      />
+                                    </div>
+                                  )}
+
+                                  {/* shared note card uploader link */}
+                                  {msg.shared_note_id && (
+                                    <div className={`mt-2.5 p-3 rounded-xl border text-left flex flex-col gap-2 ${
+                                      isDark ? 'bg-slate-900/80 border-white/10' : 'bg-slate-100 border-slate-250 shadow-sm'
+                                    }`}>
+                                      <div className="flex items-center gap-2 text-indigo-400">
+                                        <FileText className="w-5 h-5 flex-shrink-0" />
+                                        <span className="text-xs font-black text-slate-250 light-mode:text-slate-800 truncate">Shared Study Note</span>
+                                      </div>
+                                      <div className="text-[10px] text-slate-400 light-mode:text-slate-600">
+                                        Open this uploader notes attachment directly in the study player.
+                                      </div>
+                                      <a
+                                        href={`/notes?noteId=${msg.shared_note_id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="py-1.5 px-3 rounded-lg bg-indigo-650 hover:bg-indigo-755 text-white font-extrabold text-[10px] text-center transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow shadow-indigo-600/10 cursor-pointer"
+                                      >
+                                        <Download className="w-3.5 h-3.5" /> View PDF Notes
+                                      </a>
+                                    </div>
+                                  )}
+
+                                  {/* Campus Study Poll card */}
+                                  {msg.poll_data && (
+                                    <div className={`mt-2.5 p-3 rounded-xl border text-left flex flex-col gap-2 min-w-[200px] ${
+                                      isDark ? 'bg-slate-900/60 border-white/10' : 'bg-slate-50 border-slate-200'
+                                    }`}>
+                                      <h5 className="text-[11px] font-black text-slate-200 light-mode:text-slate-800 flex items-center gap-1.5">
+                                        <BarChart2 className="w-4 h-4 text-indigo-400" />
+                                        {msg.poll_data.question}
+                                      </h5>
+                                      <div className="space-y-1.5 mt-2">
+                                        {msg.poll_data.options.map((opt: string, optIdx: number) => {
+                                          const votesList = msg.poll_data.votes[String(optIdx)] || [];
+                                          const totalVotes = Object.values(msg.poll_data.votes).reduce((acc: number, list: any) => acc + (list || []).length, 0);
+                                          const pct = totalVotes > 0 ? Math.round((votesList.length / totalVotes) * 100) : 0;
+                                          const hasVoted = votesList.includes(user?.uid || '');
+
+                                          return (
+                                            <button
+                                              key={optIdx}
+                                              type="button"
+                                              onClick={() => handleCastPollVote(msg.id, optIdx)}
+                                              className={`w-full text-left p-2 rounded-lg border text-[10px] relative overflow-hidden transition-all active:scale-98 cursor-pointer ${
+                                                hasVoted 
+                                                  ? 'border-indigo-500 bg-indigo-605/10 text-white font-extrabold' 
+                                                  : isDark ? 'border-white/[0.04] bg-white/[0.02] text-slate-350 hover:bg-white/5' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                                              }`}
+                                            >
+                                              <div 
+                                                className="absolute left-0 top-0 bottom-0 bg-indigo-500/10 transition-all duration-300"
+                                                style={{ width: `${pct}%` }}
+                                              />
+                                              <div className="flex justify-between items-center relative z-10">
+                                                <span>{opt}</span>
+                                                <span className="text-[9px] text-slate-400 font-bold">{votesList.length} votes ({pct}%)</span>
+                                              </div>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+
+                            {!isMe && userProfile?.role === 'admin' && (
+                              <button
+                                onClick={() => handleDeleteChat(msg.id)}
+                                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-455 hover:text-white transition-all opacity-0 group-hover/msg:opacity-100 cursor-pointer flex-shrink-0 active:scale-95 border border-rose-500/20"
+                                title="Delete message"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Message Reactions display row */}
+                          {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                            <div className="flex items-center gap-1 mt-1.5 flex-wrap justify-start">
+                              {Object.entries(msg.reactions).map(([emoji, uids]) => {
+                                const uidsList = uids as string[];
+                                const hasReacted = uidsList.includes(user?.uid || '');
+                                return (
+                                  <button
+                                    key={emoji}
+                                    onClick={() => handleAddReaction(msg.id, emoji)}
+                                    className={`px-2 py-0.5 rounded-full border text-[9px] font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-90 ${
+                                      hasReacted 
+                                        ? 'bg-indigo-650/30 border-indigo-500 text-indigo-300' 
+                                        : isDark ? 'bg-slate-900/60 border-white/5 text-slate-400 hover:bg-slate-800' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                    }`}
+                                  >
+                                    <span>{emoji}</span>
+                                    <span>{uidsList.length}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Time footer */}
+                          <span className="block text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">
+                            {formatTime(msg.created_at)}
+                            {activeTab === 'dm' && isMe && (
+                              <span className="ml-1.5">
+                                {msg.is_read ? '✓✓ Read' : '✓ Sent'}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+
+            {/* Selected Image preview bar */}
+            {selectedImage && selectedDmUser && (
+              <div className={`p-3 border rounded-2xl mb-4 flex items-center justify-between gap-4 ${isDark ? 'bg-slate-950/50 border-white/[0.06]' : 'bg-slate-100 border-slate-200'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-lg overflow-hidden border ${isDark ? 'border-white/10 bg-black/50' : 'border-slate-250 bg-white'}`}>
+                    <img src={selectedImage} alt="Attachment Thumbnail" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="text-left">
+                    <span className={`block text-xs font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>Attachment Loaded</span>
+                    <span className="block text-[9px] text-emerald-450 font-semibold uppercase tracking-wider">Ready to send</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  {/* View Once checkbox option */}
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <input 
+                      type="checkbox"
+                      checked={isViewOnceSelected}
+                      onChange={(e) => setIsViewOnceSelected(e.target.checked)}
+                      className="rounded border-white/20 bg-slate-950/50 text-indigo-650 focus:ring-indigo-500 focus:ring-offset-0 w-3.5 h-3.5"
+                    />
+                    <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-indigo-400" /> View Once
+                    </span>
+                  </label>
+                  
+                  <button 
+                    onClick={removeSelectedImage}
+                    className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all active:scale-95 cursor-pointer"
+                    title="Remove attachment"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Reply Smart Chips */}
+            {!isGuest && (activeTab === 'global' || selectedDmUser) && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none horizontal-scroll-list text-left mt-2">
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 mr-1 flex-shrink-0">Quick Reply:</span>
+                {["👍 Bhej raha hu", "Got it, thanks!", "In library 📚", "Kal class hai?", "Check notes", "Study together? 🧠"].map((reply) => (
+                  <button
+                    key={reply}
+                    type="button"
+                    onClick={() => setInputText(reply)}
+                    className={`px-3 py-1.5 rounded-full border text-[10px] font-extrabold whitespace-nowrap cursor-pointer transition-all active:scale-95 ${
+                      isDark 
+                        ? 'bg-[#1b1b26]/50 border-white/[0.06] text-slate-400 hover:text-white hover:border-indigo-500/40 hover:bg-indigo-600/10' 
+                        : 'bg-slate-100 border-slate-200 text-slate-650 hover:bg-slate-200 hover:text-slate-800'
+                    }`}
+                  >
+                    {reply}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Replying-to Preview Banner */}
+            {activeTab === 'dm' && replyingTo && selectedDmUser && (
+              <div className={`p-2.5 border rounded-2xl mb-2 flex items-center justify-between gap-3 text-left animate-fade-in ${
+                isDark ? 'bg-indigo-950/30 border-indigo-550/20 text-[#E2E8F0]' : 'bg-indigo-50 border-indigo-200 text-slate-800'
+              }`}>
+                <div className="flex-1 min-w-0">
+                  <span className="block text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">Replying to {replyingTo.sender_id === user?.uid ? 'You' : selectedDmUser.displayName}</span>
+                  <p className={`text-[10px] truncate ${isDark ? 'text-slate-300' : 'text-slate-650'}`}>{replyingTo.message}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplyingTo(null)}
+                  className="p-1 rounded-lg hover:bg-black/10 text-slate-400 hover:text-white transition-all cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Footer controls input form bar */}
+            {(activeTab === 'global' || selectedDmUser) && (
+              <form 
+                onSubmit={handleSendMessage}
+                className={`mt-4 pt-4 border-t flex items-center gap-2 relative ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}
+              >
+                {isGuest ? (
+                  <div className={`w-full py-3 border rounded-2xl text-xs font-semibold text-slate-505 flex items-center justify-center gap-1.5 ${isDark ? 'bg-slate-950/40 border-white/[0.04]' : 'bg-slate-100 border-slate-200'}`}>
+                    <Lock className="w-3.5 h-3.5" /> Guest Mode: Access is Read-Only. Register to send messages.
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      ref={fileInputRef}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                        title="Attach Photo"
+                      >
+                        <ImageIcon className="w-5 h-5" />
+                      </button>
+
+                      {activeTab === 'dm' && selectedDmUser && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setIsNoteShareModalOpen(true)}
+                            className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                            title="Share study notes"
+                          >
+                            <Paperclip className="w-5 h-5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsPollModalOpen(true)}
+                            className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                            title="Create study poll"
+                          >
+                            <BarChart2 className="w-5 h-5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder={activeTab === 'global' ? "Share an update, ask a question..." : `Message ${selectedDmUser?.displayName}...`}
+                      value={inputText}
+                      onChange={(e) => handleInputChange(e.target.value)}
+                      className={`flex-1 border rounded-2xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-600 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-850'}`}
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={isSending || (!inputText.trim() && !selectedImage)}
+                      className="p-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all disabled:opacity-50 disabled:hover:bg-indigo-600 cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-95"
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
+              </form>
+            )}
+          </GlassPanel>
+        </div>
       </div>
 
-      {/* Lightbox Image Modal */}
+      {/* Lightbox Zoom modal */}
       {zoomedImage && (
         <div 
           onClick={() => setZoomedImage(null)}
           className="fixed inset-0 bg-[#0A0A0C]/90 backdrop-blur-md z-50 flex items-center justify-center p-4 cursor-zoom-out animate-fade-in text-left"
         >
-          {/* Close button */}
           <button 
             onClick={() => setZoomedImage(null)}
             className="absolute top-4 right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95 z-50 border border-white/10"
@@ -1047,7 +2817,6 @@ export const Chat: React.FC = () => {
             <X className="w-6 h-6" />
           </button>
           
-          {/* Fullscreen image container */}
           <div 
             onClick={(e) => e.stopPropagation()} 
             className="max-w-[90vw] max-h-[85vh] relative flex flex-col items-center justify-center text-center animate-scale-up"
@@ -1057,14 +2826,13 @@ export const Chat: React.FC = () => {
               alt="Zoomed attachment" 
               className="max-w-full max-h-[75vh] object-contain rounded-2xl border border-white/10 shadow-2xl select-none"
             />
-            {/* Action Bar */}
             <div className="flex items-center gap-2 mt-4 px-4 py-2 bg-slate-900/85 border border-white/[0.08] backdrop-blur rounded-2xl">
               <a 
                 href={zoomedImage} 
                 download={`attachment_${Date.now()}.jpg`}
                 target="_blank"
                 rel="noreferrer"
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs transition-all active:scale-95 shadow-md shadow-indigo-600/15"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs transition-all active:scale-95 shadow-md"
               >
                 Open in New Tab
               </a>
@@ -1074,6 +2842,418 @@ export const Chat: React.FC = () => {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Starred Messages Local Drawer */}
+      {isStarDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop */}
+          <div 
+            onClick={() => setIsStarDrawerOpen(false)}
+            className="absolute inset-0 bg-[#0A0A0C]/60 backdrop-blur-sm transition-opacity" 
+          />
+          {/* Panel */}
+          <GlassPanel className={`w-full max-w-md h-full flex flex-col p-6 border-l shadow-2xl relative z-10 ${
+            isDark ? 'bg-[#0E0E12]/95 border-white/[0.08] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-800'
+          }`}>
+            <div className="flex items-center justify-between border-b pb-4 mb-4 border-white/10 light-mode:border-slate-100">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <Star className="w-4 h-4 text-amber-400 fill-current animate-pulse" />
+                Starred Messages (Offline Safe)
+              </h3>
+              <button
+                onClick={() => setIsStarDrawerOpen(false)}
+                className={`p-1.5 rounded-lg border cursor-pointer active:scale-90 ${
+                  isDark ? 'border-white/10 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-500'
+                }`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              {starredMessages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center gap-2 text-slate-500 py-12">
+                  <Star className="w-8 h-8 text-slate-650" />
+                  <span className="text-xs font-black text-slate-400">No starred messages</span>
+                  <span className="text-[10px] text-slate-500 max-w-[200px]">Hover any message bubble and click the star icon to save it here for reference.</span>
+                </div>
+              ) : (
+                starredMessages.map((msg) => (
+                  <div 
+                    key={msg.id}
+                    className={`p-3.5 border rounded-2xl flex flex-col gap-2 relative text-left ${
+                      isDark ? 'bg-white/[0.02] border-white/[0.04]' : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <button
+                      onClick={() => handleToggleStar(msg)}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg text-amber-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
+                      title="Unstar message"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                    
+                    <div className="flex items-center gap-2">
+                      {renderAvatar(msg.sender_avatar || '', "w-7 h-7 text-xs")}
+                      <div className="min-w-0">
+                        <span className="block text-[10px] font-black leading-none">{msg.sender_name}</span>
+                        <span className="text-[8px] text-slate-505 mt-0.5 block">{formatTime(msg.created_at)}</span>
+                      </div>
+                      {msg.isDM && (
+                        <span className="text-[8px] font-black bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded ml-auto">Private DM</span>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] font-medium leading-relaxed break-words mt-1">{msg.content}</p>
+
+                    {msg.photo_url && (
+                      <div className="rounded-xl overflow-hidden border border-white/10 max-h-40 bg-black/40">
+                        <img src={msg.photo_url} alt="Starred attachment" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </GlassPanel>
+        </div>
+      )}
+
+      {/* Share Note Picker Modal */}
+      {isNoteShareModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            onClick={() => {
+              setIsNoteShareModalOpen(false);
+              setSearchNoteQuery('');
+              setNoteSearchResults([]);
+            }}
+            className="absolute inset-0 bg-[#0A0A0C]/65 backdrop-blur-sm" 
+          />
+          <GlassPanel className={`w-full max-w-md p-6 border shadow-2xl relative z-10 rounded-3xl ${
+            isDark ? 'bg-[#0E0E12]/95 border-white/[0.08] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-800'
+          }`}>
+            <div className="flex items-center justify-between border-b pb-3 mb-4 border-white/10 light-mode:border-slate-100">
+              <h3 className="text-sm font-black flex items-center gap-2 text-indigo-400">
+                <Paperclip className="w-4 h-4" />
+                Share Study Notes
+              </h3>
+              <button
+                onClick={() => {
+                  setIsNoteShareModalOpen(false);
+                  setSearchNoteQuery('');
+                  setNoteSearchResults([]);
+                }}
+                className={`p-1.5 rounded-lg border cursor-pointer active:scale-90 ${
+                  isDark ? 'border-white/10 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-505'
+                }`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-505 absolute left-3 top-3.5" />
+                <input
+                  type="text"
+                  placeholder="Search notes by subject name..."
+                  value={searchNoteQuery}
+                  onChange={(e) => handleSearchNotes(e.target.value)}
+                  className={`w-full border rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-650 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+                />
+              </div>
+
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                {searchNoteQuery.trim() === '' ? (
+                  <div className="text-center py-6 text-slate-500 text-[11px] font-bold">
+                    Type a subject name above to search approved notes
+                  </div>
+                ) : noteSearchResults.length === 0 ? (
+                  <div className="text-center py-6 text-slate-505 text-[11px] font-bold">
+                    No approved notes found. Try another subject.
+                  </div>
+                ) : (
+                  noteSearchResults.map((note) => (
+                    <button
+                      key={note.id}
+                      onClick={() => handleShareNoteMessage(note)}
+                      className={`w-full p-3 rounded-xl border text-left flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                        isDark ? 'border-white/[0.04] bg-[#161622]/40 hover:bg-indigo-600/10' : 'border-slate-100 bg-slate-50 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <span className={`block text-xs font-bold truncate ${isDark ? 'text-white' : 'text-slate-850'}`}>{note.subject}</span>
+                        <span className="block text-[9px] text-slate-500 mt-0.5">Branch: {note.branch.toUpperCase()} • Professor: {note.professor || 'Unknown'}</span>
+                      </div>
+                      <span className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[9px] font-black flex-shrink-0">
+                        Share Card
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </GlassPanel>
+        </div>
+      )}
+
+      {/* Campus Study Poll Builder Modal */}
+      {isPollModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            onClick={() => {
+              setIsPollModalOpen(false);
+              setPollQuestion('');
+              setPollOptions(['', '']);
+            }}
+            className="absolute inset-0 bg-[#0A0A0C]/65 backdrop-blur-sm" 
+          />
+          <GlassPanel className={`w-full max-w-md p-6 border shadow-2xl relative z-10 rounded-3xl ${
+            isDark ? 'bg-[#0E0E12]/95 border-white/[0.08] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-800'
+          }`}>
+            <div className="flex items-center justify-between border-b pb-3 mb-4 border-white/10 light-mode:border-slate-100">
+              <h3 className="text-sm font-black flex items-center gap-2 text-indigo-400">
+                <BarChart2 className="w-4 h-4" />
+                Create Campus Study Poll
+              </h3>
+              <button
+                onClick={() => {
+                  setIsPollModalOpen(false);
+                  setPollQuestion('');
+                  setPollOptions(['', '']);
+                }}
+                className={`p-1.5 rounded-lg border cursor-pointer active:scale-90 ${
+                  isDark ? 'border-white/10 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-505'
+                }`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-left">
+              <div>
+                <label className="block text-[10px] font-black text-slate-405 uppercase tracking-widest mb-1.5">Poll Question</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Which topic do you want to revise tonight?"
+                  value={pollQuestion}
+                  onChange={(e) => setPollQuestion(e.target.value)}
+                  className={`w-full border rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-650 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[10px] font-black text-slate-405 uppercase tracking-widest">Options (Min 2, Max 4)</label>
+                  {pollOptions.length < 4 && (
+                    <button
+                      type="button"
+                      onClick={() => setPollOptions([...pollOptions, ''])}
+                      className="text-[10px] font-black text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" /> Add Option
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {pollOptions.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder={`Option ${idx + 1}`}
+                        value={opt}
+                        onChange={(e) => {
+                          const updated = [...pollOptions];
+                          updated[idx] = e.target.value;
+                          setPollOptions(updated);
+                        }}
+                        className={`flex-1 border rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-600 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+                      />
+                      {pollOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setPollOptions(pollOptions.filter((_, oIdx) => oIdx !== idx))}
+                          className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all active:scale-95 cursor-pointer"
+                          title="Remove option"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCreatePollMessage}
+                className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs transition-all cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-95 mt-2 flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Send Poll Card
+              </button>
+            </div>
+          </GlassPanel>
+        </div>
+      )}
+
+      {/* WebRTC Video/Voice calling overlay */}
+      {callState !== 'idle' && (
+        <div className="fixed inset-0 z-50 bg-[#07070A]/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-white text-center">
+          {/* Animated Glowing Ring Backdrop */}
+          <div className="absolute w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-75" />
+
+          {/* Caller/Recipient Profile Section */}
+          <div className="relative z-10 max-w-sm w-full flex flex-col items-center gap-6 flex-1 justify-center">
+            
+            {/* Call State Title */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                {callType === 'video' ? '📽️ Secure Video Call' : '📞 Secure Audio Call'}
+              </span>
+              <h2 className="text-xl font-black text-white">
+                {callState === 'incoming' ? 'Incoming request...' : callState === 'calling' ? 'Calling classmate...' : 'Connected'}
+              </h2>
+            </div>
+
+            {/* Avatar & Video Elements */}
+            <div className="relative w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-slate-900/60 flex items-center justify-center">
+              
+              {/* Remote Video Stream (Main screen when connected and type is video) */}
+              {callState === 'connected' && callType === 'video' && remoteStream && !isCameraOff ? (
+                <video 
+                  ref={remoteVideoRef} 
+                  autoPlay 
+                  playsInline 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                /* Avatar display for incoming, calling or voice call */
+                <div className="flex flex-col items-center gap-3">
+                  <div className="relative">
+                    {renderAvatar(callerProfile?.photoURL || '', "w-28 h-28 text-4xl border-4 border-indigo-500/30 animate-pulse")}
+                    <span className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-indigo-600 border-2 border-slate-950 flex items-center justify-center text-[10px]">
+                      {callType === 'video' ? '📽️' : '📞'}
+                    </span>
+                  </div>
+                  <div className="text-center mt-2">
+                    <h3 className="font-extrabold text-sm">{callerProfile?.displayName || 'Classmate'}</h3>
+                    <p className="text-[10px] text-slate-400">P2P Encrypted Signal</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Local Video Preview (Mini window in bottom-right corner when connected and type is video) */}
+              {callState === 'connected' && callType === 'video' && localStream && (
+                <div className="absolute bottom-3 right-3 w-20 h-28 sm:w-24 sm:h-36 rounded-2xl overflow-hidden border border-white/20 shadow-lg bg-black/60">
+                  {!isCameraOff ? (
+                    <video 
+                      ref={localVideoRef} 
+                      autoPlay 
+                      playsInline 
+                      muted 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-900 text-[10px] text-slate-505 font-bold">Cam Off</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Subtext info */}
+            {callState === 'calling' && (
+              <p className="text-[10px] font-bold text-slate-500 italic animate-pulse">Waiting for peer to accept...</p>
+            )}
+
+            {/* Interaction Buttons Container */}
+            <div className="flex flex-col gap-4 w-full mt-4 items-center">
+              
+              {/* Incoming call buttons */}
+              {callState === 'incoming' ? (
+                <div className="flex items-center gap-6 justify-center w-full">
+                  <button
+                    onClick={declineIncomingCall}
+                    className="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-lg shadow-rose-600/30"
+                    title="Decline Call"
+                  >
+                    <PhoneOff className="w-6 h-6" />
+                  </button>
+                  <button
+                    onClick={acceptIncomingCall}
+                    className="w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 shadow-lg shadow-emerald-600/30 animate-bounce"
+                    title="Accept Call"
+                  >
+                    <Phone className="w-6 h-6" />
+                  </button>
+                </div>
+              ) : (
+                /* Outgoing or Connected Call buttons */
+                <div className="flex items-center gap-4 justify-center">
+                  {callState === 'connected' && (
+                    <>
+                      {/* Mic Mute Toggle */}
+                      <button
+                        onClick={() => {
+                          if (localStream) {
+                            localStream.getAudioTracks().forEach(track => {
+                              track.enabled = !track.enabled;
+                            });
+                            setIsMicMuted(!isMicMuted);
+                            info(!isMicMuted ? "Microphone muted" : "Microphone unmuted");
+                          }
+                        }}
+                        className={`w-12 h-12 rounded-full border flex items-center justify-center cursor-pointer transition-all active:scale-90 ${
+                          isMicMuted 
+                            ? 'bg-rose-600/20 border-rose-500 text-rose-400' 
+                            : 'bg-white/10 border-white/10 hover:bg-white/20 text-white'
+                        }`}
+                        title={isMicMuted ? "Unmute Mic" : "Mute Mic"}
+                      >
+                        {isMicMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                      </button>
+
+                      {/* Video Camera Toggle */}
+                      {callType === 'video' && (
+                        <button
+                          onClick={() => {
+                            if (localStream) {
+                              localStream.getVideoTracks().forEach(track => {
+                                track.enabled = !track.enabled;
+                              });
+                              setIsCameraOff(!isCameraOff);
+                              info(!isCameraOff ? "Camera turned off" : "Camera turned on");
+                            }
+                          }}
+                          className={`w-12 h-12 rounded-full border flex items-center justify-center cursor-pointer transition-all active:scale-90 ${
+                            isCameraOff 
+                              ? 'bg-rose-600/20 border-rose-500 text-rose-400' 
+                              : 'bg-white/10 border-white/10 hover:bg-white/20 text-white'
+                        }`}
+                        title={isCameraOff ? "Turn Video On" : "Turn Video Off"}
+                      >
+                        {isCameraOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+                      </button>
+                    )}
+                  </>
+                )}
+
+                  {/* Hang Up Button */}
+                  <button
+                    onClick={endActiveCall}
+                    className="w-14 h-14 rounded-full bg-rose-650 hover:bg-rose-755 text-white flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-lg shadow-rose-650/30"
+                    title="End Call"
+                  >
+                    <PhoneOff className="w-6 h-6" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

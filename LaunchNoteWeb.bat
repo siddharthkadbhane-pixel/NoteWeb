@@ -1,0 +1,9 @@
+@echo off
+title NoteWeb Campus Portal Launcher
+echo [NoteWeb] Switching to D: Drive...
+d:
+echo [NoteWeb] Navigating to NoteWeb project folder...
+cd "d:\ANTIGRAVITY PROJECT\note-app" 2>nul || cd "d:\ANTIGRAVITY PROJECT\note app"
+echo [NoteWeb] Starting Electron Desktop Application...
+npm.cmd run electron:start
+pause

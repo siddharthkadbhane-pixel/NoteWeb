@@ -481,7 +481,7 @@ Example raw format:
           <div className="lg:col-span-5 flex flex-col gap-6 w-full">
             
             {/* WIDGET 1: AESTHETIC INTERACTIVE NOTEPAD */}
-            <div className={`rounded-3xl border p-5 flex flex-col gap-4 shadow-xl backdrop-blur-2xl transition-all duration-300 relative overflow-hidden ${isDark ? currentNotepadStyle.bg : 'bg-white/90 border-slate-200/80 text-slate-800 focus-within:border-indigo-300'}`}>
+            <div className={`rounded-3xl border p-5 flex flex-col gap-4 shadow-xl backdrop-blur-2xl transition-all duration-300 relative overflow-hidden ${isDark ? currentNotepadStyle.bg : 'glass-panel text-slate-800 focus-within:border-indigo-300'}`}>
               
               {/* Notepad Glow Backdrop Decoration */}
               <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-tr from-white/[0.01] to-white/[0.03] blur-xl pointer-events-none" />
@@ -573,7 +573,7 @@ Example raw format:
             </div>
 
             {/* WIDGET 2: HIGH-FIDELITY POMODORO FOCUS TIMER */}
-            <div className={`rounded-3xl border p-5 flex flex-col gap-4 shadow-xl backdrop-blur-2xl relative overflow-hidden premium-border-glow ${isDark ? 'border-white/5 bg-[#05050A]/60' : 'border-slate-200/80 bg-white/90'}`}>
+            <div className="glass-panel rounded-3xl p-5 flex flex-col gap-4 shadow-xl relative overflow-hidden premium-border-glow">
               
               {/* Radiant Inner Glow Deco */}
               <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#7F00FF]/5 blur-3xl pointer-events-none" />
@@ -723,7 +723,7 @@ Example raw format:
           <div className="lg:col-span-7 flex flex-col gap-6 w-full">
             
             {/* WIDGET 3: STUDENT GREETING & RANK BADGE PANEL */}
-            <div className={`rounded-3xl border p-6 shadow-xl backdrop-blur-2xl flex flex-col sm:flex-row items-center sm:justify-between gap-6 relative overflow-hidden premium-border-glow ${isDark ? 'border-white/5 bg-gradient-to-tr from-[#05050A]/70 via-[#0B0F19]/40 to-[#05050A]/70' : 'border-slate-200/80 bg-gradient-to-tr from-white/95 to-indigo-50/60'}`}>
+            <div className="glass-panel rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-center sm:justify-between gap-6 relative overflow-hidden premium-border-glow">
               
               {/* Dynamic decorative visual neon particle line overlay */}
               <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-[#00F2FE] via-[#7F00FF] to-[#FF007F]" />
@@ -789,7 +789,7 @@ Example raw format:
             </div>
 
             {/* WIDGET 4: CAMPUS AI STUDY ROADMAP & EXAM PLANNER (AI-POWERED NEW FEATURE) */}
-            <div className={`rounded-3xl border p-6 shadow-xl backdrop-blur-2xl flex flex-col gap-5 relative overflow-hidden premium-border-glow ${isDark ? 'border-white/5 bg-[#05050A]/60' : 'border-slate-200/80 bg-white/90'}`}>
+            <div className="glass-panel rounded-3xl p-6 shadow-xl flex flex-col gap-5 relative overflow-hidden premium-border-glow">
               
               {/* Backlit background glow */}
               <div className="absolute top-0 right-0 w-44 h-44 bg-gradient-to-tr from-purple-500/5 to-indigo-500/5 blur-3xl pointer-events-none" />
@@ -1025,7 +1025,7 @@ Example raw format:
             </div>
 
             {/* WIDGET 5: QUICK BRANCHES EXPLORER NAVIGATION PANEL */}
-            <div className={`rounded-3xl border p-6 shadow-xl backdrop-blur-2xl flex flex-col gap-4 relative overflow-hidden premium-border-glow ${isDark ? 'border-white/5 bg-[#05050A]/60' : 'border-slate-200/80 bg-white/90'}`}>
+            <div className={`rounded-3xl border p-6 shadow-xl backdrop-blur-2xl flex flex-col gap-4 relative overflow-hidden premium-border-glow ${isDark ? 'border-white/5 bg-[#05050A]/60' : 'glass-panel border-white/60'}`}>
               
               <div className={`flex items-center justify-between border-b pb-3 z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
                 <div className="flex items-center gap-2">

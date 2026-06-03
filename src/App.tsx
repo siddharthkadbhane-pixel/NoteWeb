@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider, useToast } from './context/ToastContext';
@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Sidebar } from './components/Navigation/Sidebar';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { supabase } from './supabase/config';
-import { ShieldAlert, Send, RefreshCw } from 'lucide-react';
+import { ShieldAlert, Send, RefreshCw, UploadCloud } from 'lucide-react';
 import { leavePresence } from './services/presence';
 
 // Import NoteWeb Pages
@@ -25,6 +25,7 @@ import { FloatingThemeToggle } from './components/Navigation/FloatingThemeToggle
 import { InteractiveBackground } from './components/ui/InteractiveBackground';
 import { ScreenshotProtection } from './components/ScreenshotProtection';
 import { PageWrapper } from './components/ui/PageWrapper';
+import { LocalErrorBoundary } from './components/LocalErrorBoundary';
 
 export const ChatNotificationListener: React.FC = () => {
   const { user } = useAuth();
@@ -59,6 +60,38 @@ export const ChatNotificationListener: React.FC = () => {
                     () => navigate('/chat')
                   );
                 }
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'direct_messages' },
+            async (payload: any) => {
+              console.log('[NoteWeb Notifications] Realtime DM insert:', payload);
+              if (payload.new && payload.new.recipient_id === user.uid) {
+                const senderId = payload.new.sender_id;
+                
+                // Do not notify if we are already viewing this chat thread
+                const params = new URLSearchParams(location.search);
+                const activeDm = params.get('dm');
+                if (location.pathname === '/chat' && activeDm === senderId) {
+                  return; 
+                }
+                
+                let senderName = 'Classmate';
+                try {
+                  const { data } = await supabase.from('profiles').select('display_name,username').eq('id', senderId).single();
+                  if (data) {
+                    senderName = data.display_name || data.username || 'Classmate';
+                  }
+                } catch {}
+                
+                const messageText = payload.new.message || 'Sent an attachment';
+                info(
+                  `✉️ DM from ${senderName}: "${messageText.substring(0, 45)}${messageText.length > 45 ? '...' : ''}"`,
+                  6000,
+                  () => navigate(`/chat?dm=${senderId}`)
+                );
               }
             }
           )
@@ -104,22 +137,40 @@ export const ChatNotificationListener: React.FC = () => {
   return null;
 };
 
+// Safe fetch with manual AbortController timeout for maximum compatibility across older WebViews
+const fetchWithTimeout = async (url: string, ms = 1500): Promise<Response> => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+};
+
 // Fetch current user IP address with multiple public API fallbacks & offline mocks
 const fetchUserIp = async (): Promise<string> => {
   try {
-    const res = await fetch('https://api.seeip.org/jsonip', { signal: AbortSignal.timeout(1500) });
+    const res = await fetchWithTimeout('https://api.seeip.org/jsonip', 1500);
     if (res.ok) {
       const data = await res.json();
       if (data && data.ip) return data.ip;
     }
-  } catch {}
+  } catch (err) {
+    console.warn("fetchUserIp seeip fallback triggered:", err);
+  }
   try {
-    const res = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(1500) });
+    const res = await fetchWithTimeout('https://api.ipify.org?format=json', 1500);
     if (res.ok) {
       const data = await res.json();
       if (data && data.ip) return data.ip;
     }
-  } catch {}
+  } catch (err) {
+    console.warn("fetchUserIp ipify fallback triggered:", err);
+  }
   
   // High-fidelity offline mockup IP Address
   let mockIp = localStorage.getItem('noteweb-detected-ip');
@@ -229,8 +280,8 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
   useEffect(() => {
     checkIpStatus(true); // Initial check with visible loading screen
 
-    // Setup periodic watchdog checking IP/hardware status silently every 10 seconds in the background
-    const interval = setInterval(() => checkIpStatus(false), 10000);
+    // Setup periodic watchdog checking IP/hardware status silently every 5 minutes in the background
+    const interval = setInterval(() => checkIpStatus(false), 300000);
 
     // Listen for storage changes (clearing block) across browser tabs
     const handleStorageChange = (e: StorageEvent) => {
@@ -407,6 +458,158 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
   return <>{children}</>;
 };
 
+// Synchronously add native-platform class on file load to prevent any heavy layout/blur render frames on mobile devices
+if (typeof window !== 'undefined') {
+  const ua = navigator.userAgent.toLowerCase();
+  
+  // Genuinely detect mobile platforms (Android/iOS) to apply mobile platform optimizations
+  const isMobileNative = ua.includes('android') || 
+                         ua.includes('iphone') || 
+                         ua.includes('ipad') || 
+                         ua.includes('ipod');
+                         
+  let isCapacitorMobile = false;
+  if (typeof (window as any).Capacitor !== 'undefined') {
+    const platform = (window as any).Capacitor.getPlatform?.();
+    if (platform === 'android' || platform === 'ios') {
+      isCapacitorMobile = true;
+    }
+  }
+
+  if (isMobileNative || isCapacitorMobile) {
+    document.body.classList.add('native-platform');
+  }
+}
+
+export const GlobalDesktopControls: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const [showDragOverlay, setShowDragOverlay] = useState(false);
+  const dragCounter = useRef(0);
+
+  // 1. Full-Window Drag & Drop Overlay
+  const handleDragEnter = (e: DragEvent) => {
+    e.preventDefault();
+    if (!user || user.uid === 'guest-user-noteweb') return; // Only for logged in students
+    
+    dragCounter.current++;
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      setShowDragOverlay(true);
+    }
+  };
+
+  const handleDragLeave = (e: DragEvent) => {
+    e.preventDefault();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setShowDragOverlay(false);
+    }
+  };
+
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setShowDragOverlay(false);
+    dragCounter.current = 0;
+
+    if (!user || user.uid === 'guest-user-noteweb') return;
+
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const droppedFile = files[0];
+      if (droppedFile.type === 'application/pdf') {
+        // Redirect to upload page and pass the file
+        navigate('/upload', { state: { droppedFile } });
+      }
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('dragenter', handleDragEnter);
+    window.addEventListener('dragleave', handleDragLeave);
+    window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('drop', handleDrop);
+    
+    return () => {
+      window.removeEventListener('dragenter', handleDragEnter);
+      window.removeEventListener('dragleave', handleDragLeave);
+      window.removeEventListener('dragover', handleDragOver);
+      window.removeEventListener('drop', handleDrop);
+    };
+  }, [user]);
+
+  // 2. Trackpad / Mouse Scroll horizontal conversion
+  useEffect(() => {
+    const handleHorizontalWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
+      const container = target.closest('.horizontal-scroll-list, .overflow-x-auto, [data-horizontal-scroll]') as HTMLElement;
+      if (container) {
+        e.preventDefault();
+        container.scrollLeft += e.deltaY * 0.8; // Smooth horizontal scaling
+      }
+    };
+    window.addEventListener('wheel', handleHorizontalWheel, { passive: false });
+    return () => window.removeEventListener('wheel', handleHorizontalWheel);
+  }, []);
+
+  // 3. Two-finger trackpad history navigation (Disabled to prevent accidental back/forward navigation when scrolling)
+  /*
+  useEffect(() => {
+    let lastSwipe = 0;
+    const handleTouchpadSwipe = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) > 65) {
+        const now = Date.now();
+        if (now - lastSwipe < 1200) return;
+        
+        if (e.deltaX > 65) {
+          window.history.forward();
+          lastSwipe = now;
+        } else if (e.deltaX < -65) {
+          window.history.back();
+          lastSwipe = now;
+        }
+      }
+    };
+    window.addEventListener('wheel', handleTouchpadSwipe, { passive: true });
+    return () => window.removeEventListener('wheel', handleTouchpadSwipe);
+  }, []);
+  */
+
+  // 4. Escape key global listener
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        window.dispatchEvent(new CustomEvent('close-noteweb-modals'));
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
+
+  return (
+    <>
+      {children}
+
+      {/* Global Drag & Drop Overlay */}
+      {showDragOverlay && (
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#07070F]/85 backdrop-blur-md text-white border-4 border-dashed border-indigo-500/50 m-6 rounded-3xl animate-in fade-in zoom-in duration-200">
+          <div className="w-24 h-24 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6 shadow-[0_0_50px_rgba(99,102,241,0.2)]">
+            <UploadCloud className="w-12 h-12 animate-bounce" />
+          </div>
+          <h2 className="text-3xl font-black tracking-tight mb-2">Drop your PDF anywhere!</h2>
+          <p className="text-sm font-semibold text-slate-400 max-w-xs text-center leading-relaxed">
+            Release the file anywhere on screen to prepare your study notes uploader instantly 🚀
+          </p>
+        </div>
+      )}
+    </>
+  );
+};
+
 function App() {
   return (
     <ThemeProvider>
@@ -415,13 +618,13 @@ function App() {
           <IpBlockGuard>
             <ScreenshotProtection>
               <Router>
-                <ChatNotificationListener />
-                <div className="min-h-screen min-h-[100dvh] transition-colors duration-300 flex relative overflow-x-hidden bg-[#F4F4F6] text-[#0F172A] dark:bg-[#020204] dark:text-[#E2E8F0]">
-                {/* Particle Network Background */}
-                <InteractiveBackground />
-
-                {/* Sidebar/Navigation */}
-                <Sidebar />
+                <GlobalDesktopControls>
+                  <ChatNotificationListener />
+                  {/* Particle Network Background */}
+                  <InteractiveBackground />
+                  <div className="min-h-screen min-h-[100dvh] transition-colors duration-300 flex relative z-10 overflow-x-hidden bg-transparent text-[#0F172A] dark:text-[#E2E8F0]">
+                    {/* Sidebar/Navigation */}
+                    <Sidebar />
 
                 {/* Fixed Floating Theme Toggle Button */}
                 <FloatingThemeToggle />
@@ -436,12 +639,13 @@ function App() {
                     <Route path="/categories" element={<PageWrapper><Categories /></PageWrapper>} />
                     <Route path="/feed" element={<PageWrapper><Feed /></PageWrapper>} />
 
-                    {/* Protected Student Features */}
                     <Route
                       path="/upload"
                       element={
                         <ProtectedRoute>
-                          <PageWrapper><Upload /></PageWrapper>
+                          <LocalErrorBoundary fallbackTitle="Upload Section Render Crash">
+                            <PageWrapper><Upload /></PageWrapper>
+                          </LocalErrorBoundary>
                         </ProtectedRoute>
                       }
                     />
@@ -498,6 +702,7 @@ function App() {
                   </Routes>
                 </main>
               </div>
+                </GlobalDesktopControls>
               </Router>
             </ScreenshotProtection>
           </IpBlockGuard>

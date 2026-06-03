@@ -1,0 +1,45 @@
+const { app, BrowserWindow, shell } = require('electron');
+const path = require('path');
+
+// Disable only the GPU sandbox and system sandbox to fix STATUS_BREAKPOINT crashes while keeping FULL GPU Hardware Acceleration speed!
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+app.commandLine.appendSwitch('no-sandbox');
+
+function createWindow() {
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    title: "NoteWeb Campus Portal",
+    autoHideMenuBar: true,
+    icon: path.join(__dirname, 'icon.png'),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    }
+  });
+
+  // Load the built Vite index.html from dist
+  win.loadFile(path.join(__dirname, '../dist/index.html'));
+
+  // Open external links (e.g. Supabase auth, PDF downloads) in user's default browser
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+}
+
+app.whenReady().then(() => {
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});

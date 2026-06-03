@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -18,7 +18,8 @@ import {
   Trophy,
   Award,
   Zap,
-  ExternalLink
+  ExternalLink,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -169,6 +170,7 @@ export const Profile: React.FC = () => {
   const { user, userProfile, toggleBookmark, updatePoints, updateFullProfile } = useAuth();
   const { success, error } = useToast();
   const { uid: urlUid } = useParams<{ uid?: string }>();
+  const navigate = useNavigate();
 
   const isViewingSelf = !urlUid || urlUid === user?.uid;
   const targetUid = urlUid || user?.uid;
@@ -526,7 +528,7 @@ export const Profile: React.FC = () => {
       const isLocalNote = String(noteId).startsWith('optimistic-');
 
       if (!isLocalNote) {
-        if (pdfPath && pdfPath !== 'external-link') {
+        if (pdfPath && pdfPath !== 'external-link' && !pdfPath.startsWith('cloudinary:')) {
           await supabase.storage.from('notes').remove([pdfPath]);
         }
         const { error: dbErr } = await supabase.from('notes').delete().eq('id', noteId);
@@ -682,7 +684,7 @@ export const Profile: React.FC = () => {
             </div>
           </div>
 
-          {isViewingSelf && (
+          {isViewingSelf ? (
             <div className="flex items-center gap-3 z-10 relative self-start lg:self-auto">
               <Button
                 onClick={() => setIsEditing(!isEditing)}
@@ -690,6 +692,16 @@ export const Profile: React.FC = () => {
                 leftIcon={<Edit2 className="w-4 h-4" />}
               >
                 {isEditing ? 'Cancel Edit' : 'Edit Profile & Avatar'}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 z-10 relative self-start lg:self-auto">
+              <Button
+                onClick={() => navigate(`/chat?dm=${targetUid}`)}
+                variant="primary"
+                leftIcon={<MessageSquare className="w-4 h-4" />}
+              >
+                Send Message
               </Button>
             </div>
           )}

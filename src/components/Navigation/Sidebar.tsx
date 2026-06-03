@@ -108,7 +108,7 @@ export const Sidebar: React.FC = () => {
           select-none overflow-hidden
           ${isDark
             ? 'bg-[#070710]/90 border-white/[0.06] backdrop-blur-2xl'
-            : 'bg-white/95 border-slate-200/80 backdrop-blur-2xl shadow-[0_20px_60px_rgba(15,23,42,0.08)]'
+            : 'bg-white/45 border-white/60 backdrop-blur-3xl shadow-[0_20px_60px_rgba(15,23,42,0.06)]'
           }
         `}
       >
@@ -266,7 +266,7 @@ export const Sidebar: React.FC = () => {
         lg:hidden fixed top-0 left-0 right-0 h-14 px-4 flex items-center justify-between z-50 border-b
         ${isDark
           ? 'bg-[#070710]/90 border-white/[0.06] backdrop-blur-2xl'
-          : 'bg-white/95 border-slate-200/80 backdrop-blur-2xl'
+          : 'bg-white/45 border-white/60 backdrop-blur-3xl'
         }
       `}>
         <Link to="/" className="flex items-center gap-2 active:scale-95 transition-transform">
@@ -311,7 +311,7 @@ export const Sidebar: React.FC = () => {
         shadow-[0_12px_30px_rgba(0,0,0,0.4)]
         ${isDark
           ? 'bg-[#07070F]/90 border-white/[0.08] backdrop-blur-2xl'
-          : 'bg-white/95 border-slate-200/80 backdrop-blur-2xl shadow-[0_12px_30px_rgba(15,23,42,0.10)]'
+          : 'bg-white/45 border-white/60 backdrop-blur-3xl shadow-[0_12px_30px_rgba(15,23,42,0.06)]'
         }
       `}>
         {/* Home */}

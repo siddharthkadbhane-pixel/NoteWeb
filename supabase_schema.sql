@@ -122,6 +122,23 @@ CREATE TABLE IF NOT EXISTS public.blocked_ips (
     blocked_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- I. Table: public.direct_messages (1-on-1 private messaging)
+CREATE TABLE IF NOT EXISTS public.direct_messages (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    sender_id TEXT REFERENCES public.profiles(id) ON DELETE CASCADE,
+    recipient_id TEXT REFERENCES public.profiles(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    photo_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    reply_to JSONB,
+    reactions JSONB DEFAULT '{}'::JSONB,
+    shared_note_id TEXT,
+    is_vanish BOOLEAN DEFAULT false,
+    is_view_once BOOLEAN DEFAULT false,
+    poll_data JSONB
+);
+
 -- ════════════════════════════════════════════════════════════
 -- 3. SEED BRANCHES & CATEGORIES DATA
 -- ════════════════════════════════════════════════════════════
@@ -172,6 +189,7 @@ ALTER TABLE public.chats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.flagged_chats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feedbacks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.blocked_ips ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.direct_messages ENABLE ROW LEVEL SECURITY;
 
 -- ════════════════════════════════════════════════════════════
 -- 5. DEFINE SECURITY POLICIES (BULLETPROOF P2P CROSS-SYNC SHIELD)
@@ -180,41 +198,60 @@ ALTER TABLE public.blocked_ips ENABLE ROW LEVEL SECURITY;
 -- A. Policies for 'profiles'
 CREATE POLICY "Allow public read to profiles" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Allow public insert to profiles" ON public.profiles FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow owner and admin to update profiles" ON public.profiles FOR UPDATE USING (true) WITH CHECK (true);
-CREATE POLICY "Allow admin to delete profiles" ON public.profiles FOR DELETE USING (true);
+CREATE POLICY "Allow owner and admin to update profiles" ON public.profiles FOR UPDATE 
+    USING (auth.uid() = id OR EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'))
+    WITH CHECK (auth.uid() = id OR EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
+CREATE POLICY "Allow admin to delete profiles" ON public.profiles FOR DELETE 
+    USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 -- B. Policies for 'branches'
 CREATE POLICY "Allow public read to branches" ON public.branches FOR SELECT USING (true);
-CREATE POLICY "Allow admin to manage branches" ON public.branches FOR ALL USING (true);
+CREATE POLICY "Allow admin to manage branches" ON public.branches FOR ALL 
+    USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 -- C. Policies for 'categories'
 CREATE POLICY "Allow public read to categories" ON public.categories FOR SELECT USING (true);
-CREATE POLICY "Allow admin to manage categories" ON public.categories FOR ALL USING (true);
+CREATE POLICY "Allow admin to manage categories" ON public.categories FOR ALL 
+    USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 -- D. Policies for 'notes'
 CREATE POLICY "Allow public read access to approved notes" ON public.notes FOR SELECT USING (true);
 CREATE POLICY "Allow public inserts of study notes" ON public.notes FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public updates (likes count / edits) to notes" ON public.notes FOR UPDATE USING (true) WITH CHECK (true);
-CREATE POLICY "Allow uploader or admin to delete notes" ON public.notes FOR DELETE USING (true);
+CREATE POLICY "Allow uploader or admin to delete notes" ON public.notes FOR DELETE 
+    USING (auth.uid() = uploaded_by OR EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 -- E. Policies for 'chats'
 CREATE POLICY "Allow public read to chats" ON public.chats FOR SELECT USING (true);
 CREATE POLICY "Allow public insert to chats" ON public.chats FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow message editors or admin to delete/update chats" ON public.chats FOR ALL USING (true);
+CREATE POLICY "Allow message editors or admin to delete/update chats" ON public.chats FOR ALL 
+    USING (auth.uid() = sender_id OR EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 -- F. Policies for 'flagged_chats'
-CREATE POLICY "Allow public select on flagged chats" ON public.flagged_chats FOR SELECT USING (true);
+CREATE POLICY "Allow admin select on flagged chats" ON public.flagged_chats FOR SELECT 
+    USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 CREATE POLICY "Allow public insert to flagged chats" ON public.flagged_chats FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow admin to manage flagged chats" ON public.flagged_chats FOR ALL USING (true);
+CREATE POLICY "Allow admin to manage flagged chats" ON public.flagged_chats FOR ALL 
+    USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 -- G. Policies for 'feedbacks'
 CREATE POLICY "Allow public select on feedbacks" ON public.feedbacks FOR SELECT USING (true);
 CREATE POLICY "Allow public insert to feedbacks" ON public.feedbacks FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow admin or author to manage feedbacks" ON public.feedbacks FOR ALL USING (true);
+CREATE POLICY "Allow admin or author to manage feedbacks" ON public.feedbacks FOR ALL 
+    USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 -- H. Policies for 'blocked_ips'
 CREATE POLICY "Allow public select on blocked_ips" ON public.blocked_ips FOR SELECT USING (true);
-CREATE POLICY "Allow public insert/update to blocked_ips" ON public.blocked_ips FOR ALL USING (true);
+CREATE POLICY "Allow admin to manage blocked_ips" ON public.blocked_ips FOR ALL 
+    USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
+
+-- I. Policies for 'direct_messages'
+CREATE POLICY "Allow users to view their own conversations" ON public.direct_messages FOR SELECT 
+    USING (auth.uid()::text = sender_id OR auth.uid()::text = recipient_id);
+CREATE POLICY "Allow users to send messages" ON public.direct_messages FOR INSERT 
+    WITH CHECK (auth.uid()::text = sender_id);
+CREATE POLICY "Allow senders to update/delete their messages" ON public.direct_messages FOR ALL 
+    USING (auth.uid()::text = sender_id);
 
 -- ════════════════════════════════════════════════════════════
 -- 6. SETUP SUPABASE STORAGE PUBLIC BUCKET FOR PDF UPLOADS

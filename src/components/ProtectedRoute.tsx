@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -17,15 +17,25 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { error } = useToast();
   const location = useLocation();
 
+  // Track if auth has resolved at least once.
+  // After the first resolution we NEVER show the loading spinner again —
+  // this prevents the blank screen on second/subsequent navigations where
+  // Supabase's onAuthStateChange briefly re-fires and sets loading=true.
+  const initialDoneRef = useRef(false);
+  if (!loading) {
+    initialDoneRef.current = true;
+  }
+
   useEffect(() => {
     if (!loading && isGuest) {
       error('Student account required to upload notes or view profiles.');
     }
   }, [isGuest, loading, error]);
 
-  if (loading) {
+  // Only block on the very first load, never on revisits
+  if (loading && !initialDoneRef.current) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#0A0A0C] light-mode:bg-[#F8F9FA] transition-colors duration-300">
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#0A0A0C] transition-colors duration-300">
         <div className="relative flex flex-col items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20 animate-pulse">
             <span className="font-extrabold text-white text-2xl">N</span>
@@ -37,6 +47,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         </div>
       </div>
     );
+  }
+
+  // If still loading but we've seen a valid user before, render children optimistically
+  // (avoids blank screen flash when auth briefly re-checks)
+  if (loading && initialDoneRef.current) {
+    if (!user || isGuest) {
+      return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+    // Auth was valid before — show content immediately
+    return <>{children}</>;
   }
 
   // Redirect to login if not logged in at all, or if trying to access protected content in guest mode

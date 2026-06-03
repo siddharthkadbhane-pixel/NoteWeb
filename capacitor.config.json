@@ -1,0 +1,14 @@
+{
+  "appId": "com.noteweb.app",
+  "appName": "NoteWeb",
+  "webDir": "dist",
+  "server": {
+    "url": "https://siddharthkadbhane-pixel.github.io/NoteWeb/",
+    "cleartext": true
+  },
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": true
+    }
+  }
+}
