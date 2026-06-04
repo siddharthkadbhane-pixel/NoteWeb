@@ -76,7 +76,39 @@ export const Login: React.FC = () => {
       try {
         const { data } = await supabase.from('branches').select('id,name');
         if (data && data.length > 0) {
-          setDbBranches(data);
+          const blacklistIds = ['bse', 'cs', 'mgt', 'm', 'math', 'mathematics', 'basic-science', 'computer-science'];
+          const blacklistNames = [
+            'basic science & eng',
+            'basic science',
+            'basic sciences',
+            'computer science',
+            'mathematics',
+            'management & humanities'
+          ];
+          
+          let filtered = data.filter((b: any) => {
+            if (blacklistIds.includes(b.id)) return false;
+            if (blacklistNames.includes(b.name.trim().toLowerCase())) return false;
+            return true;
+          });
+
+          // Deduplicate by name case-insensitive
+          const seenNames = new Set<string>();
+          filtered = filtered.filter((b: any) => {
+            const normName = b.name.trim().toLowerCase();
+            if (normName.includes('electronics') || normName.includes('comm')) {
+              if (b.id !== 'ece' && filtered.some((o: any) => o.id === 'ece')) {
+                return false;
+              }
+            }
+            if (seenNames.has(normName)) {
+              return false;
+            }
+            seenNames.add(normName);
+            return true;
+          });
+
+          setDbBranches(filtered);
         }
       } catch (err) {
         console.warn("Failed to fetch branches for registration selector:", err);

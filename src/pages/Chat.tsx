@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { renderAvatar } from '../utils/avatar';
+import { incrementQuestProgress } from '../utils/quests';
 import { motion } from 'framer-motion';
 import { moderateChatMessage } from '../services/gemini';
 import { GlassPanel } from '../components/ui/GlassPanel';
@@ -1647,6 +1648,12 @@ export const Chat: React.FC = () => {
         setInputText('');
         setSelectedImage(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
+        
+        try {
+          incrementQuestProgress('send-chat', 1);
+        } catch (e) {
+          console.warn('Failed to increment send-chat quest progress:', e);
+        }
 
         // Broadcast realtime P2P
         if (channelRef.current) {
@@ -1723,6 +1730,12 @@ export const Chat: React.FC = () => {
         setReplyingTo(null);
         setIsViewOnceSelected(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
+
+        try {
+          incrementQuestProgress('send-chat', 1);
+        } catch (e) {
+          console.warn('Failed to increment send-chat quest progress:', e);
+        }
 
         // Write DM to Supabase database
         const dbPayload = {

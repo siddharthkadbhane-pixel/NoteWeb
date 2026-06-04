@@ -87,7 +87,9 @@ export const Home: React.FC = () => {
     return {};
   });
 
-  // 1. Fetch Dynamic Note Stats
+  const [branches, setBranches] = useState<any[]>([]);
+
+  // 1. Fetch Dynamic Note Stats & Branches
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -102,7 +104,68 @@ export const Home: React.FC = () => {
         console.warn('Failed to fetch real-time note counts:', err);
       }
     };
+
+    const fetchBranches = async () => {
+      try {
+        const { data, error } = await supabase.from('branches').select('*');
+        if (error) throw error;
+        
+        const blacklistIds = ['bse', 'cs', 'mgt', 'm', 'math', 'mathematics', 'basic-science', 'computer-science'];
+        const blacklistNames = [
+          'basic science & eng',
+          'basic science',
+          'basic sciences',
+          'computer science',
+          'mathematics',
+          'management & humanities'
+        ];
+        
+        let filtered = (data || []).filter((b: any) => {
+          if (blacklistIds.includes(b.id)) return false;
+          if (blacklistNames.includes(b.name.trim().toLowerCase())) return false;
+          return true;
+        });
+
+        // Deduplicate by name case-insensitive
+        const seenNames = new Set<string>();
+        filtered = filtered.filter((b: any) => {
+          const normName = b.name.trim().toLowerCase();
+          if (normName.includes('electronics') || normName.includes('comm')) {
+            if (b.id !== 'ece' && filtered.some((o: any) => o.id === 'ece')) {
+              return false;
+            }
+          }
+          if (seenNames.has(normName)) {
+            return false;
+          }
+          seenNames.add(normName);
+          return true;
+        });
+
+        // Sort by custom order
+        const coreOrder = ['cse', 'aiml', 'ds', 'ece', 'mechanical', 'civil'];
+        filtered.sort((a: any, b: any) => {
+          const indexA = coreOrder.indexOf(a.id);
+          const indexB = coreOrder.indexOf(b.id);
+          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+          if (indexA !== -1) return -1;
+          if (indexB !== -1) return 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        setBranches(filtered);
+      } catch (err) {
+        console.warn('Failed to fetch dynamic branches in Home:', err);
+        setBranches([
+          { id: 'cse', name: 'Computer Science & Engineering', notes_count: 'CSE', description: 'Data Structures, Algorithms, Software Engineering, Web Dev, Databases, and operating systems.' },
+          { id: 'aiml', name: 'AI & Machine Learning', notes_count: 'AI&ML', description: 'Neural Networks, Deep Learning, Computer Vision, NLP, and Robotics.' },
+          { id: 'ds', name: 'Data Science', notes_count: 'DS', description: 'Data analytics, statistical learning, visualization, big data processing, and predictive models.' }
+        ]);
+      }
+    };
+
     fetchStats();
+    fetchBranches();
 
     // Select random motivator quote on load
     const randIdx = Math.floor(Math.random() * HANDCRAFTED_QUOTES.length);
@@ -1048,37 +1111,59 @@ Example raw format:
 
               {/* Grid of branches */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 z-10">
-                
-                {/* CSE Branch */}
-                <div 
-                  onClick={() => navigate('/feed', { state: { branchFilter: 'cse' } })}
-                  className={`p-3.5 rounded-2xl border hover:border-sky-300/50 transition-all cursor-pointer group active:scale-95 ${isDark ? 'bg-white/[0.01] border-white/[0.04] hover:bg-[#00F2FE]/5' : 'bg-slate-50/80 border-slate-200/60 hover:bg-sky-50'}`}
-                >
-                  <span className="text-[8px] font-black uppercase text-sky-500 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded">CSE</span>
-                  <h4 className={`text-xs font-extrabold mt-2 group-hover:text-sky-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>Computer Science</h4>
-                  <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Data Structures & DBMS</span>
-                </div>
+                {branches.map((b) => {
+                  let borderHoverCls = 'hover:border-indigo-300/50 hover:bg-indigo-500/5';
+                  let badgeCls = 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20';
+                  let textHoverCls = 'group-hover:text-indigo-500';
 
-                {/* AI & ML Branch */}
-                <div 
-                  onClick={() => navigate('/feed', { state: { branchFilter: 'aiml' } })}
-                  className={`p-3.5 rounded-2xl border hover:border-purple-300/50 transition-all cursor-pointer group active:scale-95 ${isDark ? 'bg-white/[0.01] border-white/[0.04] hover:bg-[#7F00FF]/5' : 'bg-slate-50/80 border-slate-200/60 hover:bg-purple-50'}`}
-                >
-                  <span className="text-[8px] font-black uppercase text-purple-500 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">AI & ML</span>
-                  <h4 className={`text-xs font-extrabold mt-2 group-hover:text-purple-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>AI & Machine Learning</h4>
-                  <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Neural Networks & ML</span>
-                </div>
+                  if (b.id === 'cse') {
+                    borderHoverCls = 'hover:border-sky-300/50 hover:bg-[#00F2FE]/5';
+                    badgeCls = 'text-sky-500 bg-sky-500/10 border-sky-500/20';
+                    textHoverCls = 'group-hover:text-sky-500';
+                  } else if (b.id === 'aiml') {
+                    borderHoverCls = 'hover:border-purple-300/50 hover:bg-[#7F00FF]/5';
+                    badgeCls = 'text-purple-500 bg-purple-500/10 border-purple-500/20';
+                    textHoverCls = 'group-hover:text-purple-500';
+                  } else if (b.id === 'ds') {
+                    borderHoverCls = 'hover:border-rose-300/50 hover:bg-rose-500/5';
+                    badgeCls = 'text-rose-500 bg-rose-500/10 border-rose-500/20';
+                    textHoverCls = 'group-hover:text-rose-500';
+                  } else if (b.id === 'ece') {
+                    borderHoverCls = 'hover:border-emerald-300/50 hover:bg-[#00FF87]/5';
+                    badgeCls = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
+                    textHoverCls = 'group-hover:text-emerald-500';
+                  } else if (b.id === 'mechanical') {
+                    borderHoverCls = 'hover:border-amber-300/50 hover:bg-[#F35555]/5';
+                    badgeCls = 'text-amber-500 bg-amber-500/10 border-amber-500/20';
+                    textHoverCls = 'group-hover:text-amber-500';
+                  } else if (b.id === 'civil') {
+                    borderHoverCls = 'hover:border-orange-300/50 hover:bg-[#FF0844]/5';
+                    badgeCls = 'text-orange-500 bg-orange-500/10 border-orange-500/20';
+                    textHoverCls = 'group-hover:text-orange-500';
+                  }
 
-                {/* Data Science Branch */}
-                <div 
-                  onClick={() => navigate('/feed', { state: { branchFilter: 'ds' } })}
-                  className={`p-3.5 rounded-2xl border hover:border-rose-300/50 transition-all cursor-pointer group active:scale-95 ${isDark ? 'bg-white/[0.01] border-white/[0.04] hover:bg-rose-500/5' : 'bg-slate-50/80 border-slate-200/60 hover:bg-rose-50'}`}
-                >
-                  <span className="text-[8px] font-black uppercase text-rose-500 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded">DS</span>
-                  <h4 className={`text-xs font-extrabold mt-2 group-hover:text-rose-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>Data Science</h4>
-                  <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Analytics & Big Data</span>
-                </div>
+                  const shortDesc = b.description 
+                    ? (b.description.split(',')[0] + ' & ' + (b.description.split(',')[1] || 'Syllabus')).slice(0, 32)
+                    : 'Curriculum syllabus subjects';
 
+                  return (
+                    <div 
+                      key={b.id}
+                      onClick={() => navigate('/feed', { state: { branchFilter: b.id } })}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer group active:scale-95 ${isDark ? 'bg-white/[0.01] border-white/[0.04] ' + borderHoverCls : 'bg-slate-50/80 border-slate-200/60 ' + borderHoverCls}`}
+                    >
+                      <span className={`text-[8px] font-black uppercase border px-1.5 py-0.5 rounded ${badgeCls}`}>
+                        {b.notes_count || b.notesCount || b.id.toUpperCase()}
+                      </span>
+                      <h4 className={`text-xs font-extrabold mt-2 ${textHoverCls} ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        {b.name}
+                      </h4>
+                      <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        {shortDesc}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Feed CTA panel */}

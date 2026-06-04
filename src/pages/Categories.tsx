@@ -265,8 +265,44 @@ export const Categories: React.FC = () => {
       if (branchesErr) throw branchesErr;
       if (categoriesErr) throw categoriesErr;
 
-      let loadedBranches: BranchType[] = (branchesData || []).map(dbToBranch);
-      let loadedCategories: CategoryType[] = (categoriesData || []).map(dbToCategory);
+      const blacklistIds = ['bse', 'cs', 'mgt', 'm', 'math', 'mathematics', 'basic-science', 'computer-science'];
+      const blacklistNames = [
+        'basic science & eng',
+        'basic science',
+        'basic sciences',
+        'computer science',
+        'mathematics',
+        'management & humanities'
+      ];
+
+      let loadedBranches: BranchType[] = (branchesData || [])
+        .map(dbToBranch)
+        .filter((b: BranchType) => {
+          if (blacklistIds.includes(b.id)) return false;
+          if (blacklistNames.includes(b.name.trim().toLowerCase())) return false;
+          return true;
+        });
+
+      // Deduplicate by name case-insensitive
+      const seenNames = new Set<string>();
+      loadedBranches = loadedBranches.filter((b: BranchType) => {
+        const normName = b.name.trim().toLowerCase();
+        if (normName.includes('electronics') || normName.includes('comm')) {
+          if (b.id !== 'ece' && loadedBranches.some((o: BranchType) => o.id === 'ece')) {
+            return false;
+          }
+        }
+        if (seenNames.has(normName)) {
+          return false;
+        }
+        seenNames.add(normName);
+        return true;
+      });
+
+      const activeBranchIds = new Set(loadedBranches.map((b: BranchType) => b.id));
+      let loadedCategories: CategoryType[] = (categoriesData || [])
+        .map(dbToCategory)
+        .filter((c: CategoryType) => activeBranchIds.has(c.branchId));
 
       // Sort branches by standard order
       const coreOrder = ['cse', 'aiml', 'ds', 'ece', 'mechanical', 'civil'];

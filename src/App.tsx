@@ -21,6 +21,7 @@ import { Admin } from './pages/Admin';
 import { Chat } from './pages/Chat';
 import { Leaderboard } from './pages/Leaderboard';
 import { Feedback } from './pages/Feedback';
+import { Quests } from './pages/Quests';
 import { FloatingThemeToggle } from './components/Navigation/FloatingThemeToggle';
 import { InteractiveBackground } from './components/ui/InteractiveBackground';
 import { ScreenshotProtection } from './components/ScreenshotProtection';
@@ -678,6 +679,14 @@ function App() {
                       element={
                         <ProtectedRoute>
                           <PageWrapper><Leaderboard /></PageWrapper>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/quests"
+                      element={
+                        <ProtectedRoute>
+                          <PageWrapper><Quests /></PageWrapper>
                         </ProtectedRoute>
                       }
                     />

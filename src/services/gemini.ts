@@ -180,27 +180,58 @@ export const classifyNoteCategory = async (
   const textToAnalyze = `${subject} ${description} ${extractedText}`.toLowerCase();
 
   const getFallbackCategory = (): string => {
-    const csKeywords = ['computer', 'programming', 'code', 'javascript', 'typescript', 'python', 'java', 'c++', 'html', 'css', 'database', 'sql', 'algorithm', 'software', 'networking', 'ip address', 'data structure', 'compiler', 'operating system', 'linux', 'git', 'github', 'cybersecurity', 'ai', 'machine learning', 'web', 'app'];
-    const mathKeywords = ['math', 'mathematics', 'calculus', 'algebra', 'geometry', 'trigonometry', 'matrix', 'matrices', 'probability', 'statistics', 'derivative', 'integral', 'equation', 'formula', 'vector', 'linear algebra', 'discrete'];
-    const scienceKeywords = ['science', 'physics', 'chemistry', 'biology', 'quantum', 'organic chemistry', 'molecule', 'atom', 'proton', 'electron', 'dna', 'rna', 'cell', 'genetics', 'evolution', 'gravity', 'thermodynamics', 'chemical'];
-    const electronicsKeywords = ['electronics', 'circuit', 'semiconductor', 'diode', 'transistor', 'microcontroller', 'arduino', 'raspberry pi', 'resistor', 'capacitor', 'voltage', 'current', 'pcb', 'sensor'];
-    const mechanicalKeywords = ['mechanical', 'gear', 'engine', 'turbine', 'thermodynamics', 'fluid mechanics', 'fluid dynamics', 'cad', 'robotics', 'materials', 'kinematics', 'aerodynamics'];
-    
-    const keywordMaps: Record<string, string[]> = {
-      cse: csKeywords,
-      aiml: mathKeywords,
-      ds: mathKeywords,
-      ece: electronicsKeywords,
-      mechanical: mechanicalKeywords,
-      civil: scienceKeywords,
+    const categorySpecificKeywords: Record<string, string[]> = {
+      'cse-dsa': ['dsa', 'data structure', 'data structures', 'algorithm', 'algorithms', 'algo', 'graph', 'graphs', 'tree', 'trees', 'stack', 'queue', 'linked list', 'sorting', 'searching'],
+      'cse-dbms': ['dbms', 'database', 'databases', 'sql', 'query', 'queries', 'normalization', 'nosql', 'relational', 'schema'],
+      'cse-os': ['operating system', 'operating systems', 'os', 'cpu scheduling', 'process', 'thread', 'threads', 'semaphore', 'deadlock', 'memory management', 'paging'],
+      'cse-webdev': ['web', 'html', 'css', 'javascript', 'react', 'node', 'express', 'frontend', 'backend', 'fullstack', 'api', 'http'],
+      'cse-discrete': ['discrete mathematics', 'discrete math', 'dm', 'graphs', 'set theory', 'logic', 'combinatorics', 'probability', 'relations'],
+      'cse-engmath': ['engineering mathematics', 'calculus', 'linear algebra', 'matrices', 'matrix', 'differential equations', 'integration', 'derivative', 'equation', 'formula'],
+      'cse-engphysics': ['engineering physics', 'optics', 'quantum', 'laser', 'lasers', 'fiber optics', 'electromagnetism'],
+      'cse-engchemistry': ['engineering chemistry', 'water technology', 'electrochemistry', 'spectroscopy', 'polymers'],
+      'cse-basics': ['basic electrical', 'electronics', 'ac circuits', 'dc circuits', 'transformers', 'semiconductors'],
+      'cse-pps': ['programming for problem solving', 'c programming', 'loops', 'arrays', 'functions', 'pointers'],
+      'cse-english': ['technical english', 'communication skills', 'grammar', 'vocabulary'],
+      'cse-oop': ['object-oriented programming', 'oop', 'java', 'c++', 'classes', 'objects', 'inheritance', 'polymorphism', 'encapsulation'],
+      'cse-coa': ['computer organization', 'architecture', 'coa', 'cpu', 'memory hierarchy', 'io interface', 'pipelining'],
+      'cse-networks': ['computer networks', 'networking', 'tcp/ip', 'osi model', 'routing', 'switching', 'http', 'dns'],
+      'cse-software': ['software engineering', 'sdlc', 'agile', 'uml', 'testing', 'design patterns'],
+      'cse-compiler': ['compiler design', 'compiler', 'lexical analysis', 'parsing', 'code generation', 'optimization'],
+      'cse-automata': ['automata', 'flat', 'toc', 'finite automata', 'cfg', 'pda', 'turing machine'],
+      'cse-cloud': ['cloud computing', 'cyber security', 'aws', 'virtualization', 'cryptography', 'network security', 'firewall'],
+      'cse-distributed': ['distributed systems', 'concurrency', 'consensus', 'raft', 'mapreduce', 'distributed databases'],
+      'cse-iot': ['internet of things', 'iot', 'sensors', 'actuators', 'smart devices', 'raspberry pi', 'node-red'],
+      'cse-entrepreneurship': ['entrepreneurship', 'business plan', 'startup', 'marketing', 'finance'],
+      'cse-project': ['capstone project', 'project report', 'internship', 'industrial training'],
+      
+      'aiml-ml': ['ai', 'ml', 'machine learning', 'artificial intelligence', 'neural network', 'deep learning', 'nlp', 'cnn', 'rnn', 'supervised', 'regression', 'classification'],
+      'ds-analytics': ['data analytics', 'data science', 'analytics', 'statistics', 'dataframe', 'pandas', 'numpy', 'visualization', 'tableau', 'r programming'],
+      'ece-microprocessors': ['microprocessor', 'embedded', '8085', '8086', 'arduino', 'microcontroller', 'assembly', 'interfacing'],
+      'ece-digital': ['digital electronics', 'logic gate', 'boolean algebra', 'flip flop', 'multiplexer', 'combinational', 'sequential'],
+      'ece-signals': ['signals', 'systems', 'fourier', 'laplace', 'z-transform', 'lti system', 'continuous time', 'discrete time'],
+      'ece-iot': ['internet of things', 'iot', 'sensors', 'actuators', 'smart devices', 'raspberry pi', 'node-red'],
+      
+      'mechanical-thermo': ['thermodynamics', 'entropy', 'carnot', 'heat engine', 'laws of thermodynamics', 'enthalpy'],
+      'mechanical-fluid': ['fluid', 'bernoulli', 'viscosity', 'hydraulics', 'flow', 'buoyancy'],
+      'mechanical-cad': ['mechanical', 'gear', 'engine', 'turbine', 'thermodynamics', 'fluid mechanics', 'fluid dynamics', 'cad', 'robotics', 'materials', 'kinematics', 'aerodynamics'],
+      
+      'civil-structures': ['structural', 'truss', 'beam', 'concrete', 'steel design', 'bending moment', 'shear force'],
+      'civil-survey': ['surveying', 'geology', 'leveling', 'mapping', 'compass'],
+      'civil-geotech': ['geotechnical', 'soil mechanics', 'foundation engineering', 'clay', 'silt', 'rock mechanics']
     };
 
     const scores: Record<string, number> = {};
     for (const cat of availableCategories) scores[cat.id] = 0;
 
     for (const cat of availableCategories) {
-      const branchId = (cat as any).branchId || cat.id.split('-')[0] || 'cse';
-      const keywords = keywordMaps[branchId.toLowerCase()];
+      // 1. Direct name match (high weight)
+      const normName = cat.name.toLowerCase();
+      if (textToAnalyze.includes(normName)) {
+        scores[cat.id] += 5;
+      }
+
+      // 2. Specific keywords match
+      const keywords = categorySpecificKeywords[cat.id];
       if (keywords) {
         for (const keyword of keywords) {
           const regex = new RegExp(`\\b${keyword}\\b`, 'gi');

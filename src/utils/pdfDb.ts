@@ -1,4 +1,5 @@
 import { supabase } from '../supabase/config';
+import { incrementQuestProgress } from './quests';
 
 const DB_NAME = 'NoteWebOfflineCache';
 const STORE_NAME = 'offline-pdfs';
@@ -165,6 +166,14 @@ export const openPdfDocument = async (pdfUrl: string, pdfPath: string, noteId?: 
   console.log('pdfPath:', pdfPath);
   console.log('noteId:', noteId);
   console.groupEnd();
+
+  if (noteId) {
+    try {
+      incrementQuestProgress('read-notes', 1);
+    } catch (e) {
+      console.warn('Failed to increment read-notes quest progress:', e);
+    }
+  }
 
   try {
     let resolvedUrl = pdfUrl;

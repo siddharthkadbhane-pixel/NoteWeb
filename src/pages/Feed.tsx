@@ -3,12 +3,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { 
-  Search, 
-  ThumbsUp, 
-  Bookmark, 
-  FileText, 
-  Filter, 
+import {
+  Search,
+  ThumbsUp,
+  Bookmark,
+  FileText,
+  Filter,
   Download,
   ExternalLink,
   Calendar,
@@ -40,10 +40,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TiltCard } from '../components/ui/TiltCard';
 import { SparkleBurst } from '../components/ui/SparkleBurst';
 import { openPdfDocument } from '../utils/pdfDb';
-import { 
-  generateFlashcards, 
-  generateQuiz, 
-  askGeminiQna 
+import { incrementQuestProgress } from '../utils/quests';
+import {
+  generateFlashcards,
+  generateQuiz,
+  askGeminiQna
 } from '../services/gemini';
 import type { Flashcard, QuizQuestion } from '../services/gemini';
 
@@ -71,11 +72,37 @@ interface NoteDocument {
 }
 
 const mapDbNoteToNoteDocument = (n: any): NoteDocument => {
+  let branch = n.branch || '';
+  let category = n.category || '';
+
+  // Self-heal subjects on the fly
+  const text = `${n.subject || ''} ${n.description || ''} ${n.file_name || n.fileName || ''}`.toLowerCase();
+  const words = text.split(/[^a-z0-9]+/);
+
+  if (text.includes('discrete math') || text.includes('discrete mathematics') || words.includes('dm')) {
+    branch = 'cse';
+    category = 'cse-discrete';
+  } else if (text.includes('internet of things') || words.includes('iot')) {
+    if (text.includes('ece') || text.includes('electronics') || branch === 'ece') {
+      branch = 'ece';
+      category = 'ece-iot';
+    } else {
+      branch = 'cse';
+      category = 'cse-iot';
+    }
+  } else if (text.includes('data structures') || words.includes('dsa') || text.includes('binary tree')) {
+    branch = 'cse';
+    category = 'cse-dsa';
+  } else if (text.includes('linear algebra') || text.includes('calculus') || text.includes('engineering mathematics') || (text.includes('math') && !words.includes('discrete'))) {
+    branch = 'cse';
+    category = 'cse-engmath';
+  }
+
   return {
     id: n.id,
     subject: n.subject || '',
-    branch: n.branch || '',
-    category: n.category || '',
+    branch: branch,
+    category: category,
     semester: n.semester || '',
     teacher: n.teacher || 'General / Unknown',
     description: n.description || '',
@@ -168,10 +195,113 @@ export const Feed: React.FC = () => {
         const { data: branchesData } = await supabase.from('branches').select('*');
         const { data: categoriesData } = await supabase.from('categories').select('*');
 
+        const blacklistIds = ['bse', 'cs', 'mgt', 'm', 'math', 'mathematics', 'basic-science', 'computer-science'];
+        const blacklistNames = [
+          'basic science & eng',
+          'basic science',
+          'basic sciences',
+          'computer science',
+          'mathematics',
+          'management & humanities'
+        ];
+
+        const defaultBranchesList = [
+          { id: 'cse', name: 'Computer Science & Engineering' },
+          { id: 'aiml', name: 'AI & Machine Learning' },
+          { id: 'ds', name: 'Data Science' },
+          { id: 'mechanical', name: 'Mechanical Engineering' },
+          { id: 'civil', name: 'Civil Engineering' },
+          { id: 'ece', name: 'Electronics & Comm Eng' }
+        ];
+
         let branchesList = (branchesData || []).map((b: any) => ({
           id: b.id,
           name: b.name
         }));
+
+        // Merge standard default branches
+        for (const db of defaultBranchesList) {
+          if (!branchesList.some((b: any) => b.id === db.id)) {
+            branchesList.push(db);
+          }
+        }
+
+        // Filter blacklists
+        branchesList = branchesList.filter((b: any) => {
+          if (blacklistIds.includes(b.id)) return false;
+          if (blacklistNames.includes(b.name.trim().toLowerCase())) return false;
+          return true;
+        });
+
+        // Deduplicate by name case-insensitive
+        const seenNames = new Set<string>();
+        branchesList = branchesList.filter((b: any) => {
+          const normName = b.name.trim().toLowerCase();
+          if (normName.includes('electronics') || normName.includes('comm')) {
+            if (b.id !== 'ece' && branchesList.some((o: any) => o.id === 'ece')) {
+              return false;
+            }
+          }
+          if (seenNames.has(normName)) {
+            return false;
+          }
+          seenNames.add(normName);
+          return true;
+        });
+
+        const activeBranchIds = new Set(branchesList.map((b: any) => b.id));
+
+        const defaultCategoriesList = [
+          // CSE
+          { id: 'cse-dsa', branchId: 'cse', name: 'Data Structures & Algorithms' },
+          { id: 'cse-dbms', branchId: 'cse', name: 'Database Management Systems' },
+          { id: 'cse-os', branchId: 'cse', name: 'Operating Systems' },
+          { id: 'cse-webdev', branchId: 'cse', name: 'Web Development' },
+          { id: 'cse-discrete', branchId: 'cse', name: 'Discrete Mathematics' },
+          { id: 'cse-engmath', branchId: 'cse', name: 'Engineering Mathematics' },
+          { id: 'cse-engphysics', branchId: 'cse', name: 'Engineering Physics' },
+          { id: 'cse-engchemistry', branchId: 'cse', name: 'Engineering Chemistry' },
+          { id: 'cse-basics', branchId: 'cse', name: 'Basic Electrical & Electronics' },
+          { id: 'cse-pps', branchId: 'cse', name: 'Programming for Problem Solving' },
+          { id: 'cse-english', branchId: 'cse', name: 'Technical English' },
+          { id: 'cse-oop', branchId: 'cse', name: 'Object-Oriented Programming' },
+          { id: 'cse-coa', branchId: 'cse', name: 'Computer Organization & Architecture' },
+          { id: 'cse-networks', branchId: 'cse', name: 'Computer Networks' },
+          { id: 'cse-software', branchId: 'cse', name: 'Software Engineering' },
+          { id: 'cse-compiler', branchId: 'cse', name: 'Compiler Design' },
+          { id: 'cse-automata', branchId: 'cse', name: 'Formal Languages & Automata Theory' },
+          { id: 'cse-cloud', branchId: 'cse', name: 'Cloud Computing & Cyber Security' },
+          { id: 'cse-distributed', branchId: 'cse', name: 'Distributed Systems' },
+          { id: 'cse-iot', branchId: 'cse', name: 'Internet of Things (IoT)' },
+          { id: 'cse-entrepreneurship', branchId: 'cse', name: 'Entrepreneurship' },
+          { id: 'cse-project', branchId: 'cse', name: 'Capstone Project' },
+
+          // AI/ML
+          { id: 'aiml-ml', branchId: 'aiml', name: 'Artificial Intelligence & Machine Learning' },
+          { id: 'aiml-dl', branchId: 'aiml', name: 'Deep Learning' },
+          { id: 'aiml-nlp', branchId: 'aiml', name: 'Natural Language Processing' },
+
+          // Data Science
+          { id: 'ds-analytics', branchId: 'ds', name: 'Data Analytics' },
+          { id: 'ds-stats', branchId: 'ds', name: 'Probability & Statistics' },
+          { id: 'ds-bigdata', branchId: 'ds', name: 'Big Data Analytics' },
+
+          // Mechanical
+          { id: 'mechanical-thermo', branchId: 'mechanical', name: 'Thermodynamics' },
+          { id: 'mechanical-fluid', branchId: 'mechanical', name: 'Fluid Mechanics' },
+          { id: 'mechanical-cad', branchId: 'mechanical', name: 'CAD & Manufacturing' },
+
+          // Civil
+          { id: 'civil-structures', branchId: 'civil', name: 'Structural Analysis' },
+          { id: 'civil-survey', branchId: 'civil', name: 'Surveying' },
+          { id: 'civil-geotech', branchId: 'civil', name: 'Geotechnical Engineering' },
+
+          // ECE
+          { id: 'ece-microprocessors', branchId: 'ece', name: 'Microprocessors & Embedded Systems' },
+          { id: 'ece-digital', branchId: 'ece', name: 'Digital Electronics' },
+          { id: 'ece-signals', branchId: 'ece', name: 'Signals & Systems' },
+          { id: 'ece-iot', branchId: 'ece', name: 'Internet of Things (IoT)' }
+        ];
 
         let categoriesList = (categoriesData || []).map((c: any) => ({
           id: c.id,
@@ -180,70 +310,15 @@ export const Feed: React.FC = () => {
           description: c.description
         }));
 
-        if (branchesList.length === 0) {
-          branchesList = [
-            { id: 'cse', name: 'Computer Science & Engineering' },
-            { id: 'aiml', name: 'AI & Machine Learning' },
-            { id: 'ds', name: 'Data Science' },
-            { id: 'mechanical', name: 'Mechanical Engineering' },
-            { id: 'civil', name: 'Civil Engineering' },
-            { id: 'ece', name: 'Electronics & Comm Eng' }
-          ];
+        // Merge standard default categories
+        for (const dc of defaultCategoriesList) {
+          if (!categoriesList.some((c: any) => c.id === dc.id)) {
+            categoriesList.push(dc);
+          }
         }
 
-        if (categoriesList.length === 0) {
-          categoriesList = [
-            // CSE
-            { id: 'cse-dsa', branchId: 'cse', name: 'Data Structures & Algorithms' },
-            { id: 'cse-dbms', branchId: 'cse', name: 'Database Management Systems' },
-            { id: 'cse-os', branchId: 'cse', name: 'Operating Systems' },
-            { id: 'cse-webdev', branchId: 'cse', name: 'Web Development' },
-            { id: 'cse-discrete', branchId: 'cse', name: 'Discrete Mathematics' },
-            { id: 'cse-engmath', branchId: 'cse', name: 'Engineering Mathematics' },
-            { id: 'cse-engphysics', branchId: 'cse', name: 'Engineering Physics' },
-            { id: 'cse-engchemistry', branchId: 'cse', name: 'Engineering Chemistry' },
-            { id: 'cse-basics', branchId: 'cse', name: 'Basic Electrical & Electronics' },
-            { id: 'cse-pps', branchId: 'cse', name: 'Programming for Problem Solving' },
-            { id: 'cse-english', branchId: 'cse', name: 'Technical English' },
-            { id: 'cse-oop', branchId: 'cse', name: 'Object-Oriented Programming' },
-            { id: 'cse-coa', branchId: 'cse', name: 'Computer Organization & Architecture' },
-            { id: 'cse-networks', branchId: 'cse', name: 'Computer Networks' },
-            { id: 'cse-software', branchId: 'cse', name: 'Software Engineering' },
-            { id: 'cse-compiler', branchId: 'cse', name: 'Compiler Design' },
-            { id: 'cse-automata', branchId: 'cse', name: 'Formal Languages & Automata Theory' },
-            { id: 'cse-cloud', branchId: 'cse', name: 'Cloud Computing & Cyber Security' },
-            { id: 'cse-distributed', branchId: 'cse', name: 'Distributed Systems' },
-            { id: 'cse-iot', branchId: 'cse', name: 'Internet of Things (IoT)' },
-            { id: 'cse-entrepreneurship', branchId: 'cse', name: 'Entrepreneurship' },
-            { id: 'cse-project', branchId: 'cse', name: 'Capstone Project' },
-            
-            // AI/ML
-            { id: 'aiml-ml', branchId: 'aiml', name: 'Artificial Intelligence & Machine Learning' },
-            { id: 'aiml-dl', branchId: 'aiml', name: 'Deep Learning' },
-            { id: 'aiml-nlp', branchId: 'aiml', name: 'Natural Language Processing' },
-            
-            // Data Science
-            { id: 'ds-analytics', branchId: 'ds', name: 'Data Analytics' },
-            { id: 'ds-stats', branchId: 'ds', name: 'Probability & Statistics' },
-            { id: 'ds-bigdata', branchId: 'ds', name: 'Big Data Analytics' },
-            
-            // Mechanical
-            { id: 'mechanical-thermo', branchId: 'mechanical', name: 'Thermodynamics' },
-            { id: 'mechanical-fluid', branchId: 'mechanical', name: 'Fluid Mechanics' },
-            { id: 'mechanical-cad', branchId: 'mechanical', name: 'CAD & Manufacturing' },
-            
-            // Civil
-            { id: 'civil-structures', branchId: 'civil', name: 'Structural Analysis' },
-            { id: 'civil-survey', branchId: 'civil', name: 'Surveying' },
-            { id: 'civil-geotech', branchId: 'civil', name: 'Geotechnical Engineering' },
-            
-            // ECE
-            { id: 'ece-microprocessors', branchId: 'ece', name: 'Microprocessors & Embedded Systems' },
-            { id: 'ece-digital', branchId: 'ece', name: 'Digital Electronics' },
-            { id: 'ece-signals', branchId: 'ece', name: 'Signals & Systems' },
-            { id: 'ece-iot', branchId: 'ece', name: 'Internet of Things (IoT)' }
-          ];
-        }
+        // Keep only categories belonging to active branches
+        categoriesList = categoriesList.filter((c: any) => activeBranchIds.has(c.branchId));
 
         setBranches(branchesList);
         setCategories(categoriesList);
@@ -285,7 +360,7 @@ export const Feed: React.FC = () => {
           .from('notes')
           .select('*')
           .eq('status', 'approved');
-        
+
         if (fallbackErr) {
           // Last resort: fetch ALL notes regardless of status
           console.warn('[NoteWeb Feed] status filter query failed:', fallbackErr.message, '— fetching all notes...');
@@ -308,14 +383,14 @@ export const Feed: React.FC = () => {
             .from('notes')
             .select('*')
             .eq('uploaded_by', currentUser.uid);
-          
+
           if (ownErr) {
             // Try camelCase column fallback
             const { data: ownCamelData, error: ownCamelErr } = await supabase
               .from('notes')
               .select('*')
               .eq('uploadedBy', currentUser.uid);
-            
+
             if (!ownCamelErr && ownCamelData) {
               const mappedOwn = ownCamelData.map(mapDbNoteToNoteDocument);
               for (const own of mappedOwn) {
@@ -344,7 +419,7 @@ export const Feed: React.FC = () => {
       setNotes((prev) => {
         const prevOptimistic = prev.filter((n) => {
           if (!optimisticIdsRef.current.has(n.id)) return false;
-          
+
           // Replace optimistic note once the real DB row arrives
           const isAlreadyInDb = merged.some((m) => {
             if (m.id === n.id) return true;
@@ -371,7 +446,7 @@ export const Feed: React.FC = () => {
           const localLikesStr = localStorage.getItem('noteweb-local-likes');
           let localLikes: Record<string, boolean> = {};
           if (localLikesStr) {
-            try { localLikes = JSON.parse(localLikesStr); } catch {}
+            try { localLikes = JSON.parse(localLikesStr); } catch { }
           }
           const currentUserId = userRef.current?.uid;
           if (currentUserId) {
@@ -476,10 +551,10 @@ export const Feed: React.FC = () => {
                   prev.map((n) =>
                     n.id === noteId
                       ? {
-                          ...n,
-                          likes: likes || n.likes,
-                          likesCount: likesCount !== undefined ? likesCount : n.likesCount
-                        }
+                        ...n,
+                        likes: likes || n.likes,
+                        likesCount: likesCount !== undefined ? likesCount : n.likesCount
+                      }
                       : n
                   )
                 );
@@ -578,18 +653,18 @@ export const Feed: React.FC = () => {
       'cse-iot': ['internet of things', 'iot', 'sensors', 'actuators', 'smart devices', 'raspberry pi', 'node-red'],
       'cse-entrepreneurship': ['entrepreneurship', 'business plan', 'startup', 'marketing', 'finance'],
       'cse-project': ['capstone project', 'project report', 'internship', 'industrial training'],
-      
+
       'aiml-ml': ['ai', 'ml', 'machine learning', 'artificial intelligence', 'neural network', 'deep learning', 'nlp', 'cnn', 'rnn', 'supervised', 'regression', 'classification'],
       'ds-analytics': ['data analytics', 'data science', 'analytics', 'statistics', 'dataframe', 'pandas', 'numpy', 'visualization', 'tableau', 'r programming'],
       'ece-microprocessors': ['microprocessor', 'embedded', '8085', '8086', 'arduino', 'microcontroller', 'assembly', 'interfacing'],
       'ece-digital': ['digital electronics', 'logic gate', 'boolean algebra', 'flip flop', 'multiplexer', 'combinational', 'sequential'],
       'ece-signals': ['signals', 'systems', 'fourier', 'laplace', 'z-transform', 'lti system', 'continuous time', 'discrete time'],
       'ece-iot': ['internet of things', 'iot', 'sensors', 'actuators', 'smart devices', 'raspberry pi', 'node-red'],
-      
+
       'mechanical-thermo': ['thermodynamics', 'entropy', 'carnot', 'heat engine', 'laws of thermodynamics', 'enthalpy'],
       'mechanical-fluid': ['fluid', 'bernoulli', 'viscosity', 'hydraulics', 'flow', 'buoyancy'],
       'mechanical-cad': ['mechanical', 'gear', 'engine', 'turbine', 'thermodynamics', 'fluid mechanics', 'fluid dynamics', 'cad', 'robotics', 'materials', 'kinematics', 'aerodynamics'],
-      
+
       'civil-structures': ['structural', 'truss', 'beam', 'concrete', 'steel design', 'bending moment', 'shear force'],
       'civil-survey': ['surveying', 'geology', 'leveling', 'mapping', 'compass'],
       'civil-geotech': ['geotechnical', 'soil mechanics', 'foundation engineering', 'clay', 'silt', 'rock mechanics']
@@ -635,7 +710,7 @@ export const Feed: React.FC = () => {
       const branchNameWords = matchedBranch
         ? matchedBranch.name.toLowerCase().split(/\s+/).filter(w => w.length > 3)
         : [];
-      
+
       result = result.filter((n: any) => {
         // 1. Check if category prefix matches branch (most reliable auto-routing for legacy defaults)
         if (n.category && n.category.toLowerCase().startsWith(bId)) {
@@ -648,7 +723,7 @@ export const Feed: React.FC = () => {
           const sub = n.subject.toLowerCase();
           const desc = (n.description || '').toLowerCase();
           const textToSearch = `${sub} ${desc}`;
-          
+
           let actualBranch = 'cse';
           for (const [deptId, keywords] of Object.entries(DEPT_KEYWORDS)) {
             if (keywords.some(k => textToSearch.includes(k))) {
@@ -676,14 +751,14 @@ export const Feed: React.FC = () => {
         const sub = n.subject.toLowerCase();
         const desc = (n.description || '').toLowerCase();
         const textToSearch = `${sub} ${desc}`;
-        
+
         if (bId === 'cse') return textToSearch.includes('computer') || textToSearch.includes('algo') || textToSearch.includes('software') || textToSearch.includes('web') || textToSearch.includes('programming') || textToSearch.includes('code') || textToSearch.includes('javascript') || textToSearch.includes('python');
         if (bId === 'aiml') return textToSearch.includes('ai') || textToSearch.includes('machine') || textToSearch.includes('learning') || textToSearch.includes('intelligence') || textToSearch.includes('robotic') || textToSearch.includes('deep');
         if (bId === 'ds') return textToSearch.includes('data') || textToSearch.includes('analytic') || textToSearch.includes('statistic') || textToSearch.includes('predictive') || textToSearch.includes('visual');
         if (bId === 'civil') return textToSearch.includes('civil') || textToSearch.includes('concrete') || textToSearch.includes('structure') || textToSearch.includes('surveying') || textToSearch.includes('geotech');
         if (bId === 'ece') return textToSearch.includes('circuit') || textToSearch.includes('semiconductor') || textToSearch.includes('diode') || textToSearch.includes('electronics') || textToSearch.includes('arduino') || textToSearch.includes('voltage') || textToSearch.includes('vlsi') || textToSearch.includes('signal');
         if (bId === 'mechanical') return textToSearch.includes('mechanical') || textToSearch.includes('machine') || textToSearch.includes('gear') || textToSearch.includes('cad') || textToSearch.includes('thermodynamics') || textToSearch.includes('engine') || textToSearch.includes('fluid');
-        
+
         return false;
       });
     }
@@ -693,7 +768,7 @@ export const Feed: React.FC = () => {
       const cat = selectedCategory.toLowerCase();
       // Find the matched category (case-insensitive ID match)
       const matchedCat = categories.find(c => c.id.toLowerCase() === cat);
-      
+
       result = result.filter((n: any) => {
         // If note has a category set, use strict matching only
         if (n.category && n.category.trim() !== '') {
@@ -707,12 +782,12 @@ export const Feed: React.FC = () => {
           }
           return false; // Do not do fuzzy fallback if category is explicitly set!
         }
-        
+
         // Fallback for legacy note documents (without category) — keyword match
         const sub = n.subject.toLowerCase();
         const desc = (n.description || '').toLowerCase();
         const textToSearch = `${sub} ${desc}`;
-        
+
         // Match using specific category keywords
         const keywords = CATEGORY_KEYWORDS[cat];
         if (keywords) {
@@ -749,15 +824,23 @@ export const Feed: React.FC = () => {
       : [...currentLikes, user.uid];
     const nextLikesCount = nextLikes.length;
 
+    if (!hasLiked) {
+      try {
+        incrementQuestProgress('like-note', 1);
+      } catch (e) {
+        console.warn('Failed to increment like-note quest progress:', e);
+      }
+    }
+
     // Optimistically update local state immediately for instant feedback
     setNotes((prev) =>
       prev.map((n) =>
         n.id === noteId
           ? {
-              ...n,
-              likes: nextLikes,
-              likesCount: nextLikesCount
-            }
+            ...n,
+            likes: nextLikes,
+            likesCount: nextLikesCount
+          }
           : n
       )
     );
@@ -767,7 +850,7 @@ export const Feed: React.FC = () => {
       const localLikesStr = localStorage.getItem('noteweb-local-likes');
       let localLikes: Record<string, boolean> = {};
       if (localLikesStr) {
-        try { localLikes = JSON.parse(localLikesStr); } catch {}
+        try { localLikes = JSON.parse(localLikesStr); } catch { }
       }
       if (hasLiked) {
         delete localLikes[noteId];
@@ -841,7 +924,7 @@ export const Feed: React.FC = () => {
   // AI Note Companion modal state
   const [activeAiNote, setActiveAiNote] = useState<NoteDocument | null>(null);
   const [aiCompanionTab, setAiCompanionTab] = useState<'podcast' | 'flashcards' | 'quiz' | 'qna'>('podcast');
-  
+
   // Speech Synthesis state
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -883,7 +966,7 @@ export const Feed: React.FC = () => {
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = speechRate;
-    
+
     const voices = window.speechSynthesis.getVoices();
     const premiumVoice = voices.find(
       voice => voice.name.includes('Google') || voice.name.includes('Natural') || voice.name.includes('Microsoft Zira')
@@ -966,7 +1049,7 @@ export const Feed: React.FC = () => {
   const handleTabChange = async (tab: 'podcast' | 'flashcards' | 'quiz' | 'qna') => {
     setAiCompanionTab(tab);
     setAiError(null);
-    
+
     if (!activeAiNote) return;
 
     if (tab === 'flashcards' && flashcards.length === 0) {
@@ -1015,10 +1098,16 @@ export const Feed: React.FC = () => {
 
     const userMsg = chatInput.trim();
     setChatInput('');
-    
+
     const nextHistory = [...chatHistory, { role: 'user' as const, text: userMsg }];
     setChatHistory(nextHistory);
     setAiLoading(true);
+
+    try {
+      incrementQuestProgress('ask-ai', 1);
+    } catch (e) {
+      console.warn('Failed to increment ask-ai quest progress:', e);
+    }
 
     try {
       const reply = await askGeminiQna(
@@ -1083,13 +1172,13 @@ export const Feed: React.FC = () => {
         const storedNotesStr = localStorage.getItem('noteweb-broadcasted-notes');
         const myUploadsStr = localStorage.getItem('noteweb-my-uploads');
         const noteToDelete = notes.find((n) => String(n.id) === String(noteId));
-        
+
         if (storedNotesStr) {
           try {
             const localNotes = JSON.parse(storedNotesStr);
             if (Array.isArray(localNotes)) {
-              const filtered = localNotes.filter((n: any) => 
-                String(n.id) !== String(noteId) && 
+              const filtered = localNotes.filter((n: any) =>
+                String(n.id) !== String(noteId) &&
                 !(noteToDelete && (n.subject === noteToDelete.subject || (n.file_name && n.file_name === noteToDelete.fileName)))
               );
               if (filtered.length > 0) {
@@ -1098,14 +1187,14 @@ export const Feed: React.FC = () => {
                 localStorage.removeItem('noteweb-broadcasted-notes');
               }
             }
-          } catch {}
+          } catch { }
         }
         if (myUploadsStr) {
           try {
             const myUploads = JSON.parse(myUploadsStr);
             if (Array.isArray(myUploads)) {
-              const filtered = myUploads.filter((n: any) => 
-                String(n.id) !== String(noteId) && 
+              const filtered = myUploads.filter((n: any) =>
+                String(n.id) !== String(noteId) &&
                 !(noteToDelete && (n.subject === noteToDelete.subject || (n.file_name && n.file_name === noteToDelete.fileName)))
               );
               if (filtered.length > 0) {
@@ -1114,7 +1203,7 @@ export const Feed: React.FC = () => {
                 localStorage.removeItem('noteweb-my-uploads');
               }
             }
-          } catch {}
+          } catch { }
         }
       } catch (cacheErr) {
         console.warn("Failed to clear note from migration cache:", cacheErr);
@@ -1143,7 +1232,7 @@ export const Feed: React.FC = () => {
       <div className="absolute bottom-1/4 left-1/4 w-96 h-96 glow-purple rounded-full pointer-events-none blur-3xl" />
 
       <div className="max-w-7xl mx-auto z-10 relative flex flex-col gap-8">
-        
+
         {/* Title */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.05] pb-6">
           <div className="text-left">
@@ -1155,11 +1244,10 @@ export const Feed: React.FC = () => {
                 Explore college lecture summaries, formulas, and resources shared by peers.
               </p>
               {/* Live Sync Indicator */}
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold flex-shrink-0 ${
-                realtimeSynced
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold flex-shrink-0 ${realtimeSynced
                   ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                   : 'bg-slate-500/10 border-white/10 text-slate-500'
-              }`}>
+                }`}>
                 {realtimeSynced ? (
                   <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" /><Wifi className="w-3 h-3" /> Live</>
                 ) : (
@@ -1178,7 +1266,7 @@ export const Feed: React.FC = () => {
               </button>
             </div>
           </div>
-          
+
           {/* Segment & Sorting controls */}
           <div className="flex items-center gap-4 flex-wrap self-start md:self-auto">
             {/* Notes vs PYQ Papers */}
@@ -1217,7 +1305,7 @@ export const Feed: React.FC = () => {
 
         {/* Content Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          
+
           {/* Left Column Filters Sidebar */}
           <div className="lg:col-span-1 flex flex-col gap-6 text-left">
             <GlassPanel className="p-5 flex flex-col gap-6">
@@ -1265,8 +1353,8 @@ export const Feed: React.FC = () => {
                     onClick={() => setSelectedCategory('all')}
                     className={`
                       w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl border transition-all duration-200 flex-shrink-0
-                      ${selectedCategory === 'all' 
-                        ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400' 
+                      ${selectedCategory === 'all'
+                        ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400'
                         : 'border-white/[0.05] bg-white/[0.01] text-slate-400 hover:border-white/10 hover:text-slate-200 light-mode:border-slate-900/10 light-mode:hover:bg-slate-900/[0.02]'}
                     `}
                   >
@@ -1280,8 +1368,8 @@ export const Feed: React.FC = () => {
                           onClick={() => setSelectedCategory(cat.id)}
                           className={`
                             w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl border transition-all duration-200 flex-shrink-0 pr-8
-                            ${selectedCategory === cat.id 
-                              ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400' 
+                            ${selectedCategory === cat.id
+                              ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400'
                               : 'border-white/[0.05] bg-white/[0.01] text-slate-400 hover:border-white/10 hover:text-slate-200 light-mode:border-slate-900/10 light-mode:hover:bg-slate-900/[0.02]'}
                           `}
                         >
@@ -1314,8 +1402,8 @@ export const Feed: React.FC = () => {
                     onClick={() => setSelectedSemester('all')}
                     className={`
                       col-span-2 text-center py-2 text-xs font-semibold rounded-xl border transition-all duration-200
-                      ${selectedSemester === 'all' 
-                        ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400' 
+                      ${selectedSemester === 'all'
+                        ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400'
                         : 'border-white/[0.05] bg-white/[0.01] text-slate-400 hover:border-white/10 hover:text-slate-200 light-mode:border-slate-900/10 light-mode:hover:bg-slate-900/[0.02]'}
                     `}
                   >
@@ -1327,8 +1415,8 @@ export const Feed: React.FC = () => {
                       onClick={() => setSelectedSemester(sem)}
                       className={`
                         text-center py-2 text-[10px] font-black rounded-xl border transition-all duration-200
-                        ${selectedSemester === sem 
-                          ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400' 
+                        ${selectedSemester === sem
+                          ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-400'
                           : 'border-white/[0.05] bg-white/[0.01] text-slate-400 hover:border-white/10 hover:text-slate-200 light-mode:border-slate-900/10 light-mode:hover:bg-slate-900/[0.02]'}
                       `}
                     >
@@ -1364,7 +1452,7 @@ export const Feed: React.FC = () => {
                   ))}
                 </div>
               ) : filteredNotes.length > 0 ? (
-                <motion.div 
+                <motion.div
                   layout
                   className="grid grid-cols-1 md:grid-cols-2 gap-6"
                 >
@@ -1424,7 +1512,7 @@ export const Feed: React.FC = () => {
                                     {note.subject}
                                   </h3>
                                 )}
-                                
+
                                 <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold mt-1 text-left">
                                   <GraduationCap className="w-3.5 h-3.5" /> {note.subject.startsWith('[QP -') ? 'Exam Board Syllabus' : `Prof. ${note.teacher}`}
                                 </div>
@@ -1436,7 +1524,7 @@ export const Feed: React.FC = () => {
 
                             {/* Middle metadata details */}
                             <div className="flex items-center justify-between border-t border-white/[0.04] pt-3 text-[10px] font-medium text-slate-500 z-10 relative mt-4">
-                              <span 
+                              <span
                                 onClick={() => note.uploadedBy && navigate(`/profile/${note.uploadedBy}`)}
                                 className="flex items-center gap-1 truncate max-w-[130px] hover:text-indigo-400 cursor-pointer transition-colors duration-200"
                               >
@@ -1456,8 +1544,8 @@ export const Feed: React.FC = () => {
                                     onClick={() => handleLikeToggle(note.id, note.likes)}
                                     className={`
                                       p-2 rounded-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-90 cursor-pointer
-                                      ${isLiked 
-                                        ? 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 shadow-md shadow-indigo-600/10' 
+                                      ${isLiked
+                                        ? 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 shadow-md shadow-indigo-600/10'
                                         : 'text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10'}
                                     `}
                                     title="Like Note"
@@ -1473,8 +1561,8 @@ export const Feed: React.FC = () => {
                                     onClick={() => handleBookmarkToggle(note.id)}
                                     className={`
                                       p-2 rounded-lg flex items-center text-xs font-bold transition-all active:scale-90 cursor-pointer
-                                      ${isBookmarked 
-                                        ? 'bg-purple-600/20 border border-purple-500/30 text-purple-400 shadow-md shadow-purple-600/10' 
+                                      ${isBookmarked
+                                        ? 'bg-purple-600/20 border border-purple-500/30 text-purple-400 shadow-md shadow-purple-600/10'
                                         : 'text-slate-400 hover:text-purple-400 hover:bg-purple-500/10'}
                                     `}
                                     title="Bookmark Note"
@@ -1584,7 +1672,7 @@ export const Feed: React.FC = () => {
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center shadow-xl shadow-purple-600/30 mx-auto mb-6 animate-bounce">
                     <Lock className="w-7 h-7 text-white" />
                   </div>
-                  
+
                   <h3 className="text-2xl font-extrabold text-white light-mode:text-slate-900 tracking-tight">Unlock NoteWeb Library</h3>
                   <p className="text-xs text-slate-400 light-mode:text-slate-500 font-semibold leading-relaxed mt-3 mb-6">
                     Guests can view subject categories, but reading AI summaries, viewing PDF documents, bookmarking, and downloading study notes requires a student account. Register or sign in today!
@@ -1663,44 +1751,40 @@ export const Feed: React.FC = () => {
                 <div className="flex items-center gap-1.5 p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl mb-6 light-mode:bg-slate-900/[0.02]">
                   <button
                     onClick={() => handleTabChange('podcast')}
-                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                      aiCompanionTab === 'podcast'
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${aiCompanionTab === 'podcast'
                         ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
                         : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                      }`}
                   >
                     <Volume2 className="w-3.5 h-3.5" />
                     Podcast
                   </button>
                   <button
                     onClick={() => handleTabChange('flashcards')}
-                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                      aiCompanionTab === 'flashcards'
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${aiCompanionTab === 'flashcards'
                         ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
                         : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                      }`}
                   >
                     <BookOpen className="w-3.5 h-3.5" />
                     Flashcards
                   </button>
                   <button
                     onClick={() => handleTabChange('quiz')}
-                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                      aiCompanionTab === 'quiz'
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${aiCompanionTab === 'quiz'
                         ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
                         : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                      }`}
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
                     Recall Quiz
                   </button>
                   <button
                     onClick={() => handleTabChange('qna')}
-                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                      aiCompanionTab === 'qna'
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${aiCompanionTab === 'qna'
                         ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10'
                         : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                      }`}
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     Ask AI
@@ -1739,9 +1823,9 @@ export const Feed: React.FC = () => {
                           {/* Sound studio card */}
                           <div className="p-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] light-mode:bg-slate-900/[0.02] light-mode:border-slate-200 relative overflow-hidden flex flex-col items-center justify-center text-center">
                             <div className="absolute top-0 right-0 w-32 h-32 rounded-full filter blur-3xl opacity-10 bg-indigo-500" />
-                            
+
                             {/* Visualizer Disk */}
-                            <motion.div 
+                            <motion.div
                               animate={isPlaying && !isPaused ? { rotate: 360 } : {}}
                               transition={{ repeat: Infinity, duration: 10, ease: 'linear' }}
                               className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center relative shadow-lg shadow-indigo-500/20 mb-6"
@@ -1749,7 +1833,7 @@ export const Feed: React.FC = () => {
                               <div className="w-8 h-8 rounded-full bg-[#0D0D10] border border-white/10 flex items-center justify-center text-indigo-400">
                                 <Volume2 className="w-4 h-4 animate-bounce" />
                               </div>
-                              
+
                               {/* Audio waves */}
                               {isPlaying && !isPaused && (
                                 <div className="absolute -inset-2 rounded-full border border-indigo-400/40 animate-ping opacity-30 pointer-events-none" />
@@ -1807,11 +1891,10 @@ export const Feed: React.FC = () => {
                                 <button
                                   key={rate}
                                   onClick={() => handleSpeedChange(rate)}
-                                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                                    speechRate === rate
+                                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${speechRate === rate
                                       ? 'bg-indigo-500/20 border border-indigo-500/30 text-indigo-400'
                                       : 'text-slate-400 hover:text-slate-200 border border-transparent'
-                                  }`}
+                                    }`}
                                 >
                                   {rate}x
                                 </button>
@@ -1847,11 +1930,11 @@ export const Feed: React.FC = () => {
                                     if (line.startsWith('- [ ]') || line.startsWith('- [x]')) {
                                       return (
                                         <div key={lIdx} className="flex items-center gap-2 my-1.5 pl-1">
-                                          <input 
-                                            type="checkbox" 
-                                            readOnly 
-                                            checked={line.includes('[x]')} 
-                                            className="w-3.5 h-3.5 rounded border-white/[0.1] bg-white/[0.05] text-indigo-500 accent-indigo-500 pointer-events-none" 
+                                          <input
+                                            type="checkbox"
+                                            readOnly
+                                            checked={line.includes('[x]')}
+                                            className="w-3.5 h-3.5 rounded border-white/[0.1] bg-white/[0.05] text-indigo-500 accent-indigo-500 pointer-events-none"
                                           />
                                           <span className={line.includes('[x]') ? 'line-through text-slate-500' : ''}>
                                             {line.replace('- [ ]', '').replace('- [x]', '').trim()}
@@ -1882,13 +1965,13 @@ export const Feed: React.FC = () => {
                             {flashcards.map((fc, idx) => {
                               const isFlipped = !!flippedCards[idx];
                               return (
-                                <div 
-                                  key={idx} 
-                                  className="perspective-1000 w-full min-h-[140px] cursor-pointer" 
+                                <div
+                                  key={idx}
+                                  className="perspective-1000 w-full min-h-[140px] cursor-pointer"
                                   onClick={() => handleToggleFlipCard(idx)}
                                 >
                                   <div className={`relative w-full h-full min-h-[140px] transition-all duration-500 preserve-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
-                                    
+
                                     {/* FRONT SIDE (Question) */}
                                     <div className="absolute inset-0 w-full h-full p-6 rounded-2xl border bg-indigo-600/10 border-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.05)] light-mode:bg-indigo-50/80 light-mode:border-indigo-200 backface-hidden flex flex-col justify-center text-left">
                                       <div className="absolute top-0 right-0 w-24 h-24 rounded-full filter blur-xl opacity-20 bg-indigo-400" />
@@ -1947,7 +2030,7 @@ export const Feed: React.FC = () => {
                                   {q.options.map((opt, oIdx) => {
                                     const isSelected = selectedOpt === oIdx;
                                     const isCorrect = q.answerIndex === oIdx;
-                                    
+
                                     let optionStyle = 'border-white/5 bg-white/[0.01] hover:border-white/10 hover:bg-white/[0.02] text-slate-300 light-mode:border-slate-200 light-mode:bg-slate-50/50 light-mode:text-slate-800';
                                     if (hasAnswered) {
                                       if (isSelected) {
@@ -1977,11 +2060,10 @@ export const Feed: React.FC = () => {
                                 </div>
 
                                 {hasAnswered && (
-                                  <div className={`p-3.5 rounded-xl border text-left text-[11px] leading-relaxed ${
-                                    selectedOpt === q.answerIndex
+                                  <div className={`p-3.5 rounded-xl border text-left text-[11px] leading-relaxed ${selectedOpt === q.answerIndex
                                       ? 'bg-emerald-500/5 border-emerald-500/15 text-emerald-400/90'
                                       : 'bg-rose-500/5 border-rose-500/15 text-rose-400/90'
-                                  }`}>
+                                    }`}>
                                     <span className="font-extrabold uppercase text-[9px] tracking-wider block mb-1">
                                       {selectedOpt === q.answerIndex ? '🎉 Correct Answer!' : '❌ Incorrect Answer'}
                                     </span>
@@ -2016,11 +2098,10 @@ export const Feed: React.FC = () => {
                                   key={mIdx}
                                   className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
-                                  <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed text-left border ${
-                                    msg.role === 'user'
+                                  <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed text-left border ${msg.role === 'user'
                                       ? 'bg-indigo-600 border-indigo-500 text-white shadow shadow-indigo-600/10'
                                       : 'bg-white/[0.03] border-white/5 text-slate-200 light-mode:bg-slate-100 light-mode:border-slate-200 light-mode:text-slate-800'
-                                  }`}>
+                                    }`}>
                                     {/* Handle formatted output */}
                                     <div className="whitespace-pre-line font-medium">{msg.text}</div>
                                   </div>

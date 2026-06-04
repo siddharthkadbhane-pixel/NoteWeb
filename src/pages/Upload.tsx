@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext';
 import { extractTextFromPdf } from '../services/pdf';
 import { storeOfflinePdf } from '../utils/pdfDb';
 import { summarizeNotes, classifyNoteCategory, checkPlagiarismAndSpam } from '../services/gemini';
+import { incrementQuestProgress } from '../utils/quests';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { GlassPanel } from '../components/ui/GlassPanel';
@@ -212,20 +213,42 @@ export const Upload: React.FC = () => {
         const { data: branchesData } = await supabase.from('branches').select('*');
         const { data: categoriesData } = await supabase.from('categories').select('*');
 
-        let branchesList = (branchesData || []).map((b: any) => ({
-          id: b.id,
-          name: b.name
-        }));
+        const blacklistIds = ['bse', 'cs', 'mgt', 'm', 'math', 'mathematics', 'basic-science', 'computer-science'];
+        const blacklistNames = [
+          'basic science & eng',
+          'basic science',
+          'basic sciences',
+          'computer science',
+          'mathematics',
+          'management & humanities'
+        ];
 
-        let categoriesList: any[] = [];
-        if (Array.isArray(categoriesData)) {
-          categoriesList = categoriesData.map((c: any) => ({
-            id: c?.id || '',
-            branchId: c?.branch_id || c?.branchId || '',
-            name: c?.name || '',
-            description: c?.description || ''
-          })).filter(c => c.id && c.name);
-        }
+        let branchesList = (branchesData || [])
+          .map((b: any) => ({
+            id: b.id,
+            name: b.name
+          }))
+          .filter((b: any) => {
+            if (blacklistIds.includes(b.id)) return false;
+            if (blacklistNames.includes(b.name.trim().toLowerCase())) return false;
+            return true;
+          });
+
+        // Deduplicate by name case-insensitive
+        const seenNames = new Set<string>();
+        branchesList = branchesList.filter((b: any) => {
+          const normName = b.name.trim().toLowerCase();
+          if (normName.includes('electronics') || normName.includes('comm')) {
+            if (b.id !== 'ece' && branchesList.some((o: any) => o.id === 'ece')) {
+              return false;
+            }
+          }
+          if (seenNames.has(normName)) {
+            return false;
+          }
+          seenNames.add(normName);
+          return true;
+        });
 
         if (branchesList.length === 0) {
           branchesList = [
@@ -236,6 +259,20 @@ export const Upload: React.FC = () => {
             { id: 'civil', name: 'Civil Engineering' },
             { id: 'ece', name: 'Electronics & Comm Eng' }
           ];
+        }
+
+        const activeBranchIds = new Set(branchesList.map((b: any) => b.id));
+
+        let categoriesList: any[] = [];
+        if (Array.isArray(categoriesData)) {
+          categoriesList = categoriesData
+            .map((c: any) => ({
+              id: c?.id || '',
+              branchId: c?.branch_id || c?.branchId || '',
+              name: c?.name || '',
+              description: c?.description || ''
+            }))
+            .filter(c => c.id && c.name && activeBranchIds.has(c.branchId));
         }
 
         if (categoriesList.length === 0) {
@@ -569,7 +606,7 @@ export const Upload: React.FC = () => {
       let autoCorrected = false;
       let detectedCategoryName = '';
       
-      if (generateAI && aiExtractedText) {
+      if (generateAI && aiExtractedText && (!selectedCategory || selectedCategory === 'other' || selectedCategory === 'all')) {
         try {
           // Map our custom categories array into flat list Gemini classifier accepts
           const classifiedId = await classifyNoteCategory(notesName, description, aiExtractedText, categories);
@@ -751,13 +788,43 @@ export const Upload: React.FC = () => {
       // This triggers the storage event listener in Feed.tsx on all tabs
       localStorage.setItem('noteweb-last-upload', Date.now().toString());
 
+      try {
+        incrementQuestProgress('upload-note', 1);
+      } catch (e) {
+        console.warn('Failed to increment upload-note quest progress:', e);
+      }
+
       // Build a clean optimistic note object to pass directly to Feed via router state.
       // This makes the note appear INSTANTLY (0ms) when Feed.tsx mounts — no DB fetch needed.
+      let healedBranch = finalBranch;
+      let healedCategory = finalCategory;
+      const optText = `${notesName.trim()} ${description.trim()} ${fileNameStr}`.toLowerCase();
+      const optWords = optText.split(/[^a-z0-9]+/);
+      
+      if (optText.includes('discrete math') || optText.includes('discrete mathematics') || optWords.includes('dm')) {
+        healedBranch = 'cse';
+        healedCategory = 'cse-discrete';
+      } else if (optText.includes('internet of things') || optWords.includes('iot')) {
+        if (optText.includes('ece') || optText.includes('electronics') || finalBranch === 'ece') {
+          healedBranch = 'ece';
+          healedCategory = 'ece-iot';
+        } else {
+          healedBranch = 'cse';
+          healedCategory = 'cse-iot';
+        }
+      } else if (optText.includes('data structures') || optWords.includes('dsa') || optText.includes('binary tree')) {
+        healedBranch = 'cse';
+        healedCategory = 'cse-dsa';
+      } else if (optText.includes('linear algebra') || optText.includes('calculus') || optText.includes('engineering mathematics') || (optText.includes('math') && !optWords.includes('discrete'))) {
+        healedBranch = 'cse';
+        healedCategory = 'cse-engmath';
+      }
+
       const optimisticNote = {
         id: (insertData && insertData[0]?.id) || 'optimistic-' + Date.now(),
         subject: notesName.trim(),
-        branch: finalBranch,
-        category: finalCategory,
+        branch: healedBranch,
+        category: healedCategory,
         semester,
         teacher: teacher.trim() || 'General / Unknown',
         description: description.trim() || 'No description provided.',

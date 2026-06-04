@@ -15,7 +15,8 @@ import {
   X,
   MessageSquare,
   Trophy,
-  Star
+  Star,
+  Target
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -82,6 +83,7 @@ export const Sidebar: React.FC = () => {
     { to: '/categories', label: 'Departments', icon: <Grid className="w-4 h-4" /> },
     { to: '/upload', label: 'Upload', icon: <UploadCloud className="w-4 h-4" /> },
     { to: '/chat', label: 'Campus Chat', icon: <MessageSquare className="w-4 h-4 text-indigo-400" />, protected: true },
+    { to: '/quests', label: 'Daily Quests', icon: <Target className="w-4 h-4 text-[#00F2FE]" />, protected: true },
     { to: '/leaderboard', label: 'Rankings', icon: <Trophy className="w-4 h-4 text-amber-400" />, protected: true },
     { to: '/profile', label: 'Dashboard', icon: <User className="w-4 h-4" />, protected: true },
     { to: '/feedback', label: 'Feedback', icon: <Star className="w-4 h-4 text-amber-400" />, protected: true },
@@ -392,6 +394,7 @@ export const Sidebar: React.FC = () => {
                   { label: 'Departments', icon: <Grid className="w-5 h-5 text-sky-400" />, path: '/categories' },
                   ...(user && !isGuest ? [
                     { label: 'Lounge', icon: <MessageSquare className="w-5 h-5 text-indigo-400" />, path: '/chat' },
+                    { label: 'Quests', icon: <Target className="w-5 h-5 text-[#00F2FE]" />, path: '/quests' },
                     { label: 'Rankings', icon: <Trophy className="w-5 h-5 text-amber-400" />, path: '/leaderboard' },
                     { label: 'Profile', icon: <User className="w-5 h-5 text-teal-400" />, path: '/profile' },
                   ] : []),
