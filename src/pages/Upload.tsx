@@ -245,26 +245,50 @@ export const Upload: React.FC = () => {
             { id: 'cse-dbms', branchId: 'cse', name: 'Database Management Systems' },
             { id: 'cse-os', branchId: 'cse', name: 'Operating Systems' },
             { id: 'cse-webdev', branchId: 'cse', name: 'Web Development' },
+            { id: 'cse-discrete', branchId: 'cse', name: 'Discrete Mathematics' },
+            { id: 'cse-engmath', branchId: 'cse', name: 'Engineering Mathematics' },
+            { id: 'cse-engphysics', branchId: 'cse', name: 'Engineering Physics' },
+            { id: 'cse-engchemistry', branchId: 'cse', name: 'Engineering Chemistry' },
+            { id: 'cse-basics', branchId: 'cse', name: 'Basic Electrical & Electronics' },
+            { id: 'cse-pps', branchId: 'cse', name: 'Programming for Problem Solving' },
+            { id: 'cse-english', branchId: 'cse', name: 'Technical English' },
+            { id: 'cse-oop', branchId: 'cse', name: 'Object-Oriented Programming' },
+            { id: 'cse-coa', branchId: 'cse', name: 'Computer Organization & Architecture' },
+            { id: 'cse-networks', branchId: 'cse', name: 'Computer Networks' },
+            { id: 'cse-software', branchId: 'cse', name: 'Software Engineering' },
+            { id: 'cse-compiler', branchId: 'cse', name: 'Compiler Design' },
+            { id: 'cse-automata', branchId: 'cse', name: 'Formal Languages & Automata Theory' },
+            { id: 'cse-cloud', branchId: 'cse', name: 'Cloud Computing & Cyber Security' },
+            { id: 'cse-distributed', branchId: 'cse', name: 'Distributed Systems' },
+            { id: 'cse-iot', branchId: 'cse', name: 'Internet of Things (IoT)' },
+            { id: 'cse-entrepreneurship', branchId: 'cse', name: 'Entrepreneurship' },
+            { id: 'cse-project', branchId: 'cse', name: 'Capstone Project' },
+            
             // AI/ML
             { id: 'aiml-ml', branchId: 'aiml', name: 'Artificial Intelligence & Machine Learning' },
             { id: 'aiml-dl', branchId: 'aiml', name: 'Deep Learning' },
             { id: 'aiml-nlp', branchId: 'aiml', name: 'Natural Language Processing' },
+            
             // Data Science
             { id: 'ds-analytics', branchId: 'ds', name: 'Data Analytics' },
             { id: 'ds-stats', branchId: 'ds', name: 'Probability & Statistics' },
             { id: 'ds-bigdata', branchId: 'ds', name: 'Big Data Analytics' },
+            
             // Mechanical
             { id: 'mechanical-thermo', branchId: 'mechanical', name: 'Thermodynamics' },
             { id: 'mechanical-fluid', branchId: 'mechanical', name: 'Fluid Mechanics' },
             { id: 'mechanical-cad', branchId: 'mechanical', name: 'CAD & Manufacturing' },
+            
             // Civil
             { id: 'civil-structures', branchId: 'civil', name: 'Structural Analysis' },
             { id: 'civil-survey', branchId: 'civil', name: 'Surveying' },
             { id: 'civil-geotech', branchId: 'civil', name: 'Geotechnical Engineering' },
+            
             // ECE
             { id: 'ece-microprocessors', branchId: 'ece', name: 'Microprocessors & Embedded Systems' },
             { id: 'ece-digital', branchId: 'ece', name: 'Digital Electronics' },
-            { id: 'ece-signals', branchId: 'ece', name: 'Signals & Systems' }
+            { id: 'ece-signals', branchId: 'ece', name: 'Signals & Systems' },
+            { id: 'ece-iot', branchId: 'ece', name: 'Internet of Things (IoT)' }
           ];
         }
 
