@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
@@ -138,8 +138,9 @@ export const Feed: React.FC = () => {
   const [categories, setCategories] = useState<{ id: string; branchId: string; name: string; description?: string }[]>([]);
 
   useEffect(() => {
-    if (location.state?.branch) {
-      setSelectedBranch(location.state.branch);
+    const targetBranch = location.state?.branch || location.state?.branchFilter;
+    if (targetBranch) {
+      setSelectedBranch(targetBranch);
     }
     if (location.state?.category) {
       setSelectedCategory(location.state.category);
@@ -192,10 +193,31 @@ export const Feed: React.FC = () => {
 
         if (categoriesList.length === 0) {
           categoriesList = [
+            // CSE
             { id: 'cse-dsa', branchId: 'cse', name: 'Data Structures & Algorithms' },
             { id: 'cse-dbms', branchId: 'cse', name: 'Database Management Systems' },
             { id: 'cse-os', branchId: 'cse', name: 'Operating Systems' },
-            { id: 'cse-webdev', branchId: 'cse', name: 'Web Development' }
+            { id: 'cse-webdev', branchId: 'cse', name: 'Web Development' },
+            // AI/ML
+            { id: 'aiml-ml', branchId: 'aiml', name: 'Artificial Intelligence & Machine Learning' },
+            { id: 'aiml-dl', branchId: 'aiml', name: 'Deep Learning' },
+            { id: 'aiml-nlp', branchId: 'aiml', name: 'Natural Language Processing' },
+            // Data Science
+            { id: 'ds-analytics', branchId: 'ds', name: 'Data Analytics' },
+            { id: 'ds-stats', branchId: 'ds', name: 'Probability & Statistics' },
+            { id: 'ds-bigdata', branchId: 'ds', name: 'Big Data Analytics' },
+            // Mechanical
+            { id: 'mechanical-thermo', branchId: 'mechanical', name: 'Thermodynamics' },
+            { id: 'mechanical-fluid', branchId: 'mechanical', name: 'Fluid Mechanics' },
+            { id: 'mechanical-cad', branchId: 'mechanical', name: 'CAD & Manufacturing' },
+            // Civil
+            { id: 'civil-structures', branchId: 'civil', name: 'Structural Analysis' },
+            { id: 'civil-survey', branchId: 'civil', name: 'Surveying' },
+            { id: 'civil-geotech', branchId: 'civil', name: 'Geotechnical Engineering' },
+            // ECE
+            { id: 'ece-microprocessors', branchId: 'ece', name: 'Microprocessors & Embedded Systems' },
+            { id: 'ece-digital', branchId: 'ece', name: 'Digital Electronics' },
+            { id: 'ece-signals', branchId: 'ece', name: 'Signals & Systems' }
           ];
         }
 
@@ -533,15 +555,25 @@ export const Feed: React.FC = () => {
       });
     }
 
-    // Branch Filter (Renamed to Department)
+    // Branch Filter
     if (selectedBranch !== 'all') {
       const bId = selectedBranch.toLowerCase();
+      // Get the full branch name for more flexible matching
+      const matchedBranch = branches.find(b => b.id.toLowerCase() === bId);
+      const branchNameWords = matchedBranch
+        ? matchedBranch.name.toLowerCase().split(/\s+/).filter(w => w.length > 3)
+        : [];
+      
       result = result.filter((n: any) => {
-        // Direct branch match
+        // Direct branch ID match (most reliable)
         if (n.branch && n.branch.toLowerCase() === bId) {
           return true;
         }
-        // Legacy compatibility: check if category contains branch keyword or if notes category attribute matches the branch ID
+        // Branch name match (e.g., 'Computer Science & Engineering' contains 'computer')
+        if (n.branch && branchNameWords.length > 0 && branchNameWords.some(w => n.branch.toLowerCase().includes(w))) {
+          return true;
+        }
+        // Legacy compatibility: check if category contains branch keyword
         if (n.category && n.category.toLowerCase().startsWith(bId)) {
           return true;
         }
@@ -563,24 +595,32 @@ export const Feed: React.FC = () => {
     // Subject Category Filter
     if (selectedCategory !== 'all') {
       const cat = selectedCategory.toLowerCase();
+      // Find the matched category (case-insensitive ID match)
+      const matchedCat = categories.find(c => c.id.toLowerCase() === cat);
+      
       result = result.filter((n: any) => {
-        // Direct category attribute match
+        // Direct category attribute match (ID comparison)
         if (n.category && n.category.toLowerCase() === cat) {
           return true;
         }
+        // Match by category name stored in note
+        if (matchedCat && n.category && n.category.toLowerCase() === matchedCat.name.toLowerCase()) {
+          return true;
+        }
         
-        // Fallback for legacy note documents
+        // Fallback for legacy note documents — keyword match
         const sub = n.subject.toLowerCase();
         const desc = (n.description || '').toLowerCase();
         const textToSearch = `${sub} ${desc}`;
         
         // Dynamic match using the category label as keyword
-        const matchedCat = categories.find(c => c.id === cat);
         if (matchedCat) {
           const labelWords = matchedCat.name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
           if (labelWords.length > 0) {
             return labelWords.some(word => textToSearch.includes(word));
           }
+          // If all words in category name are short, try the full name
+          return textToSearch.includes(matchedCat.name.toLowerCase());
         }
 
         return false;
@@ -588,7 +628,7 @@ export const Feed: React.FC = () => {
     }
 
     setFilteredNotes(result);
-  }, [notes, searchQuery, selectedSemester, selectedBranch, selectedCategory, categories, feedType]);
+  }, [notes, searchQuery, selectedSemester, selectedBranch, selectedCategory, categories, branches, feedType]);
 
   // Like Toggle Handler
   const handleLikeToggle = async (noteId: string, currentLikes: string[]) => {
@@ -1127,7 +1167,7 @@ export const Feed: React.FC = () => {
                     All Subjects
                   </button>
                   {categories
-                    .filter((c) => selectedBranch === 'all' || c.branchId === selectedBranch)
+                    .filter((c) => selectedBranch === 'all' || c.branchId?.toLowerCase() === selectedBranch.toLowerCase())
                     .map((cat) => (
                       <div key={cat.id} className="relative group/cat flex items-center justify-between w-full">
                         <button

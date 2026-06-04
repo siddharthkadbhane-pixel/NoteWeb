@@ -118,6 +118,9 @@ export const Upload: React.FC = () => {
 
   // Branch and Category states
   const [categories, setCategories] = useState<{ id: string; branchId: string; name: string; description?: string }[]>([]);
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState('cse');
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   // Notes Name state
   const [notesName, setNotesName] = useState('');
@@ -147,6 +150,26 @@ export const Upload: React.FC = () => {
   const [aiStatus, setAiStatus] = useState<'idle' | 'extracting' | 'moderating' | 'summarizing' | 'done'>('idle');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Default branch based on user profile
+  useEffect(() => {
+    if (userProfile?.branch) {
+      const lowerBranch = userProfile.branch.toLowerCase();
+      if (branches.some(b => b.id.toLowerCase() === lowerBranch)) {
+        setSelectedBranch(lowerBranch);
+      }
+    }
+  }, [userProfile, branches]);
+
+  // Synchronize category selection when selectedBranch changes
+  useEffect(() => {
+    const branchCats = categories.filter(c => c.branchId?.toLowerCase() === selectedBranch.toLowerCase());
+    if (branchCats.length > 0) {
+      setSelectedCategory(branchCats[0].id);
+    } else {
+      setSelectedCategory('');
+    }
+  }, [selectedBranch, categories]);
 
   // Auto load passed preloaded file when redirecting from other pages via App-Wide Drag & Drop
   useEffect(() => {
@@ -182,11 +205,17 @@ export const Upload: React.FC = () => {
     }
   }, [selectedPredefinedSubject, customSubject]);
 
-  // Fetch categories dynamically on load
+  // Fetch branches and categories dynamically on load
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const { data: branchesData } = await supabase.from('branches').select('*');
         const { data: categoriesData } = await supabase.from('categories').select('*');
+
+        let branchesList = (branchesData || []).map((b: any) => ({
+          id: b.id,
+          name: b.name
+        }));
 
         let categoriesList: any[] = [];
         if (Array.isArray(categoriesData)) {
@@ -198,15 +227,48 @@ export const Upload: React.FC = () => {
           })).filter(c => c.id && c.name);
         }
 
-        if (categoriesList.length === 0) {
-          categoriesList = [
-            { id: 'cse-dsa', branchId: 'cse', name: 'Data Structures & Algorithms' },
-            { id: 'cse-dbms', branchId: 'cse', name: 'Database Management Systems' },
-            { id: 'cse-os', branchId: 'cse', name: 'Operating Systems' },
-            { id: 'cse-webdev', branchId: 'cse', name: 'Web Development' }
+        if (branchesList.length === 0) {
+          branchesList = [
+            { id: 'cse', name: 'Computer Science & Engineering' },
+            { id: 'aiml', name: 'AI & Machine Learning' },
+            { id: 'ds', name: 'Data Science' },
+            { id: 'mechanical', name: 'Mechanical Engineering' },
+            { id: 'civil', name: 'Civil Engineering' },
+            { id: 'ece', name: 'Electronics & Comm Eng' }
           ];
         }
 
+        if (categoriesList.length === 0) {
+          categoriesList = [
+            // CSE
+            { id: 'cse-dsa', branchId: 'cse', name: 'Data Structures & Algorithms' },
+            { id: 'cse-dbms', branchId: 'cse', name: 'Database Management Systems' },
+            { id: 'cse-os', branchId: 'cse', name: 'Operating Systems' },
+            { id: 'cse-webdev', branchId: 'cse', name: 'Web Development' },
+            // AI/ML
+            { id: 'aiml-ml', branchId: 'aiml', name: 'Artificial Intelligence & Machine Learning' },
+            { id: 'aiml-dl', branchId: 'aiml', name: 'Deep Learning' },
+            { id: 'aiml-nlp', branchId: 'aiml', name: 'Natural Language Processing' },
+            // Data Science
+            { id: 'ds-analytics', branchId: 'ds', name: 'Data Analytics' },
+            { id: 'ds-stats', branchId: 'ds', name: 'Probability & Statistics' },
+            { id: 'ds-bigdata', branchId: 'ds', name: 'Big Data Analytics' },
+            // Mechanical
+            { id: 'mechanical-thermo', branchId: 'mechanical', name: 'Thermodynamics' },
+            { id: 'mechanical-fluid', branchId: 'mechanical', name: 'Fluid Mechanics' },
+            { id: 'mechanical-cad', branchId: 'mechanical', name: 'CAD & Manufacturing' },
+            // Civil
+            { id: 'civil-structures', branchId: 'civil', name: 'Structural Analysis' },
+            { id: 'civil-survey', branchId: 'civil', name: 'Surveying' },
+            { id: 'civil-geotech', branchId: 'civil', name: 'Geotechnical Engineering' },
+            // ECE
+            { id: 'ece-microprocessors', branchId: 'ece', name: 'Microprocessors & Embedded Systems' },
+            { id: 'ece-digital', branchId: 'ece', name: 'Digital Electronics' },
+            { id: 'ece-signals', branchId: 'ece', name: 'Signals & Systems' }
+          ];
+        }
+
+        setBranches(branchesList);
         setCategories(categoriesList);
       } catch (e) {
         console.error("Error loading upload configurations:", e);
@@ -478,25 +540,27 @@ export const Upload: React.FC = () => {
       }
 
       // Custom category creation vs AI Category auto-sorting check inside subject catalog
-      let finalCategory = '';
-      let finalBranch = 'cse';
+      let finalCategory = selectedCategory;
+      let finalBranch = selectedBranch;
       let autoCorrected = false;
       let detectedCategoryName = '';
       
-      try {
-        // Map our custom categories array into flat list Gemini classifier accepts
-        const classifiedId = await classifyNoteCategory(notesName, description, aiExtractedText, categories);
-        if (classifiedId) {
-          const matchedCat = categories.find(c => c.id === classifiedId);
-          if (matchedCat) {
-            finalCategory = classifiedId;
-            finalBranch = matchedCat.branchId || 'cse';
-            detectedCategoryName = matchedCat.name;
-            autoCorrected = true;
+      if (generateAI && aiExtractedText) {
+        try {
+          // Map our custom categories array into flat list Gemini classifier accepts
+          const classifiedId = await classifyNoteCategory(notesName, description, aiExtractedText, categories);
+          if (classifiedId) {
+            const matchedCat = categories.find(c => c.id === classifiedId);
+            if (matchedCat) {
+              finalCategory = classifiedId;
+              finalBranch = matchedCat.branchId || selectedBranch;
+              detectedCategoryName = matchedCat.name;
+              autoCorrected = true;
+            }
           }
+        } catch (classifyErr) {
+          console.error("AI Category classification failed, falling back to manual selection:", classifyErr);
         }
-      } catch (classifyErr) {
-        console.error("AI Category classification failed:", classifyErr);
       }
 
       // Security Check: Run automated AI Spam and Plagiarism scanner on extracted PDF text
@@ -901,10 +965,51 @@ export const Upload: React.FC = () => {
                 </select>
               </div>
 
+              {/* Branch Selector */}
+              <div className="flex flex-col gap-1.5 text-left">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
+                  Department / Branch <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
+                >
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id} className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Category Selector */}
+              <div className="flex flex-col gap-1.5 text-left">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
+                  Syllabus Category (Area) <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full py-3 px-4 glass-input text-sm bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] light-mode:border-slate-900/10 focus:outline-none"
+                >
+                  {categories
+                    .filter((c) => c.branchId?.toLowerCase() === selectedBranch.toLowerCase())
+                    .map((cat) => (
+                      <option key={cat.id} value={cat.id} className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">
+                        {cat.name}
+                      </option>
+                    ))}
+                  {categories.filter((c) => c.branchId?.toLowerCase() === selectedBranch.toLowerCase()).length === 0 && (
+                    <option value="" className="bg-[#16161D] text-slate-200 light-mode:bg-white light-mode:text-slate-800">General Catalog</option>
+                  )}
+                </select>
+              </div>
+
               {/* Predefined Subject Selector */}
               <div className="flex flex-col gap-1.5 text-left">
                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1">
-                  Subject Category
+                  Subject Category (Legacy Predefined)
                 </label>
                 <select
                   value={selectedPredefinedSubject}
