@@ -565,15 +565,20 @@ export const Feed: React.FC = () => {
         : [];
       
       result = result.filter((n: any) => {
-        // Direct branch ID match (most reliable)
-        if (n.branch && n.branch.toLowerCase() === bId) {
-          return true;
+        // If note has a branch set, use strict matching only
+        if (n.branch && n.branch.trim() !== '') {
+          // Direct branch ID match (most reliable)
+          if (n.branch.toLowerCase() === bId) {
+            return true;
+          }
+          // Branch name match (e.g., 'Computer Science & Engineering' contains 'computer')
+          if (branchNameWords.length > 0 && branchNameWords.every(w => n.branch.toLowerCase().includes(w))) {
+            return true;
+          }
+          return false; // Do not do fuzzy fallback if branch is explicitly set!
         }
-        // Branch name match (e.g., 'Computer Science & Engineering' contains 'computer')
-        if (n.branch && branchNameWords.length > 0 && branchNameWords.some(w => n.branch.toLowerCase().includes(w))) {
-          return true;
-        }
-        // Legacy compatibility: check if category contains branch keyword
+
+        // Legacy compatibility for notes without branch field: check if category contains branch keyword
         if (n.category && n.category.toLowerCase().startsWith(bId)) {
           return true;
         }
@@ -581,7 +586,7 @@ export const Feed: React.FC = () => {
         const desc = (n.description || '').toLowerCase();
         const textToSearch = `${sub} ${desc}`;
         
-        if (bId === 'cse') return textToSearch.includes('computer') || textToSearch.includes('data') || textToSearch.includes('algo') || textToSearch.includes('software') || textToSearch.includes('web') || textToSearch.includes('programming') || textToSearch.includes('code') || textToSearch.includes('javascript') || textToSearch.includes('python');
+        if (bId === 'cse') return textToSearch.includes('computer') || textToSearch.includes('algo') || textToSearch.includes('software') || textToSearch.includes('web') || textToSearch.includes('programming') || textToSearch.includes('code') || textToSearch.includes('javascript') || textToSearch.includes('python');
         if (bId === 'aiml') return textToSearch.includes('ai') || textToSearch.includes('machine') || textToSearch.includes('learning') || textToSearch.includes('intelligence') || textToSearch.includes('robotic') || textToSearch.includes('deep');
         if (bId === 'ds') return textToSearch.includes('data') || textToSearch.includes('analytic') || textToSearch.includes('statistic') || textToSearch.includes('predictive') || textToSearch.includes('visual');
         if (bId === 'civil') return textToSearch.includes('civil') || textToSearch.includes('concrete') || textToSearch.includes('structure') || textToSearch.includes('surveying') || textToSearch.includes('geotech');
@@ -599,16 +604,20 @@ export const Feed: React.FC = () => {
       const matchedCat = categories.find(c => c.id.toLowerCase() === cat);
       
       result = result.filter((n: any) => {
-        // Direct category attribute match (ID comparison)
-        if (n.category && n.category.toLowerCase() === cat) {
-          return true;
-        }
-        // Match by category name stored in note
-        if (matchedCat && n.category && n.category.toLowerCase() === matchedCat.name.toLowerCase()) {
-          return true;
+        // If note has a category set, use strict matching only
+        if (n.category && n.category.trim() !== '') {
+          // Direct category attribute match (ID comparison)
+          if (n.category.toLowerCase() === cat) {
+            return true;
+          }
+          // Match by category name stored in note
+          if (matchedCat && n.category.toLowerCase() === matchedCat.name.toLowerCase()) {
+            return true;
+          }
+          return false; // Do not do fuzzy fallback if category is explicitly set!
         }
         
-        // Fallback for legacy note documents — keyword match
+        // Fallback for legacy note documents (without category) — keyword match
         const sub = n.subject.toLowerCase();
         const desc = (n.description || '').toLowerCase();
         const textToSearch = `${sub} ${desc}`;
@@ -617,7 +626,7 @@ export const Feed: React.FC = () => {
         if (matchedCat) {
           const labelWords = matchedCat.name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
           if (labelWords.length > 0) {
-            return labelWords.some(word => textToSearch.includes(word));
+            return labelWords.every(word => textToSearch.includes(word));
           }
           // If all words in category name are short, try the full name
           return textToSearch.includes(matchedCat.name.toLowerCase());

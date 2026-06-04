@@ -198,12 +198,15 @@ export const classifyNoteCategory = async (
     const scores: Record<string, number> = {};
     for (const cat of availableCategories) scores[cat.id] = 0;
 
-    for (const [catId, keywords] of Object.entries(keywordMaps)) {
-      if (scores[catId] === undefined) continue;
-      for (const keyword of keywords) {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-        const matches = textToAnalyze.match(regex);
-        if (matches) scores[catId] += matches.length;
+    for (const cat of availableCategories) {
+      const branchId = (cat as any).branchId || cat.id.split('-')[0] || 'cse';
+      const keywords = keywordMaps[branchId.toLowerCase()];
+      if (keywords) {
+        for (const keyword of keywords) {
+          const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+          const matches = textToAnalyze.match(regex);
+          if (matches) scores[cat.id] += matches.length;
+        }
       }
     }
 
