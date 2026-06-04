@@ -48,7 +48,8 @@ import {
   MicOff,
   VideoOff,
   FileText,
-  Quote
+  Quote,
+  Check
 } from 'lucide-react';
 
 const BAD_WORDS = [
@@ -163,6 +164,125 @@ interface UserProfile {
   role?: string;
 }
 
+interface ChatTheme {
+  name: string;
+  containerClass: string;
+  style?: React.CSSProperties;
+  myBubbleClass: string;
+  otherBubbleClass: string;
+  previewBg: string;
+  previewStyle?: React.CSSProperties;
+}
+
+const CHAT_THEMES: ChatTheme[] = [
+  {
+    name: 'Default',
+    containerClass: '',
+    myBubbleClass: 'bg-indigo-600 border-indigo-500 text-white shadow shadow-indigo-600/10',
+    otherBubbleClass: 'bg-[#181824]/80 border-white/[0.04] text-slate-200 rounded-bl-none',
+    previewBg: 'bg-slate-900 border border-white/5'
+  },
+  {
+    name: 'Midnight Nebula',
+    containerClass: 'bg-gradient-to-br from-slate-950 via-indigo-950/40 to-purple-950/30 border-purple-500/20',
+    myBubbleClass: 'bg-purple-650 border-purple-600 text-white shadow shadow-purple-600/25',
+    otherBubbleClass: 'bg-indigo-950/60 border-purple-500/20 text-purple-200 shadow-sm rounded-bl-none',
+    previewBg: 'bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950'
+  },
+  {
+    name: 'Emerald Canopy',
+    containerClass: 'bg-gradient-to-br from-slate-950 via-emerald-950/35 to-slate-900 border-emerald-500/20',
+    myBubbleClass: 'bg-emerald-650 border-emerald-600 text-white shadow shadow-emerald-600/25',
+    otherBubbleClass: 'bg-emerald-950/50 border-emerald-500/20 text-emerald-250 shadow-sm rounded-bl-none',
+    previewBg: 'bg-gradient-to-br from-teal-950 via-emerald-950 to-slate-950'
+  },
+  {
+    name: 'Sunset Ember',
+    containerClass: 'bg-gradient-to-br from-slate-950 via-rose-950/30 to-orange-950/20 border-rose-500/20',
+    myBubbleClass: 'bg-rose-650 border-rose-600 text-white shadow shadow-rose-600/25',
+    otherBubbleClass: 'bg-rose-950/40 border-rose-500/20 text-rose-250 shadow-sm rounded-bl-none',
+    previewBg: 'bg-gradient-to-br from-rose-950 via-orange-950 to-slate-950'
+  },
+  {
+    name: 'Tokyo Neon',
+    containerClass: 'border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]',
+    style: {
+      backgroundImage: `linear-gradient(to right, rgba(6, 182, 212, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(6, 182, 212, 0.04) 1px, transparent 1px)`,
+      backgroundSize: '36px 36px',
+      backgroundColor: '#040408'
+    },
+    myBubbleClass: 'bg-cyan-950/40 border border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(34,211,238,0.2)]',
+    otherBubbleClass: 'bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-200 shadow-[0_0_10px_rgba(217,70,239,0.15)] rounded-bl-none',
+    previewBg: 'bg-black border border-cyan-500/20',
+    previewStyle: {
+      backgroundImage: `linear-gradient(to right, rgba(6, 182, 212, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(6, 182, 212, 0.04) 1px, transparent 1px)`,
+      backgroundSize: '15px 15px',
+      backgroundColor: '#040408'
+    }
+  },
+  {
+    name: 'Oceanic Abyss',
+    containerClass: 'bg-gradient-to-br from-slate-950 via-blue-950/40 to-cyan-950/20 border-blue-500/20',
+    myBubbleClass: 'bg-blue-600 border-blue-550 text-white shadow shadow-blue-650/20',
+    otherBubbleClass: 'bg-sky-950/50 border-sky-500/20 text-sky-200 shadow-sm rounded-bl-none',
+    previewBg: 'bg-gradient-to-br from-blue-950 via-cyan-950 to-slate-950'
+  },
+  {
+    name: 'Sakura Spring',
+    containerClass: 'bg-gradient-to-br from-slate-950 via-pink-950/30 to-purple-950/25 border-pink-500/20',
+    myBubbleClass: 'bg-pink-650 border-pink-500 text-white shadow shadow-pink-650/20',
+    otherBubbleClass: 'bg-pink-950/40 border-pink-500/20 text-pink-250 shadow-sm rounded-bl-none',
+    previewBg: 'bg-gradient-to-br from-rose-950/90 via-pink-900/40 to-slate-950'
+  },
+  {
+    name: 'Carbon Stealth',
+    containerClass: 'bg-gradient-to-br from-zinc-950 via-neutral-900/20 to-black border-zinc-800',
+    myBubbleClass: 'bg-zinc-800 border-zinc-700 text-zinc-100 shadow shadow-black/40',
+    otherBubbleClass: 'bg-zinc-900/80 border-zinc-805/80 text-zinc-300 shadow-sm rounded-bl-none',
+    previewBg: 'bg-gradient-to-br from-zinc-900 via-neutral-950 to-black'
+  },
+  {
+    name: 'Golden Desert',
+    containerClass: 'bg-gradient-to-br from-slate-950 via-amber-950/30 to-yellow-950/20 border-amber-500/20',
+    myBubbleClass: 'bg-amber-600 border-amber-500 text-white shadow shadow-amber-650/25',
+    otherBubbleClass: 'bg-amber-950/50 border-amber-500/20 text-amber-250 shadow-sm rounded-bl-none',
+    previewBg: 'bg-gradient-to-br from-amber-950 via-yellow-950 to-slate-950'
+  },
+  {
+    name: 'Cosmic Constellation',
+    containerClass: 'border-indigo-500/25',
+    style: {
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Ccircle cx='10' cy='20' r='1' fill='%23ffffff' opacity='0.35'/%3E%3Ccircle cx='60' cy='35' r='1.5' fill='%23ffffff' opacity='0.55'/%3E%3Ccircle cx='95' cy='15' r='1' fill='%23ffffff' opacity='0.45'/%3E%3Ccircle cx='35' cy='85' r='1.2' fill='%23ffffff' opacity='0.65'/%3E%3Ccircle cx='80' cy='95' r='1.5' fill='%23ffffff' opacity='0.35'/%3E%3Ccircle cx='110' cy='75' r='1' fill='%23ffffff' opacity='0.4'/%3E%3Ccircle cx='15' cy='105' r='1.3' fill='%23ffffff' opacity='0.5'/%3E%3Cpath d='M10 20 L60 35 L95 15' stroke='rgba(255,255,255,0.06)' stroke-width='0.5' fill='none'/%3E%3Cpath d='M35 85 L80 95 L110 75' stroke='rgba(255,255,255,0.06)' stroke-width='0.5' fill='none'/%3E%3Cpath d='M15 105 L35 85' stroke='rgba(255,255,255,0.06)' stroke-width='0.5' fill='none'/%3E%3C/svg%3E")`,
+      backgroundRepeat: 'repeat',
+      backgroundColor: '#050510'
+    },
+    myBubbleClass: 'bg-indigo-650/90 border-indigo-500 text-white shadow shadow-indigo-650/20',
+    otherBubbleClass: 'bg-indigo-950/70 border-indigo-800/40 text-indigo-200 shadow-sm rounded-bl-none',
+    previewBg: 'bg-indigo-950',
+    previewStyle: {
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 120 120'%3E%3Ccircle cx='10' cy='20' r='1' fill='%23ffffff' opacity='0.35'/%3E%3Ccircle cx='60' cy='35' r='1.5' fill='%23ffffff' opacity='0.55'/%3E%3Ccircle cx='95' cy='15' r='1' fill='%23ffffff' opacity='0.45'/%3E%3Ccircle cx='35' cy='85' r='1.2' fill='%23ffffff' opacity='0.65'/%3E%3Ccircle cx='80' cy='95' r='1.5' fill='%23ffffff' opacity='0.35'/%3E%3Cpath d='M10 20 L60 35 L95 15' stroke='rgba(255,255,255,0.06)' stroke-width='0.5' fill='none'/%3E%3Cpath d='M35 85 L80 95' stroke='rgba(255,255,255,0.06)' stroke-width='0.5' fill='none'/%3E%3C/svg%3E")`,
+      backgroundRepeat: 'repeat',
+      backgroundColor: '#050510'
+    }
+  },
+  {
+    name: 'Study Vibe',
+    containerClass: 'border-amber-700/20 text-slate-805',
+    style: {
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'%3E%3Crect width='36' height='36' fill='%23FDFBF7'/%3E%3Cpath d='M0 36 L36 36 M36 0 L36 36' stroke='rgba(139,92,26,0.035)' stroke-width='0.8' fill='none'/%3E%3C/svg%3E")`,
+      backgroundRepeat: 'repeat',
+      color: '#1e293b'
+    },
+    myBubbleClass: 'bg-amber-600 border-amber-500 text-white shadow shadow-amber-600/20',
+    otherBubbleClass: 'bg-stone-100/90 border-stone-200 text-stone-800 shadow-sm rounded-bl-none',
+    previewBg: 'bg-[#FDFBF7]',
+    previewStyle: {
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 36 36'%3E%3Crect width='36' height='36' fill='%23FDFBF7'/%3E%3Cpath d='M0 36 L36 36 M36 0 L36 36' stroke='rgba(139,92,26,0.035)' stroke-width='0.8' fill='none'/%3E%3C/svg%3E")`,
+      backgroundRepeat: 'repeat'
+    }
+  }
+];
+
 export const Chat: React.FC = () => {
   const { user, userProfile, isGuest, updatePoints } = useAuth();
   const { isDark } = useTheme();
@@ -258,6 +378,7 @@ export const Chat: React.FC = () => {
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
 
   // WebRTC Calling
   const [callState, setCallState] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle');
@@ -888,9 +1009,9 @@ export const Chat: React.FC = () => {
       // Sort search results: show names/usernames starting with search term first
       const lowerVal = val.toLowerCase();
       profiles.sort((a, b) => {
-        const aName = a.displayName.toLowerCase();
+        const aName = (a.displayName ?? '').toLowerCase();
         const aUser = a.username.toLowerCase();
-        const bName = b.displayName.toLowerCase();
+        const bName = (b.displayName ?? '').toLowerCase();
         const bUser = b.username.toLowerCase();
 
         const aStarts = aName.startsWith(lowerVal) || aUser.startsWith(lowerVal);
@@ -900,7 +1021,7 @@ export const Chat: React.FC = () => {
         if (!aStarts && bStarts) return 1;
         
         // If both start with it or both don't, sort alphabetically
-        return a.displayName.localeCompare(b.displayName);
+        return (a.displayName ?? '').localeCompare(b.displayName ?? '');
       });
 
       // Keep only top 10 results
@@ -1884,27 +2005,52 @@ export const Chat: React.FC = () => {
   };
 
   const getThemeClasses = () => {
-    if (activeTab !== 'dm' || !selectedDmUser) return '';
-    const themeName = chatThemes[selectedDmUser.id] || 'Default';
-    switch (themeName) {
-      case 'Midnight Purple': return 'bg-gradient-to-br from-slate-950 via-indigo-950/40 to-purple-950/30 border-purple-500/20';
-      case 'Emerald Forest': return 'bg-gradient-to-br from-slate-950 via-emerald-950/30 to-slate-900 border-emerald-500/20';
-      case 'Sunset Crimson': return 'bg-gradient-to-br from-slate-950 via-rose-950/30 to-orange-950/20 border-rose-500/20';
-      case 'Cyberpunk Neon': return 'bg-black border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]';
-      default: return '';
-    }
+    const roomId = activeTab === 'dm' && selectedDmUser ? selectedDmUser.id : 'global';
+    const themeName = chatThemes[roomId] || 'Default';
+    const mappedName = themeName === 'Midnight Purple' ? 'Midnight Nebula' : 
+                       themeName === 'Sunset Crimson' ? 'Sunset Ember' :
+                       themeName === 'Cyberpunk Neon' ? 'Tokyo Neon' :
+                       themeName === 'Emerald Forest' ? 'Emerald Canopy' : themeName;
+    const found = CHAT_THEMES.find(t => t.name === mappedName);
+    return found ? found.containerClass : '';
+  };
+
+  const getThemeStyle = () => {
+    const roomId = activeTab === 'dm' && selectedDmUser ? selectedDmUser.id : 'global';
+    const themeName = chatThemes[roomId] || 'Default';
+    const mappedName = themeName === 'Midnight Purple' ? 'Midnight Nebula' : 
+                       themeName === 'Sunset Crimson' ? 'Sunset Ember' :
+                       themeName === 'Cyberpunk Neon' ? 'Tokyo Neon' :
+                       themeName === 'Emerald Forest' ? 'Emerald Canopy' : themeName;
+    const found = CHAT_THEMES.find(t => t.name === mappedName);
+    return found ? found.style : undefined;
   };
 
   const getMyBubbleTheme = () => {
-    if (activeTab !== 'dm' || !selectedDmUser) return 'bg-indigo-600 border-indigo-500 text-white';
-    const themeName = chatThemes[selectedDmUser.id] || 'Default';
-    switch (themeName) {
-      case 'Midnight Purple': return 'bg-purple-650 border-purple-600 text-white shadow shadow-purple-600/20';
-      case 'Emerald Forest': return 'bg-emerald-650 border-emerald-600 text-white shadow shadow-emerald-600/20';
-      case 'Sunset Crimson': return 'bg-rose-650 border-rose-600 text-white shadow shadow-rose-600/20';
-      case 'Cyberpunk Neon': return 'bg-cyan-950/40 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(34,211,238,0.2)]';
-      default: return 'bg-indigo-600 border-indigo-500 text-white';
+    const roomId = activeTab === 'dm' && selectedDmUser ? selectedDmUser.id : 'global';
+    const themeName = chatThemes[roomId] || 'Default';
+    const mappedName = themeName === 'Midnight Purple' ? 'Midnight Nebula' : 
+                       themeName === 'Sunset Crimson' ? 'Sunset Ember' :
+                       themeName === 'Cyberpunk Neon' ? 'Tokyo Neon' :
+                       themeName === 'Emerald Forest' ? 'Emerald Canopy' : themeName;
+    const found = CHAT_THEMES.find(t => t.name === mappedName);
+    return found ? found.myBubbleClass : 'bg-indigo-600 border-indigo-500 text-white';
+  };
+
+  const getOtherBubbleTheme = () => {
+    const roomId = activeTab === 'dm' && selectedDmUser ? selectedDmUser.id : 'global';
+    const themeName = chatThemes[roomId] || 'Default';
+    const mappedName = themeName === 'Midnight Purple' ? 'Midnight Nebula' : 
+                       themeName === 'Sunset Crimson' ? 'Sunset Ember' :
+                       themeName === 'Cyberpunk Neon' ? 'Tokyo Neon' :
+                       themeName === 'Emerald Forest' ? 'Emerald Canopy' : themeName;
+    const found = CHAT_THEMES.find(t => t.name === mappedName);
+    if (found && found.name !== 'Default') {
+      return found.otherBubbleClass;
     }
+    return isDark
+      ? 'bg-[#181824]/80 border-white/[0.04] text-slate-200 rounded-bl-none'
+      : 'bg-slate-50 border-slate-200 text-slate-800 rounded-bl-none shadow-sm';
   };
 
   return (
@@ -2138,6 +2284,37 @@ export const Chat: React.FC = () => {
             activeTab === 'dm' && (!selectedDmUser || mobileView === 'list') ? 'hidden md:flex' : 'flex'
           }`}>
             
+            {activeTab === 'global' && (
+              <div className={`flex flex-row items-center justify-between gap-3 pb-3 border-b mb-3 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg">
+                    💬
+                  </div>
+                  <div>
+                    <h4 className={`text-xs font-black leading-none ${isDark ? 'text-white' : 'text-slate-805'}`}>
+                      Campus Lounge
+                    </h4>
+                    <span className="text-[9px] text-slate-500 mt-0.5 block leading-none">
+                      Public community room • {onlineUsers.length} classmates online
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Advanced Action Bar for Global Chat */}
+                <div className="flex items-center gap-1.5 justify-end">
+                  {/* Wallpaper Theme Picker */}
+                  <button
+                    onClick={() => setIsThemeModalOpen(true)}
+                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
+                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-350' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
+                    }`}
+                    title="Select lounge theme"
+                  >
+                    <Paintbrush className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {activeTab === 'dm' && selectedDmUser && (
               <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b mb-3 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
@@ -2203,32 +2380,15 @@ export const Chat: React.FC = () => {
                   <div className="h-4 w-px bg-white/10 mx-1" />
 
                   {/* Wallpaper Theme Picker */}
-                  <div className="relative group/theme">
-                    <button
-                      className={`p-2 rounded-xl transition-all border ${
-                        isDark ? 'border-white/10 hover:bg-white/5 text-slate-360' : 'border-slate-200 hover:bg-slate-100 text-slate-660'
-                      }`}
-                      title="Select wallpaper theme"
-                    >
-                      <Paintbrush className="w-4 h-4" />
-                    </button>
-                    <div className="absolute right-0 top-full mt-2 w-40 rounded-xl bg-slate-900 border border-white/10 p-1 hidden group-hover/theme:block z-30 shadow-2xl text-left">
-                      {['Default', 'Midnight Purple', 'Emerald Forest', 'Sunset Crimson', 'Cyberpunk Neon'].map((themeName) => (
-                        <button
-                          key={themeName}
-                          onClick={() => {
-                            const updated = { ...chatThemes, [selectedDmUser.id]: themeName };
-                            setChatThemes(updated);
-                            localStorage.setItem('noteweb-chat-themes', JSON.stringify(updated));
-                            toastSuccess(`${themeName} theme applied!`);
-                          }}
-                          className="w-full text-left px-3 py-1.5 rounded-lg text-[10px] font-bold text-slate-300 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
-                        >
-                          {themeName}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => setIsThemeModalOpen(true)}
+                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
+                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-360' : 'border-slate-200 hover:bg-slate-100 text-slate-660'
+                    }`}
+                    title="Select wallpaper theme"
+                  >
+                    <Paintbrush className="w-4 h-4" />
+                  </button>
 
                   {/* Starred Drawer Folder */}
                   <button
@@ -2297,7 +2457,12 @@ export const Chat: React.FC = () => {
               </div>
             ) : (
               /* Scrollable Message Timeline area */
-              <div className={`flex-1 overflow-y-auto space-y-4 pr-1 max-h-[480px] p-2 transition-all rounded-2xl ${activeTab === 'dm' && selectedDmUser ? getThemeClasses() : ''}`}>
+              <div 
+                className={`flex-1 overflow-y-auto space-y-4 pr-1 max-h-[480px] p-2 transition-all rounded-2xl ${
+                  (activeTab === 'global' || (activeTab === 'dm' && selectedDmUser)) ? getThemeClasses() : ''
+                }`}
+                style={(activeTab === 'global' || (activeTab === 'dm' && selectedDmUser)) ? getThemeStyle() : undefined}
+              >
                 {isLoading ? (
                   <div className="h-full flex items-center justify-center text-slate-500 text-xs font-bold">
                     🔐 Accessing secure keys...
@@ -2430,9 +2595,7 @@ export const Chat: React.FC = () => {
                             <div className={`p-3.5 rounded-2xl border text-xs font-medium leading-relaxed break-words text-left flex-1 ${
                               isMe 
                                 ? getMyBubbleTheme() + ' rounded-br-none shadow shadow-indigo-600/10' 
-                                : isDark
-                                  ? 'bg-[#181824]/80 border-white/[0.04] text-slate-200 rounded-bl-none'
-                                  : 'bg-slate-50 border-slate-200 text-slate-800 rounded-bl-none shadow-sm'
+                                : getOtherBubbleTheme()
                             }`}>
                               {/* Quoted reply render */}
                               {msg.reply_to && (
@@ -3256,6 +3419,121 @@ export const Chat: React.FC = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Visual Theme Picker Modal */}
+      {isThemeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            onClick={() => setIsThemeModalOpen(false)}
+            className="absolute inset-0 bg-[#0A0A0C]/70 backdrop-blur-md" 
+          />
+          <GlassPanel className={`w-full max-w-xl p-6 border shadow-2xl relative z-10 rounded-3xl ${
+            isDark ? 'bg-[#0E0E12]/98 border-white/[0.08] text-[#E2E8F0]' : 'bg-white border-slate-205 text-slate-805'
+          }`}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b pb-3.5 mb-4 border-white/10 light-mode:border-slate-100">
+              <h3 className="text-sm font-black flex items-center gap-2 text-indigo-400">
+                <Paintbrush className="w-4 h-4" />
+                Personalize Chat Theme
+              </h3>
+              <button
+                onClick={() => setIsThemeModalOpen(false)}
+                className={`p-1.5 rounded-lg border cursor-pointer active:scale-90 ${
+                  isDark ? 'border-white/10 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-505'
+                }`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-[10px] text-slate-500 text-left mb-4 font-semibold leading-relaxed">
+              Customize wallpaper backgrounds and message bubble colors. Custom themes are saved locally for this chat room ({
+                activeTab === 'global' ? 'Campus Lounge' : (selectedDmUser?.displayName || 'Classmate')
+              }).
+            </p>
+
+            {/* Grid of themes */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 max-h-[350px] overflow-y-auto pr-1">
+              {CHAT_THEMES.map((themeItem) => {
+                const currentRoomId = activeTab === 'dm' && selectedDmUser ? selectedDmUser.id : 'global';
+                const currentTheme = chatThemes[currentRoomId] || 'Default';
+                const isSelected = 
+                  currentTheme === themeItem.name ||
+                  (themeItem.name === 'Midnight Nebula' && currentTheme === 'Midnight Purple') ||
+                  (themeItem.name === 'Sunset Ember' && currentTheme === 'Sunset Crimson') ||
+                  (themeItem.name === 'Tokyo Neon' && currentTheme === 'Cyberpunk Neon') ||
+                  (themeItem.name === 'Emerald Canopy' && currentTheme === 'Emerald Forest');
+
+                return (
+                  <button
+                    key={themeItem.name}
+                    onClick={() => {
+                      const updated = { ...chatThemes, [currentRoomId]: themeItem.name };
+                      setChatThemes(updated);
+                      localStorage.setItem('noteweb-chat-themes', JSON.stringify(updated));
+                      toastSuccess(`${themeItem.name} theme applied!`);
+                    }}
+                    className={`group/theme-card p-2 rounded-2xl border text-left flex flex-col gap-2 transition-all cursor-pointer relative active:scale-95 ${
+                      isSelected 
+                        ? 'border-indigo-500 bg-indigo-500/5 ring-1 ring-indigo-500/30' 
+                        : isDark
+                          ? 'border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.05]'
+                          : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80 shadow-sm'
+                    }`}
+                  >
+                    {/* Visual Preview */}
+                    <div 
+                      className={`h-16 w-full rounded-xl relative overflow-hidden flex flex-col p-1.5 justify-between ${themeItem.previewBg}`}
+                      style={themeItem.previewStyle}
+                    >
+                      {/* Mini visual bubbles */}
+                      <div className="flex flex-col gap-1 w-full text-[6px]">
+                        {/* Other (receiver) mini bubble */}
+                        <div className={`px-1.5 py-0.5 rounded-lg max-w-[70%] self-start border flex items-center leading-none ${themeItem.otherBubbleClass}`}>
+                          Hello!
+                        </div>
+                        {/* My (sender) mini bubble */}
+                        <div className={`px-1.5 py-0.5 rounded-lg max-w-[70%] self-end border flex items-center leading-none ${themeItem.myBubbleClass}`}>
+                          Hey there!
+                        </div>
+                      </div>
+
+                      {/* Selected tick badge */}
+                      {isSelected && (
+                        <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-indigo-650 text-white flex items-center justify-center shadow-lg border border-indigo-400">
+                          <Check className="w-2.5 h-2.5" />
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Theme metadata */}
+                    <div className="flex items-center justify-between px-1">
+                      <span className={`text-[10px] font-black truncate ${
+                        isSelected 
+                          ? 'text-indigo-400' 
+                          : isDark ? 'text-slate-200' : 'text-slate-805'
+                      }`}>
+                        {themeItem.name}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-2.5 mt-5 border-t pt-3.5 border-white/10 light-mode:border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsThemeModalOpen(false)}
+                className="px-4 py-2 text-[10px] font-black rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-all font-semibold text-white cursor-pointer active:scale-95 shadow-md shadow-indigo-600/10"
+              >
+                Done
+              </button>
+            </div>
+          </GlassPanel>
         </div>
       )}
     </div>
