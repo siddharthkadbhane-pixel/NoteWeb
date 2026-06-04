@@ -523,6 +523,29 @@ export const Feed: React.FC = () => {
 
   // Main filter cascades
   useEffect(() => {
+    const DEPT_KEYWORDS: Record<string, string[]> = {
+      aiml: ['machine learning', 'deep learning', 'neural network', 'artificial intelligence', 'ai/ml', 'intelligence'],
+      ds: ['data science', 'data analytics', 'big data', 'statistics', 'tableau', 'predictive model'],
+      ece: ['microprocessor', 'embedded system', 'circuits', 'electronics', 'signals & systems', 'semiconductor', 'diode', 'transistor'],
+      mechanical: ['thermodynamics', 'fluid mechanics', 'cad', 'mechanical engineering', 'gear', 'turbine'],
+      civil: ['structural analysis', 'surveying', 'geotechnical', 'civil engineering', 'concrete', 'beam']
+    };
+
+    const CATEGORY_KEYWORDS: Record<string, string[]> = {
+      'cse-dsa': ['dsa', 'data structure', 'algorithm', 'algo', 'graph', 'tree', 'stack', 'queue', 'array', 'sorting', 'searching', 'linked list'],
+      'cse-dbms': ['dbms', 'database', 'sql', 'query', 'normalization', 'nosql', 'relational', 'schema'],
+      'cse-os': ['operating system', 'os', 'cpu scheduling', 'process', 'thread', 'semaphore', 'deadlock', 'memory management', 'paging'],
+      'cse-webdev': ['web', 'html', 'css', 'javascript', 'react', 'node', 'express', 'frontend', 'backend', 'fullstack', 'api'],
+      'aiml-ml': ['ai', 'ml', 'machine learning', 'artificial intelligence', 'neural network', 'deep learning', 'nlp', 'cnn', 'rnn', 'supervised', 'regression', 'classification'],
+      'ds-analytics': ['data analytics', 'data science', 'analytics', 'statistics', 'dataframe', 'pandas', 'numpy', 'visualization', 'tableau', 'r programming'],
+      'ece-microprocessors': ['microprocessor', 'embedded', '8085', '8086', 'arduino', 'microcontroller', 'assembly', 'interfacing'],
+      'ece-digital': ['digital electronics', 'logic gate', 'boolean algebra', 'flip flop', 'multiplexer', 'combinational', 'sequential'],
+      'ece-signals': ['signals', 'systems', 'fourier', 'laplace', 'z-transform', 'lti system', 'continuous time', 'discrete time'],
+      'mechanical-thermo': ['thermodynamics', 'entropy', 'carnot', 'heat engine', 'laws of thermodynamics', 'enthalpy'],
+      'mechanical-fluid': ['fluid', 'bernoulli', 'viscosity', 'hydraulics', 'flow', 'buoyancy'],
+      'civil-structures': ['structural', 'truss', 'beam', 'concrete', 'steel design', 'bending moment', 'shear force']
+    };
+
     let result = [...notes];
 
     // Filter by Feed Type (Notes vs PYQ Papers)
@@ -565,23 +588,42 @@ export const Feed: React.FC = () => {
         : [];
       
       result = result.filter((n: any) => {
-        // If note has a branch set, use strict matching only
-        if (n.branch && n.branch.trim() !== '') {
-          // Direct branch ID match (most reliable)
-          if (n.branch.toLowerCase() === bId) {
-            return true;
-          }
-          // Branch name match (e.g., 'Computer Science & Engineering' contains 'computer')
-          if (branchNameWords.length > 0 && branchNameWords.every(w => n.branch.toLowerCase().includes(w))) {
-            return true;
-          }
-          return false; // Do not do fuzzy fallback if branch is explicitly set!
-        }
-
-        // Legacy compatibility for notes without branch field: check if category contains branch keyword
+        // 1. Check if category prefix matches branch (most reliable auto-routing for legacy defaults)
         if (n.category && n.category.toLowerCase().startsWith(bId)) {
           return true;
         }
+
+        // 2. Self-heal legacy branch defaults ('cse'):
+        // If a note defaulted to 'cse' but has keywords for another department, dynamically re-route it
+        if (n.branch && n.branch.toLowerCase() === 'cse') {
+          const sub = n.subject.toLowerCase();
+          const desc = (n.description || '').toLowerCase();
+          const textToSearch = `${sub} ${desc}`;
+          
+          let actualBranch = 'cse';
+          for (const [deptId, keywords] of Object.entries(DEPT_KEYWORDS)) {
+            if (keywords.some(k => textToSearch.includes(k))) {
+              actualBranch = deptId;
+              break;
+            }
+          }
+          return actualBranch === bId;
+        }
+
+        // 3. Strict branch match for all other branch assignments
+        if (n.branch && n.branch.trim() !== '') {
+          // Direct branch ID match
+          if (n.branch.toLowerCase() === bId) {
+            return true;
+          }
+          // Branch name match
+          if (branchNameWords.length > 0 && branchNameWords.every(w => n.branch.toLowerCase().includes(w))) {
+            return true;
+          }
+          return false; // Stop checking and fail if branch was set but didn't match
+        }
+
+        // 4. Legacy compatibility for notes with no branch and no category prefix: fuzzy keyword check
         const sub = n.subject.toLowerCase();
         const desc = (n.description || '').toLowerCase();
         const textToSearch = `${sub} ${desc}`;
@@ -622,6 +664,12 @@ export const Feed: React.FC = () => {
         const desc = (n.description || '').toLowerCase();
         const textToSearch = `${sub} ${desc}`;
         
+        // Match using specific category keywords
+        const keywords = CATEGORY_KEYWORDS[cat];
+        if (keywords) {
+          return keywords.some(keyword => textToSearch.includes(keyword));
+        }
+
         // Dynamic match using the category label as keyword
         if (matchedCat) {
           const labelWords = matchedCat.name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
