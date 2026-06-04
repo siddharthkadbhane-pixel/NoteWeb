@@ -99,29 +99,55 @@ const defaultBranches: BranchType[] = [
 
 
 const defaultCategories: CategoryType[] = [
-  // CS Branch Subjects
+  // CSE Branch Subjects
   { id: 'cse-dsa', branchId: 'cse', name: 'Data Structures & Algorithms', description: 'Arrays, Linked Lists, Stacks, Queues, Trees, Graphs, sorting and searching algorithms.' },
   { id: 'cse-dbms', branchId: 'cse', name: 'Database Management Systems', description: 'Relational databases, SQL queries, normalization, transactions, and indexing.' },
   { id: 'cse-os', branchId: 'cse', name: 'Operating Systems', description: 'Processes, threads, CPU scheduling, memory management, file systems, and concurrency.' },
   { id: 'cse-webdev', branchId: 'cse', name: 'Web Development', description: 'HTML, CSS, JavaScript, React, Node.js, REST APIs, and modern full-stack engineering.' },
-  
+  { id: 'cse-discrete', branchId: 'cse', name: 'Discrete Mathematics', description: 'Sets, relations, functions, graphs, combinatorics, and mathematical logic.' },
+  { id: 'cse-engmath', branchId: 'cse', name: 'Engineering Mathematics', description: 'Calculus, matrices, linear algebra, and differential equations.' },
+  { id: 'cse-engphysics', branchId: 'cse', name: 'Engineering Physics', description: 'Optics, quantum mechanics, lasers, and electromagnetic theory.' },
+  { id: 'cse-engchemistry', branchId: 'cse', name: 'Engineering Chemistry', description: 'Water technology, electrochemistry, and polymers.' },
+  { id: 'cse-basics', branchId: 'cse', name: 'Basic Electrical & Electronics', description: 'AC/DC circuits, transformers, and semiconductors.' },
+  { id: 'cse-pps', branchId: 'cse', name: 'Programming for Problem Solving', description: 'C programming basics, variables, control structures, and functions.' },
+  { id: 'cse-english', branchId: 'cse', name: 'Technical English', description: 'Professional communication skills and technical writing.' },
+  { id: 'cse-oop', branchId: 'cse', name: 'Object-Oriented Programming', description: 'Classes, inheritance, polymorphism, and encapsulation in C++ or Java.' },
+  { id: 'cse-coa', branchId: 'cse', name: 'Computer Organization & Architecture', description: 'Processor design, memory hierarchy, and I/O interface.' },
+  { id: 'cse-networks', branchId: 'cse', name: 'Computer Networks', description: 'OSI/TCP-IP models, routing, switching, and socket programming.' },
+  { id: 'cse-software', branchId: 'cse', name: 'Software Engineering', description: 'SDLC methodologies, agile practices, testing, and design patterns.' },
+  { id: 'cse-compiler', branchId: 'cse', name: 'Compiler Design', description: 'Lexical analysis, parsing, syntax-directed translation, and code generation.' },
+  { id: 'cse-automata', branchId: 'cse', name: 'Formal Languages & Automata Theory', description: 'Finite automata, regular expressions, context-free grammars, and Turing machines.' },
+  { id: 'cse-cloud', branchId: 'cse', name: 'Cloud Computing & Cyber Security', description: 'Virtualization, cloud architectures, network security, and cryptography.' },
+  { id: 'cse-distributed', branchId: 'cse', name: 'Distributed Systems', description: 'Distributed databases, consensus protocols, MapReduce, and raft.' },
+  { id: 'cse-iot', branchId: 'cse', name: 'Internet of Things (IoT)', description: 'Sensors, actuators, IoT protocols, smart devices, and edge computing.' },
+  { id: 'cse-entrepreneurship', branchId: 'cse', name: 'Entrepreneurship', description: 'Business plans, startups, and product management.' },
+  { id: 'cse-project', branchId: 'cse', name: 'Capstone Project', description: 'Industrial training and final year projects.' },
+
   // AI & ML
   { id: 'aiml-ml', branchId: 'aiml', name: 'Artificial Intelligence & Machine Learning', description: 'Supervised/unsupervised learning, regression, classification, clustering, neural networks.' },
+  { id: 'aiml-dl', branchId: 'aiml', name: 'Deep Learning', description: 'Convolutional neural networks, recurrent neural networks, and computer vision.' },
+  { id: 'aiml-nlp', branchId: 'aiml', name: 'Natural Language Processing', description: 'Text tokenization, sentiment analysis, and language modeling.' },
   
   // Data Science
   { id: 'ds-analytics', branchId: 'ds', name: 'Data Analytics', description: 'Exploratory data analysis, statistical tests, data wrangling, and descriptive metrics.' },
+  { id: 'ds-stats', branchId: 'ds', name: 'Probability & Statistics', description: 'Probability distributions, hypothesis testing, and regression analysis.' },
+  { id: 'ds-bigdata', branchId: 'ds', name: 'Big Data Analytics', description: 'Hadoop, Spark, MapReduce, and data warehouses.' },
   
   // Electronics Branch Subjects
   { id: 'ece-microprocessors', branchId: 'ece', name: 'Microprocessors & Embedded Systems', description: '8085/8086 architectures, assembly programming, interfacing, and microcontrollers like Arduino.' },
   { id: 'ece-digital', branchId: 'ece', name: 'Digital Electronics', description: 'Number systems, logic gates, Boolean algebra, combinational and sequential logic circuits.' },
   { id: 'ece-signals', branchId: 'ece', name: 'Signals & Systems', description: 'Signals & Systems, continuous & discrete time signals, Fourier transform, Laplace transform.' },
+  { id: 'ece-iot', branchId: 'ece', name: 'Internet of Things (IoT)', description: 'Sensors, embedded protocols, and smart systems.' },
   
   // Mechanical Branch Subjects
   { id: 'mechanical-thermo', branchId: 'mechanical', name: 'Thermodynamics', description: 'Laws of thermodynamics, heat engines, entropy, pure substances, and power cycles.' },
   { id: 'mechanical-fluid', branchId: 'mechanical', name: 'Fluid Mechanics', description: 'Fluid properties, pressure, flow kinematics, Bernoulli equation, and dimensional analysis.' },
+  { id: 'mechanical-cad', branchId: 'mechanical', name: 'CAD & Manufacturing', description: 'Computer-aided design, solid modeling, and CNC machining.' },
 
   // Civil Branch Subjects
-  { id: 'civil-structures', branchId: 'civil', name: 'Structural Analysis', description: 'Trusses, beams, columns, bending moments, shear forces, and stress analysis.' }
+  { id: 'civil-structures', branchId: 'civil', name: 'Structural Analysis', description: 'Trusses, beams, columns, bending moments, shear forces, and stress analysis.' },
+  { id: 'civil-survey', branchId: 'civil', name: 'Surveying', description: 'Leveling, mapping, compass surveying, and geological analysis.' },
+  { id: 'civil-geotech', branchId: 'civil', name: 'Geotechnical Engineering', description: 'Soil mechanics, foundations, and clay/silt shear strength.' }
 ];
 
 const gradientPresets = [
@@ -218,6 +244,21 @@ export const Categories: React.FC = () => {
   const fetchBranchesAndCategories = async () => {
     setIsLoading(true);
     try {
+      // 1. Delete legacy branches and categories from database
+      await supabase.from('categories').delete().in('branch_id', ['bse', 'cs', 'mgt', 'm']);
+      await supabase.from('branches').delete().in('id', ['bse', 'cs', 'mgt', 'm']);
+
+      // 2. Upsert default branches to ensure they are created or aligned
+      const branchDbVals = defaultBranches.map(branchToDb);
+      const { error: branchesUpsertErr } = await supabase.from('branches').upsert(branchDbVals);
+      if (branchesUpsertErr) throw branchesUpsertErr;
+
+      // 3. Upsert default categories/subjects to ensure they are created or aligned
+      const categoryDbVals = defaultCategories.map(categoryToDb);
+      const { error: categoriesUpsertErr } = await supabase.from('categories').upsert(categoryDbVals);
+      if (categoriesUpsertErr) throw categoriesUpsertErr;
+
+      // 4. Fetch the final consolidated lists of branches and categories
       const { data: branchesData, error: branchesErr } = await supabase.from('branches').select('*');
       const { data: categoriesData, error: categoriesErr } = await supabase.from('categories').select('*');
 
@@ -226,42 +267,6 @@ export const Categories: React.FC = () => {
 
       let loadedBranches: BranchType[] = (branchesData || []).map(dbToBranch);
       let loadedCategories: CategoryType[] = (categoriesData || []).map(dbToCategory);
-
-      // Seed / load branches
-      if (loadedBranches.length === 0) {
-        for (const branch of defaultBranches) {
-          const dbVal = branchToDb(branch);
-          await supabase.from('branches').insert([dbVal]);
-          loadedBranches.push(branch);
-        }
-      } else {
-        // Automatically align existing branches with new department names and badges
-        for (const branch of defaultBranches) {
-          const dbVal = branchToDb(branch);
-          await supabase.from('branches').update({
-            name: dbVal.name,
-            description: dbVal.description,
-            icon: dbVal.icon,
-            color: dbVal.color,
-            shadow_color: dbVal.shadow_color,
-            notes_count: dbVal.notes_count
-          }).eq('id', dbVal.id);
-        }
-        // Re-retrieve to ensure local state has updated data
-        const { data: updatedBranchesData } = await supabase.from('branches').select('*');
-        if (updatedBranchesData && updatedBranchesData.length > 0) {
-          loadedBranches = updatedBranchesData.map(dbToBranch);
-        }
-      }
-
-      // Seed / load categories (subjects)
-      if (loadedCategories.length === 0) {
-        for (const cat of defaultCategories) {
-          const dbVal = categoryToDb(cat);
-          await supabase.from('categories').insert([dbVal]);
-          loadedCategories.push(cat);
-        }
-      }
 
       // Sort branches by standard order
       const coreOrder = ['cse', 'aiml', 'ds', 'ece', 'mechanical', 'civil'];

@@ -199,6 +199,30 @@ export const Profile: React.FC = () => {
   // Daily check-in status
   const [checkinCooldown, setCheckinCooldown] = useState<string | null>(null);
 
+  // Dynamic branch list state
+  const [dbBranches, setDbBranches] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const { data } = await supabase.from('branches').select('id,name');
+        if (data && data.length > 0) {
+          setDbBranches(data);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch branches for profile selector:", err);
+      }
+    };
+    fetchBranches();
+  }, []);
+
+  const getBranchLabel = (branchId: string) => {
+    if (!branchId) return 'General';
+    const found = dbBranches.find(b => b.id === branchId);
+    if (found) return found.name;
+    return BRANCH_LABELS[branchId] || branchId.toUpperCase();
+  };
+
   // Quests status tracking state to trigger visual re-render
   const [questsClaimed, setQuestsClaimed] = useState<Record<string, boolean>>({});
 
@@ -666,7 +690,7 @@ export const Profile: React.FC = () => {
               <p className="text-sm font-semibold text-slate-400 light-mode:text-slate-500">@{viewedProfile?.username}</p>
               
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-semibold text-slate-500 light-mode:text-slate-600">
-                <span>📚 Branch: {BRANCH_LABELS[viewedProfile?.branch || ''] || 'General'}</span>
+                <span>📚 Branch: {getBranchLabel(viewedProfile?.branch || '')}</span>
                 <span>🎓 Class: {YEAR_LABELS[viewedProfile?.year || ''] || 'N/A'}</span>
                 {viewedProfile?.cgpa && <span>📐 CGPA: {viewedProfile.cgpa}</span>}
                 {isViewingSelf && (
@@ -749,12 +773,22 @@ export const Profile: React.FC = () => {
                     onChange={(e) => setEditBranch(e.target.value)}
                     className="w-full bg-slate-900 light-mode:bg-white border border-white/[0.08] light-mode:border-slate-200 text-white light-mode:text-slate-800 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
                   >
-                    <option value="cse" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">💻 CSE</option>
-                    <option value="aiml" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🧠 AI & ML</option>
-                    <option value="ds" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">📊 DS</option>
-                    <option value="ece" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🔌 ECE</option>
-                    <option value="mechanical" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">⚙️ Mechanical</option>
-                    <option value="civil" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🏗️ Civil</option>
+                    {dbBranches.length > 0 ? (
+                      dbBranches.map((b) => (
+                        <option key={b.id} value={b.id} className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">
+                          {b.name}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="cse" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">💻 CSE</option>
+                        <option value="aiml" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🧠 AI & ML</option>
+                        <option value="ds" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">📊 DS</option>
+                        <option value="ece" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🔌 ECE</option>
+                        <option value="mechanical" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">⚙️ Mechanical</option>
+                        <option value="civil" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🏗️ Civil</option>
+                      </>
+                    )}
                   </select>
                 </div>
 

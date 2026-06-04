@@ -65,6 +65,30 @@ export const Leaderboard: React.FC = () => {
   const [sortBy, setSortBy] = useState<'points' | 'uploads' | 'cgpa'>('points');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Dynamic branch list state
+  const [dbBranches, setDbBranches] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const { data } = await supabase.from('branches').select('id,name');
+        if (data && data.length > 0) {
+          setDbBranches(data);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch branches for leaderboard selector:", err);
+      }
+    };
+    fetchBranches();
+  }, []);
+
+  const getBranchLabel = (branchId: string) => {
+    if (!branchId) return 'General';
+    const found = dbBranches.find(b => b.id === branchId);
+    if (found) return found.name;
+    return BRANCH_LABELS[branchId] || branchId.toUpperCase();
+  };
+
   const fetchLeaderboardData = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
@@ -254,7 +278,7 @@ export const Leaderboard: React.FC = () => {
                       </div>
                       <h4 className={`font-extrabold text-sm mt-3 hover:text-indigo-400 transition-colors duration-200 ${isDark ? 'text-white' : 'text-slate-800'}`}>{podiumTop3[1].displayName}</h4>
                     </div>
-                    <span className={`text-[9px] font-bold uppercase tracking-wider mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>{BRANCH_LABELS[podiumTop3[1].branch] || 'ECE'}</span>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>{getBranchLabel(podiumTop3[1].branch)}</span>
                     
                     {/* XP Level Badge */}
                     <span className={`text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded border bg-gradient-to-r ${level.color} mt-2 shadow-sm`}>
@@ -298,7 +322,7 @@ export const Leaderboard: React.FC = () => {
                       </div>
                       <h4 className={`font-extrabold text-base mt-3 hover:text-indigo-400 transition-colors duration-200 ${isDark ? 'text-white' : 'text-slate-800'}`}>{podiumTop3[0].displayName}</h4>
                     </div>
-                    <span className={`text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${isDark ? 'text-amber-300' : 'text-amber-600'}`}>{BRANCH_LABELS[podiumTop3[0].branch] || 'CSE'}</span>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${isDark ? 'text-amber-300' : 'text-amber-600'}`}>{getBranchLabel(podiumTop3[0].branch)}</span>
                     
                     {/* XP Level Badge */}
                     <span className={`text-[10px] font-extrabold tracking-widest px-2.5 py-0.5 rounded border bg-gradient-to-r ${level.color} mt-2 shadow-[0_0_8px_rgba(245,158,11,0.1)]`}>
@@ -339,7 +363,7 @@ export const Leaderboard: React.FC = () => {
                       </div>
                       <h4 className={`font-extrabold text-sm mt-3 hover:text-indigo-400 transition-colors duration-200 ${isDark ? 'text-white' : 'text-slate-800'}`}>{podiumTop3[2].displayName}</h4>
                     </div>
-                    <span className={`text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>{BRANCH_LABELS[podiumTop3[2].branch] || 'ECE'}</span>
+                    <span className={`text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>{getBranchLabel(podiumTop3[2].branch)}</span>
                     
                     {/* XP Level Badge */}
                     <span className={`text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded border bg-gradient-to-r ${level.color} mt-2 shadow-sm`}>
@@ -402,12 +426,22 @@ export const Leaderboard: React.FC = () => {
               className={`w-full md:w-44 border text-white rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold ${isDark ? 'bg-slate-900 border-white/[0.08] text-white' : 'bg-white border-slate-200 text-slate-800'}`}
             >
               <option value="all" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>🌐 All Departments</option>
-              <option value="cse" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>💻 CSE</option>
-              <option value="aiml" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>🧠 AI & ML</option>
-              <option value="ds" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>📊 DS</option>
-              <option value="ece" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>🔌 ECE</option>
-              <option value="mechanical" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>⚙️ Mechanical</option>
-              <option value="civil" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>🏗️ Civil</option>
+              {dbBranches.length > 0 ? (
+                dbBranches.map((b) => (
+                  <option key={b.id} value={b.id} className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>
+                    {b.name}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="cse" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>💻 CSE</option>
+                  <option value="aiml" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>🧠 AI & ML</option>
+                  <option value="ds" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>📊 DS</option>
+                  <option value="ece" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>🔌 ECE</option>
+                  <option value="mechanical" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>⚙️ Mechanical</option>
+                  <option value="civil" className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-850'}>🏗️ Civil</option>
+                </>
+              )}
             </select>
 
             {/* Search Input */}
@@ -508,7 +542,7 @@ export const Leaderboard: React.FC = () => {
                       {/* Department tag */}
                       <div className="w-28 flex justify-center">
                         <span className={`text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full border ${isDark ? 'border-white/[0.04] bg-white/[0.02] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
-                          {BRANCH_LABELS[peer.branch] || 'CSE'}
+                          {getBranchLabel(peer.branch)}
                         </span>
                       </div>
 
