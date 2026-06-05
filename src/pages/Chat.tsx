@@ -2067,7 +2067,7 @@ export const Chat: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-[calc(100dvh-4rem)] w-full py-6 px-4 md:px-8 relative overflow-hidden flex flex-col items-center transition-colors duration-300 ${isDark ? 'bg-[#0A0A0C] text-[#E2E8F0]' : 'bg-slate-50 text-slate-800'}`}>
+    <div className={`min-h-[calc(100dvh-4rem)] w-full py-6 px-4 md:px-8 relative overflow-hidden flex flex-col items-center transition-colors duration-300 ${isDark ? 'bg-transparent text-[#E2E8F0]' : 'bg-transparent text-slate-800'}`}>
       
       {/* Background accents */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse" />
