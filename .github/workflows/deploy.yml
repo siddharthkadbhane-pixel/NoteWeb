@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
   workflow_dispatch:
 
 permissions:
@@ -37,11 +38,14 @@ jobs:
       - name: Build Project
         run: npm run build
         env:
-          # Optional: Expose Supabase keys if you want to deploy the live database version.
-          # To use these, add them as repository secrets in GitHub under Settings -> Secrets -> Actions
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_ENABLE_MOCK_FALLBACKS: 'false' # Fully disable offline local mock mode in production
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
+          VITE_ADMIN_EMAILS: ${{ secrets.VITE_ADMIN_EMAILS }}
+          VITE_CLOUDINARY_CLOUD_NAME: ${{ secrets.VITE_CLOUDINARY_CLOUD_NAME }}
+          VITE_CLOUDINARY_UPLOAD_PRESET: ${{ secrets.VITE_CLOUDINARY_UPLOAD_PRESET }}
+          VITE_ENABLE_MOCK_FALLBACKS: 'false'
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

@@ -337,7 +337,14 @@ export const Sidebar: React.FC = () => {
           {location.pathname === '/upload' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
         </NavLink>
 
-
+        {/* Quests */}
+        {user && !isGuest && (
+          <NavLink to="/quests" className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+            <Target className="w-5 h-5" />
+            <span className="text-[8px] font-black tracking-wide">Quests</span>
+            {location.pathname === '/quests' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
+          </NavLink>
+        )}
 
         {/* More launcher */}
         <button

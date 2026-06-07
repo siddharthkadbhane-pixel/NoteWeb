@@ -1578,7 +1578,7 @@ export const Feed: React.FC = () => {
                                   title="AI Note Companion"
                                 >
                                   <Sparkles className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">AI Study</span>
+                                  <span className="text-[10px] font-extrabold">AI Study/Quiz</span>
                                 </button>
                               </div>
 

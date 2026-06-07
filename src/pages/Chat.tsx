@@ -50,7 +50,8 @@ import {
   VideoOff,
   FileText,
   Quote,
-  Check
+  Check,
+  MoreVertical
 } from 'lucide-react';
 
 const BAD_WORDS = [
@@ -349,6 +350,10 @@ export const Chat: React.FC = () => {
 
   const [vanishMode, setVanishMode] = useState<boolean>(false);
   const [isViewOnceSelected, setIsViewOnceSelected] = useState<boolean>(false);
+  
+  // Mobile dropdown state hooks
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState<boolean>(false);
+  const [showHeaderMenu, setShowHeaderMenu] = useState<boolean>(false);
   
   // View once state tracking
   const [viewOnceTimer, setViewOnceTimer] = useState<Record<string, number>>({});
@@ -2067,13 +2072,13 @@ export const Chat: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-[calc(100dvh-4rem)] w-full py-6 px-4 md:px-8 relative overflow-hidden flex flex-col items-center transition-colors duration-300 ${isDark ? 'bg-transparent text-[#E2E8F0]' : 'bg-transparent text-slate-800'}`}>
+    <div className={`h-[calc(100dvh-9.5rem)] lg:h-[calc(100vh-4rem)] lg:max-h-[750px] w-full py-2 px-2 md:py-6 md:px-8 relative overflow-hidden flex flex-col items-center transition-colors duration-300 ${isDark ? 'bg-transparent text-[#E2E8F0]' : 'bg-transparent text-slate-800'}`}>
       
       {/* Background accents */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" />
 
-      <div className="w-full max-w-5xl flex-1 flex flex-col gap-4 z-10 relative">
+      <div className="w-full max-w-5xl flex-1 flex flex-col gap-2 md:gap-4 z-10 relative h-full overflow-hidden">
         
         {/* Toggle navigation header */}
         <div className="flex items-center justify-between gap-3">
@@ -2122,7 +2127,7 @@ export const Chat: React.FC = () => {
         )}
 
         {/* Chat layout grid */}
-        <div className="flex-1 min-h-[500px] flex gap-4 overflow-hidden max-h-[600px] relative">
+        <div className="flex-1 h-full flex gap-4 overflow-hidden relative">
           
           {/* DM LIST SIDEBAR (Only visible when activeTab === 'dm') */}
           {activeTab === 'dm' && (
@@ -2369,12 +2374,12 @@ export const Chat: React.FC = () => {
                 </div>
 
                 {/* Advanced Action Bar */}
-                <div className="flex items-center gap-1.5 justify-end flex-wrap">
+                <div className="flex items-center gap-1.5 justify-end relative">
                   {/* Call Actions */}
                   <button
                     onClick={() => startWebRtcCall('voice')}
                     className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
-                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-350' : 'border-slate-200 hover:bg-slate-100 text-slate-650'
+                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-350' : 'border-slate-200 hover:bg-slate-100 text-slate-655'
                     }`}
                     title="Start voice call"
                   >
@@ -2390,65 +2395,117 @@ export const Chat: React.FC = () => {
                     <Video className="w-4 h-4" />
                   </button>
 
-                  <div className="h-4 w-px bg-white/10 mx-1" />
+                  {/* Dropdown Menu Toggle for other settings */}
+                  <div className="relative flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowHeaderMenu(!showHeaderMenu)}
+                      className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
+                        showHeaderMenu
+                          ? 'border-indigo-500 bg-indigo-650/20 text-indigo-400'
+                          : isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-50 text-slate-705'
+                      }`}
+                      title="More chat settings"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
 
-                  {/* Wallpaper Theme Picker */}
-                  <button
-                    onClick={() => setIsThemeModalOpen(true)}
-                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
-                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-360' : 'border-slate-200 hover:bg-slate-100 text-slate-660'
-                    }`}
-                    title="Select wallpaper theme"
-                  >
-                    <Paintbrush className="w-4 h-4" />
-                  </button>
+                    {showHeaderMenu && (
+                      <>
+                        {/* Backdrop blocker */}
+                        <div 
+                          className="fixed inset-0 z-20 cursor-default" 
+                          onClick={() => setShowHeaderMenu(false)} 
+                        />
+                        
+                        <div className={`absolute right-0 top-full mt-2 rounded-2xl border p-2 flex flex-col gap-1 z-30 shadow-2xl min-w-[190px] animate-in fade-in slide-in-from-top-2 ${
+                          isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'
+                        }`}>
+                          {/* Wallpaper Theme Picker */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowHeaderMenu(false);
+                              setIsThemeModalOpen(true);
+                            }}
+                            className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left ${
+                              isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            <Paintbrush className="w-4 h-4 text-indigo-455" />
+                            <span>Personalize Theme</span>
+                          </button>
 
-                  {/* Starred Drawer Folder */}
-                  <button
-                    onClick={() => setIsStarDrawerOpen(true)}
-                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
-                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-365' : 'border-slate-200 hover:bg-slate-100 text-slate-665'
-                    }`}
-                    title="View Starred Messages"
-                  >
-                    <Star className="w-4 h-4" />
-                  </button>
+                          {/* Starred Drawer Folder */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowHeaderMenu(false);
+                              setIsStarDrawerOpen(true);
+                            }}
+                            className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left ${
+                              isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            <Star className="w-4 h-4 text-amber-400" />
+                            <span>Starred Messages</span>
+                          </button>
 
-                  <div className="h-4 w-px bg-white/10 mx-1" />
+                          {/* Vanish Mode Switcher */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowHeaderMenu(false);
+                              setVanishMode(!vanishMode);
+                              toastSuccess(!vanishMode ? "Vanish Mode activated! Messages will delete when closing chat." : "Vanish Mode deactivated.");
+                            }}
+                            className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left ${
+                              vanishMode 
+                                ? 'bg-indigo-600/10 text-indigo-400' 
+                                : isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            <ShieldAlert className="w-4 h-4 text-rose-400" />
+                            <span>{vanishMode ? "Disable Vanish" : "Vanish Mode"}</span>
+                          </button>
 
-                  {/* Vanish Mode Switcher */}
-                  <button
-                    onClick={() => {
-                      setVanishMode(!vanishMode);
-                      toastSuccess(!vanishMode ? "Vanish Mode activated! Messages will delete when closing chat." : "Vanish Mode deactivated.");
-                    }}
-                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
-                      vanishMode
-                        ? 'border-indigo-500 bg-indigo-600/20 text-indigo-400'
-                        : isDark ? 'border-white/10 hover:bg-white/5 text-slate-350' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
-                    }`}
-                    title="Vanish Mode Toggle"
-                  >
-                    <ShieldAlert className="w-4 h-4" />
-                  </button>
+                          {/* Local Mute Chat */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowHeaderMenu(false);
+                              handleToggleMute(selectedDmUser.id);
+                            }}
+                            className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left ${
+                              mutedUids.includes(selectedDmUser.id) 
+                                ? 'bg-rose-600/10 text-rose-455' 
+                                : isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {mutedUids.includes(selectedDmUser.id) ? (
+                              <><Volume2 className="w-4 h-4 text-emerald-450" /><span>Unmute Notifications</span></>
+                            ) : (
+                              <><VolumeX className="w-4 h-4 text-rose-455" /><span>Mute Notifications</span></>
+                            )}
+                          </button>
 
-                  {/* Local Mute Chat */}
-                  <button
-                    onClick={() => handleToggleMute(selectedDmUser.id)}
-                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
-                      mutedUids.includes(selectedDmUser.id)
-                        ? 'border-rose-500 bg-rose-600/20 text-rose-400'
-                        : isDark ? 'border-white/10 hover:bg-white/5 text-slate-350' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
-                    }`}
-                    title={mutedUids.includes(selectedDmUser.id) ? "Unmute chat notifications" : "Mute notifications (DND)"}
-                  >
-                    {mutedUids.includes(selectedDmUser.id) ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                  </button>
-
-                  {/* Local Block Chat */}
-                  <button
-                    onClick={() => handleToggleBlock(selectedDmUser.id)}
-                    className="p-2 rounded-xl transition-all cursor-pointer active:scale-95 border border-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white"
+                          {/* Local Block Chat */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowHeaderMenu(false);
+                              handleToggleBlock(selectedDmUser.id);
+                            }}
+                            className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left text-rose-455 hover:bg-rose-500/10`}
+                          >
+                            <Shield className="w-4 h-4" />
+                            <span>Block Classmate</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>nded-xl transition-all cursor-pointer active:scale-95 border border-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white"
                     title="Block this classmate"
                   >
                     <Shield className="w-4 h-4" />
@@ -2471,7 +2528,7 @@ export const Chat: React.FC = () => {
             ) : (
               /* Scrollable Message Timeline area */
               <div 
-                className={`flex-1 overflow-y-auto space-y-4 pr-1 max-h-[480px] p-2 transition-all rounded-2xl ${
+                className={`flex-1 overflow-y-auto space-y-4 pr-1 p-2 transition-all rounded-2xl ${
                   (activeTab === 'global' || (activeTab === 'dm' && selectedDmUser)) ? getThemeClasses() : ''
                 }`}
                 style={(activeTab === 'global' || (activeTab === 'dm' && selectedDmUser)) ? getThemeStyle() : undefined}
@@ -2924,34 +2981,107 @@ export const Chat: React.FC = () => {
                       ref={fileInputRef}
                       className="hidden"
                     />
-                    <div className="flex items-center gap-1.5">
+                    {/* Attachment trigger menu toggle for mobile/desktop */}
+                    <div className="relative flex items-center">
+                      {/* Mobile collapsed plus button */}
                       <button
                         type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
-                        title="Attach Photo"
+                        onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                        className={`sm:hidden p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-455 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                        title="Add attachments"
                       >
-                        <ImageIcon className="w-5 h-5" />
+                        <Plus className={`w-5 h-5 transition-transform duration-200 ${showAttachmentMenu ? 'rotate-45' : ''}`} />
                       </button>
 
-                      {activeTab === 'dm' && selectedDmUser && (
+                      {/* Desktop inline menu */}
+                      <div className="hidden sm:flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                          title="Attach Photo"
+                        >
+                          <ImageIcon className="w-5 h-5" />
+                        </button>
+
+                        {activeTab === 'dm' && selectedDmUser && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setIsNoteShareModalOpen(true)}
+                              className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                              title="Share study notes"
+                            >
+                              <Paperclip className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsPollModalOpen(true)}
+                              className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                              title="Create study poll"
+                            >
+                              <BarChart2 className="w-5 h-5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Mobile floating dropdown list */}
+                      {showAttachmentMenu && (
                         <>
-                          <button
-                            type="button"
-                            onClick={() => setIsNoteShareModalOpen(true)}
-                            className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
-                            title="Share study notes"
-                          >
-                            <Paperclip className="w-5 h-5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsPollModalOpen(true)}
-                            className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
-                            title="Create study poll"
-                          >
-                            <BarChart2 className="w-5 h-5" />
-                          </button>
+                          {/* Backdrop overlay */}
+                          <div 
+                            className="fixed inset-0 z-20 cursor-default" 
+                            onClick={() => setShowAttachmentMenu(false)} 
+                          />
+                          <div className={`absolute bottom-full mb-3 left-0 rounded-2xl border p-2 flex flex-col gap-1 z-30 shadow-2xl min-w-[150px] animate-in fade-in slide-in-from-bottom-2 ${
+                            isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'
+                          }`}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowAttachmentMenu(false);
+                                fileInputRef.current?.click();
+                              }}
+                              className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left ${
+                                isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
+                              }`}
+                            >
+                              <ImageIcon className="w-4 h-4 text-indigo-400" />
+                              <span>Attach Photo</span>
+                            </button>
+
+                            {activeTab === 'dm' && selectedDmUser && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowAttachmentMenu(false);
+                                    setIsNoteShareModalOpen(true);
+                                  }}
+                                  className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left ${
+                                    isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
+                                  }`}
+                                >
+                                  <Paperclip className="w-4 h-4 text-sky-400" />
+                                  <span>Share Notes</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowAttachmentMenu(false);
+                                    setIsPollModalOpen(true);
+                                  }}
+                                  className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left ${
+                                    isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
+                                  }`}
+                                >
+                                  <BarChart2 className="w-4 h-4 text-purple-400" />
+                                  <span>Create Poll</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </>
                       )}
                     </div>

@@ -4,10 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { GlassPanel } from '../components/ui/GlassPanel';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Trophy, 
-  Award, 
   Sparkles, 
   MessageSquare, 
   ThumbsUp, 
