@@ -291,6 +291,24 @@ export const Chat: React.FC = () => {
   const { error: toastError, info, success: toastSuccess } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [isLargeScreen, setIsLargeScreen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isNative = typeof window !== 'undefined' && (
+    typeof (window as any).Capacitor !== 'undefined' || 
+    /android|iphone|ipad|ipod|capacitor/i.test(navigator.userAgent)
+  );
+
+  const showMobileUI = isNative || !isLargeScreen;
   
   // Tab control: 'global' | 'dm'
   const [activeTab, setActiveTab] = useState<'global' | 'dm'>('global');
@@ -2072,7 +2090,11 @@ export const Chat: React.FC = () => {
   };
 
   return (
-    <div className={`h-[calc(100dvh-9.5rem)] lg:h-[calc(100vh-4rem)] lg:max-h-[750px] w-full py-2 px-2 md:py-6 md:px-8 relative overflow-hidden flex flex-col items-center transition-colors duration-300 ${isDark ? 'bg-transparent text-[#E2E8F0]' : 'bg-transparent text-slate-800'}`}>
+    <div className={`w-full py-2 px-2 md:py-6 md:px-8 relative overflow-hidden flex flex-col items-center transition-colors duration-300 ${
+      isDark ? 'bg-transparent text-[#E2E8F0]' : 'bg-transparent text-slate-800'
+    } ${
+      showMobileUI ? 'h-[calc(100dvh-9.5rem)]' : 'h-[calc(100vh-4rem)] max-h-[750px]'
+    }`}>
       
       {/* Background accents */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse" />

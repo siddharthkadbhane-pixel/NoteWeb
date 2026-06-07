@@ -28,14 +28,60 @@ import { ScreenshotProtection } from './components/ScreenshotProtection';
 import { PageWrapper } from './components/ui/PageWrapper';
 import { LocalErrorBoundary } from './components/LocalErrorBoundary';
 
+// System Notifications Helper
+const showSystemNotification = (title: string, body: string) => {
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    if (Notification.permission === 'granted') {
+      try {
+        new Notification(title, {
+          body,
+          icon: '/logo.png',
+        });
+      } catch (err) {
+        console.warn('Failed to show standard notification, attempting service worker fallback:', err);
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification(title, {
+              body,
+              icon: '/logo.png',
+            });
+          }).catch(swErr => {
+            console.error('Service worker notification failed:', swErr);
+          });
+        }
+      }
+    }
+  }
+};
+
 export const ChatNotificationListener: React.FC = () => {
   const { user } = useAuth();
   const { info } = useToast();
-  const location = useLocation();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  const locationRef = useRef(location);
+  useEffect(() => {
+    locationRef.current = location;
+  }, [location]);
 
   useEffect(() => {
     if (!user) return;
+
+    // Request system notification permission on first interaction
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        const handleGesture = () => {
+          Notification.requestPermission().then((permission) => {
+            console.log('[NoteWeb Notifications] System notification permission status:', permission);
+          });
+          window.removeEventListener('click', handleGesture);
+          window.removeEventListener('touchstart', handleGesture);
+        };
+        window.addEventListener('click', handleGesture);
+        window.addEventListener('touchstart', handleGesture);
+      }
+    }
 
     let channel: any = null;
     try {
@@ -49,17 +95,26 @@ export const ChatNotificationListener: React.FC = () => {
             { event: 'INSERT', schema: 'public', table: 'chats' },
             (payload: any) => {
               console.log('[NoteWeb Notifications] Realtime chats insert:', payload);
-              if (location.pathname !== '/chat' && payload.new) {
+              if (payload.new) {
                 const senderId = payload.new.sender_id || payload.new.sender_uid;
                 if (senderId !== user.uid) {
                   const senderName = payload.new.sender_name || 'Classmate';
                   const messageText = payload.new.message || payload.new.content || 'Sent a message';
                   
-                  info(
-                    `💬 ${senderName}: "${messageText.substring(0, 45)}${messageText.length > 45 ? '...' : ''}"`,
-                    5500,
-                    () => navigate('/chat')
-                  );
+                  const currentPath = locationRef.current.pathname;
+                  const isBackground = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+                  
+                  if (currentPath !== '/chat') {
+                    info(
+                      `💬 ${senderName}: "${messageText.substring(0, 45)}${messageText.length > 45 ? '...' : ''}"`,
+                      5500,
+                      () => navigate('/chat')
+                    );
+                  }
+                  
+                  if (currentPath !== '/chat' || isBackground) {
+                    showSystemNotification(`💬 ${senderName}`, messageText);
+                  }
                 }
               }
             }
@@ -72,10 +127,14 @@ export const ChatNotificationListener: React.FC = () => {
               if (payload.new && payload.new.recipient_id === user.uid) {
                 const senderId = payload.new.sender_id;
                 
-                // Do not notify if we are already viewing this chat thread
-                const params = new URLSearchParams(location.search);
+                // Do not notify if we are already viewing this chat thread and app is focused
+                const currentPath = locationRef.current.pathname;
+                const params = new URLSearchParams(locationRef.current.search);
                 const activeDm = params.get('dm');
-                if (location.pathname === '/chat' && activeDm === senderId) {
+                const isBackground = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+                const isViewingActiveDm = currentPath === '/chat' && activeDm === senderId;
+                
+                if (isViewingActiveDm && !isBackground) {
                   return; 
                 }
                 
@@ -88,11 +147,16 @@ export const ChatNotificationListener: React.FC = () => {
                 } catch {}
                 
                 const messageText = payload.new.message || 'Sent an attachment';
-                info(
-                  `✉️ DM from ${senderName}: "${messageText.substring(0, 45)}${messageText.length > 45 ? '...' : ''}"`,
-                  6000,
-                  () => navigate(`/chat?dm=${senderId}`)
-                );
+                
+                if (currentPath !== '/chat' || activeDm !== senderId) {
+                  info(
+                    `✉️ DM from ${senderName}: "${messageText.substring(0, 45)}${messageText.length > 45 ? '...' : ''}"`,
+                    6000,
+                    () => navigate(`/chat?dm=${senderId}`)
+                  );
+                }
+                
+                showSystemNotification(`✉️ DM from ${senderName}`, messageText);
               }
             }
           )
@@ -101,17 +165,25 @@ export const ChatNotificationListener: React.FC = () => {
             { event: 'message' },
             (response: any) => {
               console.log('[NoteWeb Notifications] Realtime P2P chat broadcast:', response);
-              if (location.pathname !== '/chat' && response?.payload) {
+              if (response?.payload) {
                 const msg = response.payload;
                 if (msg.sender_uid !== user.uid) {
                   const senderName = msg.sender_name || 'Classmate';
                   const messageText = msg.content || 'Sent an image or message';
+                  const currentPath = locationRef.current.pathname;
+                  const isBackground = typeof document !== 'undefined' && document.visibilityState === 'hidden';
                   
-                  info(
-                    `💬 ${senderName}: "${messageText.substring(0, 45)}${messageText.length > 45 ? '...' : ''}"`,
-                    5500,
-                    () => navigate('/chat')
-                  );
+                  if (currentPath !== '/chat') {
+                    info(
+                      `💬 ${senderName}: "${messageText.substring(0, 45)}${messageText.length > 45 ? '...' : ''}"`,
+                      5500,
+                      () => navigate('/chat')
+                    );
+                  }
+                  
+                  if (currentPath !== '/chat' || isBackground) {
+                    showSystemNotification(`💬 ${senderName}`, messageText);
+                  }
                 }
               }
             }
@@ -133,7 +205,8 @@ export const ChatNotificationListener: React.FC = () => {
         } catch (e) {}
       }
     };
-  }, [user, location.pathname, info, navigate]);
+  }, [user, info, navigate]);
+
 
   return null;
 };
@@ -612,6 +685,24 @@ export const GlobalDesktopControls: React.FC<{ children: React.ReactNode }> = ({
 };
 
 function App() {
+  const [isLargeScreen, setIsLargeScreen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isNative = typeof window !== 'undefined' && (
+    typeof (window as any).Capacitor !== 'undefined' || 
+    /android|iphone|ipad|ipod|capacitor/i.test(navigator.userAgent)
+  );
+
+  const showMobileUI = isNative || !isLargeScreen;
+
   return (
     <ThemeProvider>
       <ToastProvider>
@@ -631,7 +722,7 @@ function App() {
                 <FloatingThemeToggle />
 
                 {/* Main Content: pt-14 for mobile top bar, pb-24 for bottom nav, lg:pl-20 for desktop dock */}
-                <main className="flex-1 min-w-0 pt-14 lg:pt-0 pb-24 lg:pb-6 lg:pl-20 px-0 transition-all duration-300 z-10 relative w-full">
+                <main className={`flex-1 min-w-0 px-0 transition-all duration-300 z-10 relative w-full ${showMobileUI ? 'pt-14 pb-24' : 'pt-0 pb-6 pl-20'}`}>
                   <Routes>
                     {/* Publicly Accessible Routes */}
                     <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
