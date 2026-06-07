@@ -23,6 +23,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { renderAvatar } from '../../utils/avatar';
+import { playTapSound } from '../../utils/sounds';
 
 export const NoteWebLogo: React.FC<{ sizeClass?: string; isMobile?: boolean }> = ({ sizeClass = "w-9 h-9", isMobile = false }) => {
   return (
@@ -137,6 +138,7 @@ export const Sidebar: React.FC = () => {
               key={item.to}
               to={item.to}
               end={item.to === '/'}
+              onClick={playTapSound}
               className={({ isActive }) => `
                 flex items-center h-9 rounded-xl font-semibold transition-all duration-200 relative overflow-hidden
                 ${isActive
@@ -164,7 +166,7 @@ export const Sidebar: React.FC = () => {
           
           {/* Theme Toggle */}
           <button
-            onClick={toggleTheme}
+            onClick={() => { playTapSound(); toggleTheme(); }}
             title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             className={`
               flex items-center h-9 w-full rounded-xl transition-all cursor-pointer active:scale-95 gap-3
@@ -213,7 +215,7 @@ export const Sidebar: React.FC = () => {
             <div className={`flex items-center gap-2 p-1 rounded-xl border overflow-hidden ${isDark ? 'border-white/[0.05]' : 'border-slate-200/80 bg-slate-50/50'}`}>
               <div
                 className="w-8 h-8 min-w-[2rem] rounded-lg flex-shrink-0 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                onClick={() => navigate('/profile')}
+                onClick={() => { playTapSound(); navigate('/profile'); }}
               >
                 {isGuest
                   ? <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#7F00FF] to-[#FF007F] flex items-center justify-center text-white font-bold text-[9px]">GS</div>
@@ -234,7 +236,7 @@ export const Sidebar: React.FC = () => {
                   </span>
                 </div>
                 <button
-                  onClick={handleLogout}
+                  onClick={() => { playTapSound(); handleLogout(); }}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90 flex-shrink-0"
                   title={isGuest ? 'Exit Guest' : 'Sign Out'}
                 >
@@ -317,21 +319,21 @@ export const Sidebar: React.FC = () => {
         }
       `}>
         {/* Home */}
-        <NavLink to="/" end className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+        <NavLink to="/" end onClick={playTapSound} className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
           <HomeIcon className="w-5 h-5" />
           <span className="text-[8px] font-black tracking-wide">Home</span>
           {location.pathname === '/' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
         </NavLink>
 
         {/* Library */}
-        <NavLink to="/feed" className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+        <NavLink to="/feed" onClick={playTapSound} className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
           <BookOpen className="w-5 h-5" />
           <span className="text-[8px] font-black tracking-wide">Library</span>
           {location.pathname === '/feed' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
         </NavLink>
 
         {/* Upload */}
-        <NavLink to="/upload" className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+        <NavLink to="/upload" onClick={playTapSound} className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
           <UploadCloud className="w-5 h-5" />
           <span className="text-[8px] font-black tracking-wide">Upload</span>
           {location.pathname === '/upload' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
@@ -339,7 +341,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Quests */}
         {user && !isGuest && (
-          <NavLink to="/quests" className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+          <NavLink to="/quests" onClick={playTapSound} className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
             <Target className="w-5 h-5" />
             <span className="text-[8px] font-black tracking-wide">Quests</span>
             {location.pathname === '/quests' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
@@ -348,7 +350,7 @@ export const Sidebar: React.FC = () => {
 
         {/* More launcher */}
         <button
-          onClick={() => setIsLauncherOpen(!isLauncherOpen)}
+          onClick={() => { playTapSound(); setIsLauncherOpen(!isLauncherOpen); }}
           className={`flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all cursor-pointer ${isLauncherOpen ? 'scale-110 text-[#FF007F]' : (isDark ? 'text-slate-400 active:scale-90' : 'text-slate-500 active:scale-90')}`}
         >
           {isLauncherOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

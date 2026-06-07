@@ -41,6 +41,7 @@ import { TiltCard } from '../components/ui/TiltCard';
 import { SparkleBurst } from '../components/ui/SparkleBurst';
 import { openPdfDocument } from '../utils/pdfDb';
 import { incrementQuestProgress } from '../utils/quests';
+import { playSuccessSound, playErrorSound } from '../utils/sounds';
 import {
   generateFlashcards,
   generateQuiz,
@@ -1090,6 +1091,15 @@ export const Feed: React.FC = () => {
       ...prev,
       [questionIndex]: optionIndex
     }));
+
+    const q = quizQuestions[questionIndex];
+    if (q) {
+      if (q.answerIndex === optionIndex) {
+        playSuccessSound();
+      } else {
+        playErrorSound();
+      }
+    }
   };
 
   const handleSendChat = async (e: React.FormEvent) => {

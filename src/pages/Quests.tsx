@@ -21,6 +21,7 @@ import {
   Check
 } from 'lucide-react';
 import { getDailyQuests, claimQuestReward, restartQuests, type Quest } from '../utils/quests';
+import { playSuccessSound } from '../utils/sounds';
 
 const getXPLevel = (points: number) => {
   if (points >= 1000) return { badge: '👑 Level 5', color: 'from-amber-400 to-orange-500 text-amber-300 border-amber-500/30' };
@@ -48,7 +49,7 @@ export const Quests: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState<string>('00h 00m 00s');
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
-  // Compute countdown timer until local midnight
+  // Compute countdown timer until local midnight (hour and minute precision to prevent ticking anxiety)
   const updateCountdown = () => {
     const now = new Date();
     const tomorrow = new Date();
@@ -59,10 +60,9 @@ export const Quests: React.FC = () => {
     
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
     
     const format = (num: number) => String(num).padStart(2, '0');
-    setTimeLeft(`${format(hours)}h ${format(minutes)}m ${format(seconds)}s`);
+    setTimeLeft(`${format(hours)}h ${format(minutes)}m`);
   };
 
   // Sync data & event listener
@@ -71,7 +71,7 @@ export const Quests: React.FC = () => {
     
     // Load initial quests
     setQuestsList(getDailyQuests(user.uid));
-
+    
     // Handle updates across pages
     const handleUpdate = () => {
       setQuestsList(getDailyQuests(user.uid));
@@ -81,46 +81,13 @@ export const Quests: React.FC = () => {
     
     // Timer running
     updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
+    const interval = setInterval(updateCountdown, 30000); // Update every 30 seconds
 
     return () => {
       window.removeEventListener('noteweb-quests-updated', handleUpdate);
       clearInterval(interval);
     };
   }, [user]);
-
-  // Synthesize game chime sound using Web Audio API
-  const playClaimSound = () => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const now = ctx.currentTime;
-      
-      const playTone = (freq: number, start: number, duration: number) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, start);
-        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, start + duration);
-        
-        gain.gain.setValueAtTime(0.12, start);
-        gain.gain.exponentialRampToValueAtTime(0.01, start + duration);
-        
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        
-        osc.start(start);
-        osc.stop(start + duration);
-      };
-      
-      playTone(523.25, now, 0.12); // C5
-      playTone(659.25, now + 0.08, 0.12); // E5
-      playTone(783.99, now + 0.16, 0.20); // G5
-      playTone(1046.50, now + 0.22, 0.30); // C6
-    } catch (e) {
-      console.warn('Audio feedback failed:', e);
-    }
-  };
 
   const handleClaimReward = async (questId: string) => {
     if (isGuest) {
@@ -135,7 +102,7 @@ export const Quests: React.FC = () => {
 
       await claimQuestReward(questId, updatePoints);
       
-      playClaimSound();
+      playSuccessSound();
       success(`Claimed +${xpReward} XP reward! Great work! 🚀`);
       
       if (user) {
