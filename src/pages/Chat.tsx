@@ -2505,11 +2505,6 @@ export const Chat: React.FC = () => {
                       </>
                     )}
                   </div>
-                </div>nded-xl transition-all cursor-pointer active:scale-95 border border-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white"
-                    title="Block this classmate"
-                  >
-                    <Shield className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             )}
