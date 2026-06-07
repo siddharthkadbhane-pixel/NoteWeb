@@ -416,12 +416,119 @@ export const Sidebar: React.FC = () => {
                   </div>
                   <button
                     onClick={() => setIsLauncherOpen(false)}
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+                    className={`p-1.5 rounded-lg border transition-all ${isDark ? 'border-white/[0.08] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:text-slate-800'}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Nav Grid */}
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    { label: 'Departments', icon: <Grid className="w-5 h-5 text-sky-400" />, path: '/categories' },
+                    ...(user && !isGuest ? [
+                      { label: 'Lounge', icon: <MessageSquare className="w-5 h-5 text-indigo-400" />, path: '/chat' },
+                      { label: 'Quests', icon: <Target className="w-5 h-5 text-[#00F2FE]" />, path: '/quests' },
+                      { label: 'Rankings', icon: <Trophy className="w-5 h-5 text-amber-400" />, path: '/leaderboard' },
+                      { label: 'Profile', icon: <User className="w-5 h-5 text-teal-400" />, path: '/profile' },
+                    ] : []),
+                    ...(isAdmin && !isGuest ? [
+                      { label: 'Admin', icon: <ShieldAlert className="w-5 h-5 text-rose-400" />, path: '/admin' },
+                    ] : []),
+                    { label: 'About', icon: <Info className="w-5 h-5 text-slate-400" />, path: '/about' },
+                  ].map((item) => (
+                    <button
+                      key={item.path}
+                      onClick={() => { navigate(item.path); setIsLauncherOpen(false); }}
+                      className={`
+                        p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 text-center active:scale-95 transition-all
+                        ${isDark
+                          ? 'bg-white/[0.02] border-white/[0.05] text-slate-300 hover:bg-white/[0.04]'
+                          : 'bg-slate-50/80 border-slate-200/80 text-slate-600 hover:bg-slate-100'
+                        }
+                      `}
+                    >
+                      {item.icon}
+                      <span className="text-[9px] font-black uppercase tracking-wider">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Quick actions */}
+                <div className={`flex flex-col gap-3 pt-3 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-200/80'}`}>
+                  <div className="flex gap-2">
+                    {/* Theme toggle */}
+                    <button
+                      onClick={toggleTheme}
+                      className={`
+                        flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer
+                        ${isDark
+                          ? 'bg-white/[0.02] border-white/[0.05] text-slate-300 hover:bg-white/[0.04]'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }
+                      `}
+                    >
+                      {isDark
+                        ? <><Sun className="w-4 h-4 text-amber-400" /><span>Light Mode</span></>
+                        : <><Moon className="w-4 h-4 text-indigo-500" /><span>Dark Mode</span></>
+                      }
+                    </button>
+
+                    {/* Sync indicator */}
+                    <div className={`
+                      flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border select-none text-[10px] font-bold
+                      ${isDark
+                        ? 'bg-white/[0.02] border-white/[0.05] text-slate-400'
+                        : 'bg-slate-50 border-slate-200 text-slate-500'
+                      }
+                    `}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${!isMockMode ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`} />
+                      <span className="uppercase tracking-wide">{!isMockMode ? 'LIVE' : 'CACHE'}</span>
+                    </div>
+                  </div>
+
+                  {/* User section */}
+                  {user || isGuest ? (
+                    <div className={`flex items-center justify-between p-3 rounded-xl border ${isDark ? 'bg-white/[0.02] border-white/[0.05]' : 'bg-slate-50 border-slate-200/80'}`}>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 flex-shrink-0">
+                          {isGuest
+                            ? <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#7F00FF] to-[#FF007F] flex items-center justify-center text-white font-bold text-[9px]">GS</div>
+                            : renderAvatar(userProfile?.photoURL || '', 'w-8 h-8 rounded-xl')
+                          }
+                        </div>
+                        <div className="min-w-0 flex flex-col text-left">
+                          <span className={`text-xs font-black truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                            {isGuest ? 'Guest Student' : (userProfile?.displayName || user?.displayName || 'Student')}
+                          </span>
+                          <span className={`text-[8px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {isGuest ? 'Guest' : (userProfile?.role || 'Student')}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { handleLogout(); setIsLauncherOpen(false); }}
+                        className="p-2 px-3 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Log out</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <Link
+                      to="/login"
+                      onClick={() => setIsLauncherOpen(false)}
+                      className="w-full inline-flex items-center justify-center py-3.5 rounded-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow text-sm"
+                    >
+                      Sign In
+                    </Link>
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      )}
     </>
   );
 };
