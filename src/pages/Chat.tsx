@@ -2131,7 +2131,7 @@ export const Chat: React.FC = () => {
           
           {/* DM LIST SIDEBAR (Only visible when activeTab === 'dm') */}
           {activeTab === 'dm' && (
-            <GlassPanel className={`w-full md:w-80 rounded-3xl p-4 flex flex-col gap-4 border ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
+            <GlassPanel className={`w-full md:w-80 rounded-3xl p-4 flex-col gap-4 border ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
               mobileView === 'chat' && selectedDmUser ? 'hidden md:flex' : 'flex'
             }`}>
               
@@ -2298,7 +2298,7 @@ export const Chat: React.FC = () => {
           )}
 
           {/* CHAT AREA (Main Display) */}
-          <GlassPanel className={`flex-1 flex flex-col p-4 md:p-6 rounded-3xl border ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
+          <GlassPanel className={`flex-1 flex-col p-4 md:p-6 rounded-3xl border ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
             activeTab === 'dm' && (!selectedDmUser || mobileView === 'list') ? 'hidden md:flex' : 'flex'
           }`}>
             
