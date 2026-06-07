@@ -18,12 +18,30 @@ function createWindow() {
     }
   });
 
-  // Load the built Vite index.html from dist
-  win.loadFile(path.join(__dirname, '../dist/index.html'));
+  // Load the live GitHub Pages version in production for instant auto-updates on Git push,
+  // falling back to local static files if offline. In development, load local dist files.
+  const liveUrl = 'https://siddharthkadbhane-pixel.github.io/NoteWeb/';
+  
+  if (app.isPackaged) {
+    win.loadURL(liveUrl).catch(() => {
+      win.loadFile(path.join(__dirname, '../dist/index.html'));
+    });
+  } else {
+    win.loadFile(path.join(__dirname, '../dist/index.html'));
+  }
 
-  // Open external links (e.g. Supabase auth, PDF downloads) in user's default browser
+  // Open external links (e.g. Supabase auth, PDF downloads) in the user's default browser
+  win.webContents.on('will-navigate', (event, url) => {
+    if (app.isPackaged && !url.startsWith(liveUrl) && !url.startsWith('file://')) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (!url.startsWith(liveUrl) && !url.startsWith('file://')) {
+      shell.openExternal(url);
+    }
     return { action: 'deny' };
   });
 }
