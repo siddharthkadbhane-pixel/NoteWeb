@@ -270,16 +270,69 @@ body.light-mode .pdf-page-shadow { box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1)
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 /* ─── Light mode card text fix (ensure readability) ─── */
+html.light .text-slate-100,
 html.light .text-slate-200,
+html.light .text-slate-300,
+html.light .text-slate-400,
 html.light .text-white,
-body.light-mode .text-slate-200 {
-  /* Let Tailwind handle, but glass-card overrides with var(--text-charcoal) */
+body.light-mode .text-slate-100,
+body.light-mode .text-slate-200,
+body.light-mode .text-slate-300,
+body.light-mode .text-slate-400,
+body.light-mode .text-white {
+  color: var(--text-charcoal) !important;
 }
 
-/* ─── Light mode background for transparent page wrappers ─── */
+/* ─── Light mode background for transparent page wrappers and dark boxes ─── */
 html.light [class*="bg-\\[#05050A\\]"],
-html.light [class*="bg-\\[#0A0A0F\\]"] {
-  background-color: rgba(248, 249, 250, 0.8) !important;
+html.light [class*="bg-\\[#0A0A0F\\]"],
+html.light [class*="bg-\\[#030307\\]"],
+html.light [class*="bg-\\[#121218\\]"],
+html.light [class*="bg-\\[#101018\\]"],
+html.light [class*="bg-\\[#0e0e15\\]"],
+html.light [class*="bg-\\[#0E0E15\\]"],
+html.light [class*="bg-\\[#0f0f1a\\]"],
+html.light [class*="bg-\\[#0F0F1A\\]"],
+html.light [class*="bg-\\[#070710\\]"],
+html.light [class*="bg-\\[#07070F\\]"],
+html.light [class*="bg-\\[#1a1a24\\]"],
+html.light [class*="bg-\\[#1A1A24\\]"],
+html.light [class*="bg-\\[#161622\\]"],
+html.light [class*="bg-\\[#0e0e14\\]"],
+html.light [class*="bg-\\[#0E0E14\\]"],
+html.light [class*="bg-\\[#0e0e12\\]"],
+html.light [class*="bg-\\[#0E0E12\\]"],
+html.light [class*="bg-\\[#181824\\]"],
+html.light [class*="bg-\\[#0d0d14\\]"],
+html.light [class*="bg-\\[#0D0D14\\]"],
+html.light [class*="bg-slate-950/80"],
+html.light [class*="bg-slate-900/60"],
+html.light [class*="bg-slate-900/40"],
+html.light [class*="bg-[#121218]"],
+html.light [class*="bg-[#101018]"],
+html.light [class*="bg-[#0e0e15]"],
+html.light [class*="bg-[#0f0f1a]"],
+html.light [class*="bg-[#070710]"],
+html.light [class*="bg-[#07070F]"],
+html.light [class*="bg-[#1a1a24]"],
+html.light [class*="bg-[#161622]"],
+html.light [class*="bg-[#0e0e14]"],
+html.light [class*="bg-[#0e0e12]"],
+html.light [class*="bg-[#181824]"],
+html.light [class*="bg-[#0d0d14]"],
+html.light [class*="bg-[#0D0D14]"] {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+  background-image: none !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  color: var(--text-charcoal) !important;
+}
+
+/* Light mode specific background overlays for forms */
+html.light [class*="bg-\\[#1a1a24\\]"],
+html.light [class*="bg-\\[#1A1A24\\]"] {
+  background-color: rgba(241, 245, 249, 0.85) !important;
+  border-color: rgba(203, 213, 225, 0.6) !important;
+  color: var(--text-charcoal) !important;
 }
 
 @media (max-width: 1024px) {

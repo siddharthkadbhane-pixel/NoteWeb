@@ -16,7 +16,8 @@ import {
   MessageSquare,
   Trophy,
   Star,
-  Target
+  Target,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -287,13 +288,19 @@ export const Sidebar: React.FC = () => {
       
       {/* Mobile Top Bar */}
       {showMobileUI && (
-        <div className={`
-          fixed top-0 left-0 right-0 h-14 px-4 flex items-center justify-between z-50 border-b
-          ${isDark
-            ? 'bg-[#070710]/90 border-white/[0.06] backdrop-blur-2xl'
-            : 'bg-white/45 border-white/60 backdrop-blur-3xl'
-          }
-        `}>
+        <div 
+          className={`
+            fixed top-0 left-0 right-0 px-4 flex items-center justify-between z-50 border-b
+            ${isDark
+              ? 'bg-[#070710]/90 border-white/[0.06] backdrop-blur-2xl'
+              : 'bg-white/45 border-white/60 backdrop-blur-3xl'
+            }
+          `}
+          style={{
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            height: 'calc(env(safe-area-inset-top, 0px) + 3.5rem)'
+          }}
+        >
           <Link to="/" className="flex items-center gap-2 active:scale-95 transition-transform">
             <NoteWebLogo sizeClass="w-7.5 h-7.5" isMobile />
             <span className={`text-sm font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>NoteWeb</span>
@@ -313,6 +320,21 @@ export const Sidebar: React.FC = () => {
               title={isDark ? 'Light Mode' : 'Dark Mode'}
             >
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            {/* Refresh/Reload live website cache */}
+            <button
+              onClick={() => window.location.reload()}
+              className={`
+                w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-90 cursor-pointer
+                ${isDark
+                  ? 'bg-white/[0.04] border border-white/[0.08] text-slate-300 hover:bg-white/[0.08]'
+                  : 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200'
+                }
+              `}
+              title="Reload App"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
             </button>
 
             {/* Sync dot */}

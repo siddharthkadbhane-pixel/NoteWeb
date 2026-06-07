@@ -721,8 +721,13 @@ function App() {
                 {/* Fixed Floating Theme Toggle Button */}
                 <FloatingThemeToggle />
 
-                {/* Main Content: pt-14 for mobile top bar, pb-24 for bottom nav, lg:pl-20 for desktop dock */}
-                <main className={`flex-1 min-w-0 px-0 transition-all duration-300 z-10 relative w-full ${showMobileUI ? 'pt-14 pb-24' : 'pt-0 pb-6 pl-20'}`}>
+                {/* Main Content: pt-14/safe-area for mobile top bar, pb-24 for bottom nav, lg:pl-20 for desktop dock */}
+                <main 
+                  className={`flex-1 min-w-0 px-0 transition-all duration-300 z-10 relative w-full ${showMobileUI ? 'pb-24' : 'pt-0 pb-6 pl-20'}`}
+                  style={{
+                    paddingTop: showMobileUI ? 'calc(env(safe-area-inset-top, 0px) + 3.5rem)' : undefined
+                  }}
+                >
                   <Routes>
                     {/* Publicly Accessible Routes */}
                     <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
