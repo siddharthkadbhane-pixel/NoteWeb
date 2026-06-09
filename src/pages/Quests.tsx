@@ -221,7 +221,7 @@ export const Quests: React.FC = () => {
           </div>
 
           {/* Reset Timer PNL */}
-          <GlassPanel className="p-4 px-6 rounded-2xl flex flex-col items-center md:items-end justify-center bg-[#101018]/40 border border-white/[0.06] text-center md:text-right">
+          <GlassPanel className={`p-4 px-6 rounded-2xl flex flex-col items-center md:items-end justify-center text-center md:text-right border ${isDark ? 'bg-[#101018]/40 border-white/[0.06]' : 'bg-white/60 border-slate-200'}`}>
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
               Resetting In
@@ -236,7 +236,7 @@ export const Quests: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* Level standing card */}
-          <GlassPanel className="md:col-span-2 p-6 rounded-3xl border border-white/[0.06] bg-gradient-to-br from-[#0F0F1A]/80 to-[#070710]/95 flex flex-col justify-between shadow-xl relative overflow-hidden">
+          <GlassPanel className={`md:col-span-2 p-6 rounded-3xl border flex flex-col justify-between shadow-xl relative overflow-hidden ${isDark ? 'border-white/[0.06] bg-gradient-to-br from-[#0F0F1A]/80 to-[#070710]/95' : 'border-slate-200 bg-gradient-to-br from-white to-slate-50/80 text-slate-800'}`}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
             
             <div className="flex items-center justify-between gap-4">
@@ -278,7 +278,7 @@ export const Quests: React.FC = () => {
           </GlassPanel>
 
           {/* Quick stats panel */}
-          <GlassPanel className="p-6 rounded-3xl border border-white/[0.06] bg-[#0E0E15]/50 flex flex-col justify-between shadow-xl">
+          <GlassPanel className={`p-6 rounded-3xl border flex flex-col justify-between shadow-xl ${isDark ? 'border-white/[0.06] bg-[#0E0E15]/50' : 'border-slate-200 bg-white/60 text-slate-800'}`}>
             <div className="flex flex-col text-left">
               <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">Total Completed</span>
               <span className={`text-4xl font-black mt-2 font-mono ${isDark ? 'text-white' : 'text-slate-800'}`}>
@@ -289,12 +289,12 @@ export const Quests: React.FC = () => {
               </p>
             </div>
 
-            <div className={`mt-6 p-3 bg-white/[0.02] border border-white/[0.04] rounded-2xl flex items-center justify-between text-left`}>
+            <div className={`mt-6 p-3 border rounded-2xl flex items-center justify-between text-left ${isDark ? 'bg-white/[0.02] border-white/[0.04]' : 'bg-slate-50 border-slate-100'}`}>
               <div className="flex items-center gap-2">
                 <Flame className="w-5 h-5 text-amber-500 animate-pulse" />
                 <span className={`text-xs font-black uppercase ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Attendance Streak</span>
               </div>
-              <span className={`text-sm font-black font-mono ${isDark ? 'text-white' : 'text-slate-850'}`}>
+              <span className={`text-sm font-black font-mono ${isDark ? 'text-white' : 'text-slate-800'}`}>
                 {questsList.find(q => q.id === 'daily-login')?.claimed ? '1 Day' : '0 Days'}
               </span>
             </div>
@@ -325,16 +325,16 @@ export const Quests: React.FC = () => {
                 className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between gap-4 select-none
                   ${getQuestColor(quest.id)}
                   ${isClaimed 
-                    ? 'opacity-65 border-white/[0.02] bg-white/[0.01]' 
+                    ? (isDark ? 'opacity-65 border-white/[0.02] bg-white/[0.01]' : 'opacity-60 border-slate-200 bg-slate-50/50')
                     : isCompleted 
-                      ? 'border-emerald-500/25 bg-emerald-500/[0.02] shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                      ? (isDark ? 'border-emerald-500/25 bg-emerald-500/[0.02] shadow-[0_0_15px_rgba(16,185,129,0.04)]' : 'border-emerald-500/35 bg-emerald-500/[0.04]') 
                       : 'hover:scale-[1.015]'
                   }
                 `}
               >
                 {/* Top Info */}
                 <div className="flex gap-3.5 items-start">
-                  <div className={`p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] flex-shrink-0 flex items-center justify-center`}>
+                  <div className={`p-3 rounded-xl flex-shrink-0 flex items-center justify-center border ${isDark ? 'bg-white/[0.02] border-white/[0.05]' : 'bg-slate-50 border-slate-200'}`}>
                     {getQuestIcon(quest.id)}
                   </div>
                   
@@ -360,7 +360,7 @@ export const Quests: React.FC = () => {
                 </div>
 
                 {/* Bottom Bar: Progress & Action Button */}
-                <div className="flex items-center justify-between gap-4 border-t border-white/[0.04] pt-3.5 mt-1">
+                <div className={`flex items-center justify-between gap-4 border-t pt-3.5 mt-1 ${isDark ? 'border-white/[0.04]' : 'border-slate-100'}`}>
                   
                   {/* Progress Indicator */}
                   <div className="flex flex-col gap-1 items-start">

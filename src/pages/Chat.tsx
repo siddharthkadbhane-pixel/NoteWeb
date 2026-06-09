@@ -2159,7 +2159,9 @@ export const Chat: React.FC = () => {
 
                   {/* Reply preview */}
                   {msg.reply_to && (
-                    <div className="mb-1 px-2.5 py-1.5 rounded-xl bg-black/20 border-l-4 border-indigo-500 text-[10px] text-slate-300 w-full">
+                    <div className={`mb-1 px-2.5 py-1.5 rounded-xl border-l-4 border-indigo-500 text-[10px] w-full ${
+                      isCurrentThemeDark() ? 'bg-black/20 text-slate-300' : 'bg-black/5 text-slate-600'
+                    }`}>
                       <span className="block text-[9px] font-black text-indigo-400 mb-0.5">↩ {msg.reply_to.senderName}</span>
                       <span className="truncate block">{msg.reply_to.content}</span>
                     </div>
@@ -2220,7 +2222,7 @@ export const Chat: React.FC = () => {
 
                         {/* Standard image */}
                         {!msg.is_view_once && imageUrl && (
-                          <div onClick={() => setZoomedImage(imageUrl || null)} className="mt-2 rounded-xl overflow-hidden border border-white/10 cursor-zoom-in active:scale-[0.98] transition-all">
+                          <div onClick={() => setZoomedImage(imageUrl || null)} className={`mt-2 rounded-xl overflow-hidden border cursor-zoom-in active:scale-[0.98] transition-all ${isCurrentThemeDark() ? 'border-white/10' : 'border-slate-200'}`}>
                             <img src={imageUrl} alt="Attachment" className="max-h-48 w-full object-cover select-none" />
                           </div>
                         )}
@@ -2249,7 +2251,7 @@ export const Chat: React.FC = () => {
                                 const hasVoted = votesList.includes(user?.uid || '');
                                 return (
                                   <button key={optIdx} onClick={() => handleCastPollVote(msg.id, optIdx)}
-                                    className={`w-full text-left p-1.5 rounded-lg border text-[10px] relative overflow-hidden cursor-pointer ${hasVoted ? 'border-indigo-500 bg-indigo-600/10 text-white font-bold' : isCurrentThemeDark() ? 'border-white/5 bg-white/[0.02] text-slate-400' : 'border-slate-200 bg-white text-slate-700'}`}>
+                                    className={`w-full text-left p-1.5 rounded-lg border text-[10px] relative overflow-hidden cursor-pointer ${hasVoted ? (isCurrentThemeDark() ? 'border-indigo-500 bg-indigo-600/20 text-indigo-300 font-bold' : 'border-indigo-500 bg-indigo-100 text-indigo-700 font-bold') : isCurrentThemeDark() ? 'border-white/5 bg-white/[0.02] text-slate-400' : 'border-slate-200 bg-white text-slate-700'}`}>
                                     <div className="absolute left-0 top-0 bottom-0 bg-indigo-500/10" style={{ width: `${pct}%` }} />
                                     <div className="flex justify-between relative z-10"><span>{opt}</span><span className="text-[9px] text-slate-400">{pct}%</span></div>
                                   </button>
@@ -2467,7 +2469,7 @@ export const Chat: React.FC = () => {
                   className="flex flex-col items-center gap-1 flex-shrink-0 cursor-pointer active:scale-90">
                   <div className="relative">
                     {renderAvatar(online.photoURL || '', 'w-12 h-12 text-xl border-2 border-emerald-500')}
-                    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0D0D14]" />
+                    <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 ${isDark ? 'border-[#0D0D14]' : 'border-white'}`} />
                   </div>
                   <span className="text-[9px] font-semibold text-slate-400 max-w-[48px] truncate">{online.displayName.split(' ')[0]}</span>
                 </button>
@@ -2522,7 +2524,7 @@ export const Chat: React.FC = () => {
                       <div className="relative flex-shrink-0">
                         {renderAvatar(contact.photoURL, 'w-12 h-12 text-xl')}
                         {isOnline
-                          ? <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#0A0A10]" />
+                          ? <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 ${isDark ? 'border-[#0A0A10]' : 'border-white'}`} />
                           : <span className="absolute -bottom-0.5 -right-0.5 text-sm">{getBranchIcon(contact.branch)}</span>
                         }
                         {isPinned && <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-indigo-600 border border-indigo-500 flex items-center justify-center"><Pin className="w-2 h-2 text-white" /></span>}
@@ -2584,7 +2586,7 @@ export const Chat: React.FC = () => {
           </div>
 
           {/* Lounge notice */}
-          <div className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 border-b text-[10px] ${isDark ? 'border-white/[0.04] text-rose-400/70 bg-rose-500/5' : 'border-rose-100 text-rose-600 bg-rose-50'}`}>
+          <div className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 border-b text-[10px] ${isLoungeDark ? 'border-white/[0.04] text-rose-400/70 bg-rose-500/5' : 'border-rose-100 text-rose-600 bg-rose-50'}`}>
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
             <span>Messages expire in 7 days · No PDFs · Be respectful</span>
           </div>
@@ -2606,7 +2608,7 @@ export const Chat: React.FC = () => {
           {isThemeModalOpen && (
             <div className="fixed inset-0 z-50 flex items-end">
               <div onClick={() => setIsThemeModalOpen(false)} className="absolute inset-0 bg-black/60" />
-              <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+              <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] ${isLoungeDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
                 <div className="flex items-center justify-between">
                   <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><Paintbrush className="w-4 h-4" /> Chat Theme</h3>
                   <button onClick={() => setIsThemeModalOpen(false)} className="p-1.5 rounded-xl cursor-pointer active:scale-90 text-slate-400"><X className="w-4 h-4" /></button>
@@ -2652,7 +2654,7 @@ export const Chat: React.FC = () => {
             <div className="relative flex-shrink-0">
               {renderAvatar(selectedDmUser?.photoURL || '', 'w-9 h-9 text-lg')}
               {onlineUsers.some(u => u.uid === selectedDmUser?.id) && (
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0D0D14]" />
+                <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 ${isDmChatDark ? 'border-[#0D0D14]' : 'border-white'}`} />
               )}
             </div>
             <div className="min-w-0">
@@ -2663,7 +2665,7 @@ export const Chat: React.FC = () => {
                 {partnerIsTyping
                   ? <span className="text-indigo-400 font-bold italic animate-pulse">typing...</span>
                   : onlineUsers.some(u => u.uid === selectedDmUser?.id)
-                    ? <span className="text-emerald-400 font-bold">● Active now</span>
+                    ? <span className={`${isDmChatDark ? 'text-emerald-400' : 'text-emerald-600'} font-bold`}>● Active now</span>
                     : <span className="text-slate-500">@{selectedDmUser?.username}</span>
                 }
               </span>

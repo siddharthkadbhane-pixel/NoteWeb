@@ -2,7 +2,7 @@
 @config "../tailwind.config.js";
 
 /* Custom variant: light-mode class on body (backward compat) */
-@variant light-mode (.light-mode &);
+@custom-variant light-mode (.light-mode &);
 
 /* ─────────────────────────────────────────────────────────────
    Premium Custom Variable Tokens
@@ -549,8 +549,8 @@ body.native-platform .glass-panel {
   background: #0D0D15 !important;
 }
 
-body.native-platform html.light .glass-panel,
-body.native-platform body.light-mode .glass-panel {
+html.light body.native-platform .glass-panel,
+body.native-platform.light-mode .glass-panel {
   background: #F3F5FA !important;
 }
 
@@ -558,8 +558,8 @@ body.native-platform .glass-card {
   background: #12121F !important;
 }
 
-body.native-platform html.light .glass-card,
-body.native-platform body.light-mode .glass-card {
+html.light body.native-platform .glass-card,
+body.native-platform.light-mode .glass-card {
   background: #FFFFFF !important;
 }
 
