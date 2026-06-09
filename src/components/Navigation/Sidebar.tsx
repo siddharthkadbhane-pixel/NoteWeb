@@ -287,7 +287,7 @@ export const Sidebar: React.FC = () => {
          ════════════════════════════════════════════════════════════ */}
       
       {/* Mobile Top Bar */}
-      {showMobileUI && (
+      {showMobileUI && location.pathname !== '/chat' && (
         <div 
           className={`
             fixed top-0 left-0 right-0 px-4 flex items-center justify-between z-50 border-b
@@ -353,7 +353,7 @@ export const Sidebar: React.FC = () => {
       )}
 
       {/* Mobile Floating Bottom Nav Pill */}
-      {showMobileUI && (
+      {showMobileUI && location.pathname !== '/chat' && (
         <nav className={`
           fixed bottom-4 left-3 right-3 h-16 rounded-2xl border z-50
           flex items-center justify-around px-2
@@ -405,7 +405,7 @@ export const Sidebar: React.FC = () => {
       )}
 
       {/* Mobile Commander Launcher Overlay */}
-      {showMobileUI && (
+      {showMobileUI && location.pathname !== '/chat' && (
         <AnimatePresence>
           {isLauncherOpen && (
             <>

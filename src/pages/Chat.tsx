@@ -2273,24 +2273,24 @@ export const Chat: React.FC = () => {
                       {activeTab === 'dm' && isMe && <span className="ml-1">{msg.is_read ? ' ✓✓' : ' ✓'}</span>}
                     </span>
                     {/* Quick action buttons */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                    <div className="flex items-center gap-1 opacity-60">
                       {activeTab === 'dm' && (
-                        <button onClick={() => setReplyingTo(msg)} className="p-1 rounded-lg bg-white/10 text-slate-400 active:bg-indigo-600 active:text-white cursor-pointer">
-                          <Quote className="w-3 h-3" />
+                        <button onClick={() => setReplyingTo(msg)} className="p-1 rounded-lg bg-white/10 text-slate-400 active:bg-indigo-600/20 active:text-white cursor-pointer">
+                          <Quote className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Long-press / tap actions for own messages */}
+                {/* Actions for own messages */}
                 {isMe && (
-                  <div className="flex flex-col gap-1 flex-shrink-0 self-end mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex flex-col gap-1.5 flex-shrink-0 self-end mb-1 opacity-60">
                     <button onClick={() => { setEditingMsgId(msg.id); setEditingText(messageContent); }} className="p-1 rounded-lg bg-white/10 text-slate-400 cursor-pointer active:bg-indigo-600 active:text-white">
-                      <Edit className="w-3 h-3" />
+                      <Edit className="w-3.5 h-3.5" />
                     </button>
                     <button onClick={() => handleDeleteChat(msg.id)} className="p-1 rounded-lg bg-rose-500/10 text-rose-400 cursor-pointer active:bg-rose-500 active:text-white">
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
@@ -2309,7 +2309,8 @@ export const Chat: React.FC = () => {
 
     // ── Mobile Input Bar (shared for global + DM) ──
     const MobileInputBar = () => (
-      <div className={`flex-shrink-0 border-t px-3 py-2 ${isDark ? 'border-white/[0.06] bg-[#0D0D14]' : 'border-slate-200 bg-white'}`}>
+      <div className={`flex-shrink-0 border-t px-3 py-2 ${isDark ? 'border-white/[0.06] bg-[#0D0D14]' : 'border-slate-200 bg-white'}`}
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.5rem)' }}>
         {/* Reply preview */}
         {activeTab === 'dm' && replyingTo && selectedDmUser && (
           <div className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl mb-2 ${isDark ? 'bg-indigo-950/40 border border-indigo-500/20' : 'bg-indigo-50 border border-indigo-200'}`}>
@@ -2413,14 +2414,20 @@ export const Chat: React.FC = () => {
     // ── MOBILE: DM Contact List Screen ──
     if (activeTab === 'dm' && mobileView === 'list') {
       return (
-        <div className={`fixed inset-0 flex flex-col ${isDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`}
-          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className={`fixed inset-0 flex flex-col ${isDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`}>
 
           {/* Header */}
-          <div className={`flex-shrink-0 flex items-center justify-between px-4 pt-3 pb-3 border-b ${isDark ? 'border-white/[0.06] bg-[#0D0D14]' : 'border-slate-200 bg-white'}`}>
-            <div>
-              <h1 className={`text-base font-black ${isDark ? 'text-white' : 'text-slate-800'}`}>Messages</h1>
-              <span className="text-[10px] text-slate-500">{onlineUsers.length} online now</span>
+          <div className={`flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b ${isDark ? 'border-white/[0.06] bg-[#0D0D14]' : 'border-slate-200 bg-white'}`}
+            style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
+            <div className="flex items-center gap-2">
+              <button onClick={() => navigate('/')}
+                className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 bg-white/[0.04] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className={`text-sm font-black leading-none ${isDark ? 'text-white' : 'text-slate-800'}`}>Messages</h1>
+                <span className="text-[9px] text-slate-500 font-bold block mt-0.5">{onlineUsers.length} online</span>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {/* Switch to global */}
@@ -2457,7 +2464,7 @@ export const Chat: React.FC = () => {
           </div>
 
           {/* Contact list / search results */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }}>
             {searchQuery.trim() !== '' ? (
               <div className="p-3 space-y-2">
                 <span className="block text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Search Results</span>
@@ -2525,15 +2532,20 @@ export const Chat: React.FC = () => {
     if (activeTab === 'global') {
       return (
         <div className={`fixed inset-0 flex flex-col ${isDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'} ${getThemeClasses()}`}
-          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', ...getThemeStyle() }}>
+          style={{ ...getThemeStyle() }}>
 
           {/* Header */}
-          <div className={`flex-shrink-0 flex items-center justify-between px-4 pt-3 pb-3 border-b ${isDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`} style={{ backdropFilter: 'blur(12px)' }}>
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-lg flex-shrink-0">💬</div>
+          <div className={`flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b ${isDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`}
+            style={{ backdropFilter: 'blur(12px)', paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
+            <div className="flex items-center gap-2">
+              <button onClick={() => navigate('/')}
+                className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 bg-white/[0.04] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div className="w-8 h-8 rounded-full bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-base flex-shrink-0">💬</div>
               <div>
-                <h1 className={`text-sm font-black leading-none ${isDark ? 'text-white' : 'text-slate-800'}`}>Campus Lounge</h1>
-                <span className="text-[10px] text-slate-500">{onlineUsers.length} classmates online</span>
+                <h1 className={`text-xs font-black leading-none ${isDark ? 'text-white' : 'text-slate-800'}`}>Campus Lounge</h1>
+                <span className="text-[9px] text-slate-500 font-bold block mt-0.5">{onlineUsers.length} online</span>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -2601,10 +2613,11 @@ export const Chat: React.FC = () => {
     // ── MOBILE: DM Chat Screen ──
     return (
       <div className={`fixed inset-0 flex flex-col ${isDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'} ${getThemeClasses()}`}
-        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', ...getThemeStyle() }}>
+        style={{ ...getThemeStyle() }}>
 
         {/* DM Chat Header */}
-        <div className={`flex-shrink-0 flex items-center gap-2 px-3 pt-3 pb-3 border-b ${isDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`} style={{ backdropFilter: 'blur(12px)' }}>
+        <div className={`flex-shrink-0 flex items-center gap-2 px-3 pb-3 border-b ${isDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`}
+          style={{ backdropFilter: 'blur(12px)', paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
           {/* Back button */}
           <button onClick={() => { setMobileView('list'); setSelectedDmUser(null); navigate('/chat', { replace: true }); }}
             className={`w-9 h-9 flex-shrink-0 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 bg-white/[0.04] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
