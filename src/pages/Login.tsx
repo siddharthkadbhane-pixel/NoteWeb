@@ -438,7 +438,7 @@ export const Login: React.FC = () => {
                         </div>
                         <div className="text-left">
                           <h3 className={`text-base font-black ${isDark ? 'text-slate-100' : 'text-indigo-950'}`}>Student Entrance</h3>
-                          <span className={`text-[10px] font-bold ${isDark ? 'text-indigo-400' : 'text-indigo-650'}`}>BROWSE & UPLOAD NOTES</span>
+                          <span className={`text-[10px] font-bold ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>BROWSE & UPLOAD NOTES</span>
                         </div>
                       </div>
                       <p className={`text-xs mb-5 font-medium leading-relaxed text-left ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -519,7 +519,7 @@ export const Login: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      <p className={`text-xs mb-5 font-medium leading-relaxed text-left ${isDark ? 'text-slate-400' : 'text-slate-650'}`}>
+                      <p className={`text-xs mb-5 font-medium leading-relaxed text-left ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                         Elevated workspace to moderate pending resources, view user presence, and prune accounts.
                       </p>
                     </div>
@@ -585,7 +585,7 @@ export const Login: React.FC = () => {
                 {/* Divider */}
                 <div className="relative flex items-center justify-center my-6">
                   <hr className={`w-full ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`} />
-                  <span className={`absolute px-3 text-xs font-bold ${isDark ? 'bg-[#0D0D14] text-slate-500' : 'bg-white text-slate-450'}`}>OR</span>
+                  <span className={`absolute px-3 text-xs font-bold ${isDark ? 'bg-[#0D0D14] text-slate-500' : 'bg-white text-slate-400'}`}>OR</span>
                 </div>
 
                 {/* Guest Mode */}
@@ -595,7 +595,7 @@ export const Login: React.FC = () => {
                     w-full py-3 rounded-xl border border-dashed text-xs font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer
                     ${isDark
                       ? 'border-indigo-500/20 bg-indigo-500/[0.02] text-indigo-400 hover:bg-indigo-500/5 hover:border-indigo-500/30'
-                      : 'border-indigo-300 bg-indigo-50/50 text-indigo-650 hover:bg-indigo-100/60'
+                      : 'border-indigo-300 bg-indigo-50/50 text-indigo-600 hover:bg-indigo-100/60'
                     }
                   `}
                 >
@@ -766,7 +766,7 @@ export const Login: React.FC = () => {
                                 or drag & drop · JPG, PNG, WEBP · Max 5MB
                               </p>
                             </div>
-                            <p className={`text-[10px] font-bold px-3 py-1.5 rounded-full border ${isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-650'}`}>
+                            <p className={`text-[10px] font-bold px-3 py-1.5 rounded-full border ${isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-600'}`}>
                               📱 Works like Instagram / WhatsApp
                             </p>
                           </label>
@@ -802,12 +802,12 @@ export const Login: React.FC = () => {
                         ))
                       ) : (
                         <>
-                          <option value="cse" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-850 font-semibold">💻 Computer Science & Engineering (CSE)</option>
-                          <option value="aiml" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-850 font-semibold">🧠 AI & Machine Learning (AI & ML)</option>
-                          <option value="ds" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">📊 Data Science (DS)</option>
-                          <option value="ece" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">🔌 Electronics & Communication (ECE)</option>
-                          <option value="mechanical" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">⚙️ Mechanical Engineering</option>
-                          <option value="civil" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">🏗️ Civil Engineering</option>
+                          <option value="cse" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">💻 Computer Science & Engineering (CSE)</option>
+                          <option value="aiml" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🧠 AI & Machine Learning (AI & ML)</option>
+                          <option value="ds" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">📊 Data Science (DS)</option>
+                          <option value="ece" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🔌 Electronics & Communication (ECE)</option>
+                          <option value="mechanical" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">⚙️ Mechanical Engineering</option>
+                          <option value="civil" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🏗️ Civil Engineering</option>
                         </>
                       )}
                     </select>
@@ -815,22 +815,22 @@ export const Login: React.FC = () => {
                   <div>
                     <label className={labelCls}>Class Year</label>
                     <select value={regYear} onChange={(e) => setRegYear(e.target.value)} className={selectCls}>
-                      <option value="1" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-850 font-semibold">🎓 1st Year (Freshman)</option>
-                      <option value="2" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-850 font-semibold">🎓 2nd Year (Sophomore)</option>
-                      <option value="3" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">🎓 3rd Year (Junior)</option>
-                      <option value="4" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">🎓 4th Year (Senior)</option>
+                      <option value="1" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🎓 1st Year (Freshman)</option>
+                      <option value="2" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🎓 2nd Year (Sophomore)</option>
+                      <option value="3" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🎓 3rd Year (Junior)</option>
+                      <option value="4" className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-800 font-semibold">🎓 4th Year (Senior)</option>
                     </select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className={labelCls}>Email <span className={isDark ? 'text-slate-600' : 'text-slate-450'}>(Optional)</span></label>
+                    <label className={labelCls}>Email <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>(Optional)</span></label>
                     <input type="email" placeholder="you@college.edu" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className={inputCls} />
                     {formErrors.email && <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.email}</p>}
                   </div>
                   <div>
-                    <label className={labelCls}>CGPA <span className={isDark ? 'text-slate-600' : 'text-slate-450'}>(Optional)</span></label>
+                    <label className={labelCls}>CGPA <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>(Optional)</span></label>
                     <input type="text" placeholder="e.g. 9.15" value={regCgpa} onChange={(e) => setRegCgpa(e.target.value.replace(/[^0-9.]/g, ''))} className={inputCls} />
                     {formErrors.cgpa && <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.cgpa}</p>}
                   </div>

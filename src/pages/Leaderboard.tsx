@@ -42,7 +42,7 @@ const getXPLevel = (points: number) => {
   if (points >= 1000) return { badge: '👑 Level 5', color: 'from-amber-400 to-orange-500 text-amber-300 border-amber-500/30' };
   if (points >= 500) return { badge: '🌟 Level 4', color: 'from-fuchsia-500 to-purple-600 text-fuchsia-300 border-fuchsia-500/30' };
   if (points >= 250) return { badge: '📚 Level 3', color: 'from-blue-500 to-indigo-600 text-blue-300 border-blue-500/30' };
-  if (points >= 100) return { badge: '📖 Level 2', color: 'from-emerald-500 to-teal-650 text-emerald-300 border-emerald-500/30' };
+  if (points >= 100) return { badge: '📖 Level 2', color: 'from-emerald-500 to-teal-600 text-emerald-300 border-emerald-500/30' };
   return { badge: '🌱 Level 1', color: 'from-slate-500 to-slate-600 text-slate-400 border-white/5' };
 };
 
@@ -317,7 +317,7 @@ export const Leaderboard: React.FC = () => {
                       {level.badge}
                     </span>
 
-                    <span className={`text-xs font-bold mt-2.5 border px-3 py-0.5 rounded-full ${isDark ? 'text-slate-350 bg-white/5 border-white/[0.04]' : 'text-slate-700 bg-slate-100 border-slate-200'}`}>
+                    <span className={`text-xs font-bold mt-2.5 border px-3 py-0.5 rounded-full ${isDark ? 'text-slate-400 bg-white/5 border-white/[0.04]' : 'text-slate-700 bg-slate-100 border-slate-200'}`}>
                       {getMetricString(podiumTop3[1])}
                     </span>
                   </div>
@@ -367,7 +367,7 @@ export const Leaderboard: React.FC = () => {
                   </div>
 
                   {/* Pedestal Step */}
-                  <div className={`hidden md:flex w-32 h-28 border-t-2 border-x rounded-t-2xl items-center justify-center font-black text-lg ${isDark ? 'from-amber-400/20 to-amber-500/5 bg-gradient-to-b border-amber-400/30 text-amber-450 shadow-[0_0_20px_rgba(245,158,11,0.1)]' : 'bg-amber-100 border-amber-300 text-amber-700 shadow-[0_4px_10px_rgba(0,0,0,0.05)]'}`}>I</div>
+                  <div className={`hidden md:flex w-32 h-28 border-t-2 border-x rounded-t-2xl items-center justify-center font-black text-lg ${isDark ? 'from-amber-400/20 to-amber-500/5 bg-gradient-to-b border-amber-400/30 text-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.1)]' : 'bg-amber-100 border-amber-300 text-amber-700 shadow-[0_4px_10px_rgba(0,0,0,0.05)]'}`}>I</div>
                 </motion.div>
               );
             })()}
@@ -402,7 +402,7 @@ export const Leaderboard: React.FC = () => {
                       {level.badge}
                     </span>
 
-                    <span className={`text-xs font-bold mt-2.5 border px-3 py-0.5 rounded-full ${isDark ? 'text-slate-350 bg-white/5 border-white/[0.04]' : 'text-amber-700 bg-amber-50 border-amber-200'}`}>
+                    <span className={`text-xs font-bold mt-2.5 border px-3 py-0.5 rounded-full ${isDark ? 'text-slate-400 bg-white/5 border-white/[0.04]' : 'text-amber-700 bg-amber-50 border-amber-200'}`}>
                       {getMetricString(podiumTop3[2])}
                     </span>
                   </div>
@@ -500,14 +500,14 @@ export const Leaderboard: React.FC = () => {
               ))}
             </div>
           ) : processedList.length === 0 ? (
-            <div className={`p-8 text-center font-bold text-xs ${isDark ? 'text-slate-550' : 'text-slate-500'}`}>
+            <div className={`p-8 text-center font-bold text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
               No matching records found for current filters.
             </div>
           ) : (
             <div className="flex flex-col gap-2.5">
               
               {/* Leaderboard Row Header */}
-              <div className={`px-5 py-2 flex items-center text-[10px] font-extrabold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-550'}`}>
+              <div className={`px-5 py-2 flex items-center text-[10px] font-extrabold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
                 <span className="w-12">Rank</span>
                 <span className="flex-1 pl-4">Student</span>
                 <span className="w-24 text-center">Class</span>
@@ -553,9 +553,9 @@ export const Leaderboard: React.FC = () => {
                       >
                         {renderAvatar(peer.photoURL, "w-9 h-9 text-lg")}
                         <div className="min-w-0 text-left">
-                          <span className={`font-extrabold text-xs leading-none flex items-center gap-1.5 group-hover:text-indigo-500 transition-colors ${isDark ? 'text-white' : 'text-slate-850'}`}>
+                          <span className={`font-extrabold text-xs leading-none flex items-center gap-1.5 group-hover:text-indigo-500 transition-colors ${isDark ? 'text-white' : 'text-slate-800'}`}>
                             {peer.displayName}
-                            {isMe && <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-505 border border-indigo-505/30 font-extrabold">YOU</span>}
+                            {isMe && <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-500 border border-indigo-500/30 font-extrabold">YOU</span>}
                           </span>
                           <div className="flex items-center gap-2 mt-1">
                             <span className={`block text-[10px] font-semibold ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>@{peer.username}</span>
@@ -567,7 +567,7 @@ export const Leaderboard: React.FC = () => {
                       </div>
 
                       {/* Class Year */}
-                      <span className={`w-24 text-center text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-660'}`}>
+                      <span className={`w-24 text-center text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                         {peer.year} Year
                       </span>
 
@@ -579,7 +579,7 @@ export const Leaderboard: React.FC = () => {
                       </div>
 
                       {/* CGPA */}
-                      <span className={`w-20 text-center text-xs font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-660'}`}>
+                      <span className={`w-20 text-center text-xs font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                         {peer.cgpa > 0 ? peer.cgpa.toFixed(2) : 'N/A'}
                       </span>
 
@@ -592,7 +592,7 @@ export const Leaderboard: React.FC = () => {
                           {getMetricString(peer)}
                         </span>
                         {sortBy === 'points' && (
-                          <div className={`w-16 h-1 border rounded-full overflow-hidden ${isDark ? 'bg-slate-950/80 border-white/5' : 'bg-slate-200 border-slate-350'}`} title={`${progressPct}% towards next level`}>
+                          <div className={`w-16 h-1 border rounded-full overflow-hidden ${isDark ? 'bg-slate-950/80 border-white/5' : 'bg-slate-200 border-slate-300'}`} title={`${progressPct}% towards next level`}>
                             <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style={{ width: `${progressPct}%` }} />
                           </div>
                         )}

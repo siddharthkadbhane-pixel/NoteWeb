@@ -1098,11 +1098,11 @@ export const Admin: React.FC = () => {
             className={`
               px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 flex-shrink-0
               ${activeTab === 'flagged' 
-                ? 'border-rose-500 text-rose-455 font-extrabold' 
+                ? 'border-rose-500 text-rose-500 font-extrabold' 
                 : 'border-transparent text-slate-400 hover:text-slate-200'}
             `}
           >
-            <ShieldAlert className="w-4 h-4 text-rose-450 animate-pulse" />
+            <ShieldAlert className="w-4 h-4 text-rose-500 animate-pulse" />
             Flagged Chats
             {flaggedChats.length > 0 && (
               <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-black animate-pulse">
@@ -1115,7 +1115,7 @@ export const Admin: React.FC = () => {
             className={`
               px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 flex-shrink-0
               ${activeTab === 'blocked_ips' 
-                ? 'border-indigo-500 text-white light-mode:text-indigo-650' 
+                ? 'border-indigo-500 text-white light-mode:text-indigo-600' 
                 : 'border-transparent text-slate-400 hover:text-slate-200'}
             `}
           >
@@ -1461,7 +1461,7 @@ export const Admin: React.FC = () => {
                                     {session.deviceInfo}
                                   </span>
                                   <span className="text-slate-600">·</span>
-                                  <Clock className="w-3 h-3 text-slate-650" />
+                                  <Clock className="w-3 h-3 text-slate-600" />
                                   <span>Active {getRelativeTime(session.onlineSince)}</span>
                                 </div>
                               ))}
@@ -1487,7 +1487,7 @@ export const Admin: React.FC = () => {
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => handleBlockUser(usr.uid, usr.displayName)}
-                              className="p-2 rounded-lg border border-rose-500/30 bg-rose-500/15 text-rose-450 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                              className="p-2 rounded-lg border border-rose-500/30 bg-rose-500/15 text-rose-500 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
                               title="Block & Ban Device (IP + Hardware Fingerprint)"
                             >
                               <ShieldAlert className="w-4 h-4" />
@@ -1538,7 +1538,7 @@ export const Admin: React.FC = () => {
                           <h4 className="font-bold text-white leading-none light-mode:text-slate-950">
                             {f.sender_name}
                           </h4>
-                          <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-450 uppercase">
+                          <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-500 uppercase">
                             Flagged Message
                           </span>
                           <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded border border-white/[0.06] bg-white/[0.02] text-slate-400">

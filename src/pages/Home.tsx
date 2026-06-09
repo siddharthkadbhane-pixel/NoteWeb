@@ -880,7 +880,7 @@ Example raw format:
                   /* ================= FORM MODE ================= */
                   <form onSubmit={handleGenerateStudyPlan} className="flex flex-col gap-4 text-left">
                     <div className="flex flex-col gap-1.5">
-                      <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-450' : 'text-slate-500'}`}>
+                      <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                         What exam are you studying for?
                       </label>
                       <input
@@ -891,8 +891,8 @@ Example raw format:
                         maxLength={50}
                         className={`w-full px-4 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none focus:scale-[1.01] ${
                           isDark 
-                            ? 'bg-white/[0.01] border-white/[0.04] text-white placeholder-slate-650 focus:border-purple-500/40 focus:bg-[#08080E]' 
-                            : 'bg-slate-50/80 border-slate-250 text-slate-800 placeholder-slate-400 focus:border-purple-500/50 focus:bg-white'
+                            ? 'bg-white/[0.01] border-white/[0.04] text-white placeholder-slate-500 focus:border-purple-500/40 focus:bg-[#08080E]' 
+                            : 'bg-slate-50/80 border-slate-200 text-slate-800 placeholder-slate-400 focus:border-purple-500/50 focus:bg-white'
                         }`}
                       />
                     </div>
@@ -900,7 +900,7 @@ Example raw format:
                     <div className="grid grid-cols-2 gap-3.5">
                       {/* Timeframe Selector */}
                       <div className="flex flex-col gap-1.5">
-                        <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-450' : 'text-slate-500'}`}>
+                        <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                           Preparation Timeframe
                         </label>
                         <select
@@ -909,7 +909,7 @@ Example raw format:
                           className={`w-full px-3.5 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none cursor-pointer ${
                             isDark 
                               ? 'bg-[#0A0A0F] border-white/[0.04] text-white focus:border-purple-500/40' 
-                              : 'bg-slate-50/80 border-slate-250 text-slate-700 focus:border-purple-500/50'
+                              : 'bg-slate-50/80 border-slate-200 text-slate-700 focus:border-purple-500/50'
                           }`}
                         >
                           <option value="1 Day">1 Day (Cramming)</option>
@@ -921,7 +921,7 @@ Example raw format:
 
                       {/* Goal Selector */}
                       <div className="flex flex-col gap-1.5">
-                        <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-450' : 'text-slate-500'}`}>
+                        <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                           Preparation Goal
                         </label>
                         <select
@@ -930,7 +930,7 @@ Example raw format:
                           className={`w-full px-3.5 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none cursor-pointer ${
                             isDark 
                               ? 'bg-[#0A0A0F] border-white/[0.04] text-white focus:border-purple-500/40' 
-                              : 'bg-slate-50/80 border-slate-250 text-slate-700 focus:border-purple-500/50'
+                              : 'bg-slate-50/80 border-slate-200 text-slate-700 focus:border-purple-500/50'
                           }`}
                         >
                           <option value="Score A+">Aiming for top grade (A+)</option>
@@ -1068,7 +1068,7 @@ Example raw format:
 
                     {/* Bottom Reset action */}
                     <div className="flex items-center justify-between gap-4 mt-1.5 pt-3.5 border-t border-dashed border-slate-500/20">
-                      <span className={`text-[9px] font-bold ${isDark ? 'text-slate-500' : 'text-slate-450'}`}>
+                      <span className={`text-[9px] font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                         Completing tasks awards +5 Study Points!
                       </span>
                       <button

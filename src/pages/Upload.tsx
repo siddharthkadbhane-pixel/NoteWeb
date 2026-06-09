@@ -1005,7 +1005,7 @@ export const Upload: React.FC = () => {
             ) : (
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 light-mode:text-slate-600 pl-1 flex items-center gap-1">
-                  <Globe className="w-3.5 h-3.5 text-indigo-450" /> Paste Shared Cloud Document Link <span className="text-rose-500">*</span>
+                  <Globe className="w-3.5 h-3.5 text-indigo-500" /> Paste Shared Cloud Document Link <span className="text-rose-500">*</span>
                 </span>
                 <input
                   type="url"
@@ -1207,7 +1207,7 @@ export const Upload: React.FC = () => {
                   <h4 className="text-sm font-bold text-white light-mode:text-slate-800">
                     Gemini AI Academic Summarizer
                   </h4>
-                  <p className="text-xs text-slate-500 light-mode:text-slate-650">
+                  <p className="text-xs text-slate-500 light-mode:text-slate-600">
                     Instructs Gemini AI to parse your PDF note and generate a structured overview and checklist instantly.
                   </p>
                 </div>

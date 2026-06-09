@@ -187,22 +187,22 @@ const CHAT_THEMES: ChatTheme[] = [
   {
     name: 'Midnight Nebula',
     containerClass: 'bg-gradient-to-br from-slate-950 via-indigo-950/40 to-purple-950/30 border-purple-500/20',
-    myBubbleClass: 'bg-purple-650 border-purple-600 text-white shadow shadow-purple-600/25',
+    myBubbleClass: 'bg-purple-600 border-purple-500 text-white shadow shadow-purple-600/25',
     otherBubbleClass: 'bg-indigo-950/60 border-purple-500/20 text-purple-200 shadow-sm rounded-bl-none',
     previewBg: 'bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950'
   },
   {
     name: 'Emerald Canopy',
     containerClass: 'bg-gradient-to-br from-slate-950 via-emerald-950/35 to-slate-900 border-emerald-500/20',
-    myBubbleClass: 'bg-emerald-650 border-emerald-600 text-white shadow shadow-emerald-600/25',
-    otherBubbleClass: 'bg-emerald-950/50 border-emerald-500/20 text-emerald-250 shadow-sm rounded-bl-none',
+    myBubbleClass: 'bg-emerald-600 border-emerald-500 text-white shadow shadow-emerald-600/25',
+    otherBubbleClass: 'bg-emerald-950/50 border-emerald-500/20 text-emerald-200 shadow-sm rounded-bl-none',
     previewBg: 'bg-gradient-to-br from-teal-950 via-emerald-950 to-slate-950'
   },
   {
     name: 'Sunset Ember',
     containerClass: 'bg-gradient-to-br from-slate-950 via-rose-950/30 to-orange-950/20 border-rose-500/20',
-    myBubbleClass: 'bg-rose-650 border-rose-600 text-white shadow shadow-rose-600/25',
-    otherBubbleClass: 'bg-rose-950/40 border-rose-500/20 text-rose-250 shadow-sm rounded-bl-none',
+    myBubbleClass: 'bg-rose-600 border-rose-500 text-white shadow shadow-rose-600/25',
+    otherBubbleClass: 'bg-rose-950/40 border-rose-500/20 text-rose-200 shadow-sm rounded-bl-none',
     previewBg: 'bg-gradient-to-br from-rose-950 via-orange-950 to-slate-950'
   },
   {
@@ -225,29 +225,29 @@ const CHAT_THEMES: ChatTheme[] = [
   {
     name: 'Oceanic Abyss',
     containerClass: 'bg-gradient-to-br from-slate-950 via-blue-950/40 to-cyan-950/20 border-blue-500/20',
-    myBubbleClass: 'bg-blue-600 border-blue-550 text-white shadow shadow-blue-650/20',
+    myBubbleClass: 'bg-blue-600 border-blue-500 text-white shadow shadow-blue-600/20',
     otherBubbleClass: 'bg-sky-950/50 border-sky-500/20 text-sky-200 shadow-sm rounded-bl-none',
     previewBg: 'bg-gradient-to-br from-blue-950 via-cyan-950 to-slate-950'
   },
   {
     name: 'Sakura Spring',
     containerClass: 'bg-gradient-to-br from-slate-950 via-pink-950/30 to-purple-950/25 border-pink-500/20',
-    myBubbleClass: 'bg-pink-650 border-pink-500 text-white shadow shadow-pink-650/20',
-    otherBubbleClass: 'bg-pink-950/40 border-pink-500/20 text-pink-250 shadow-sm rounded-bl-none',
+    myBubbleClass: 'bg-pink-600 border-pink-500 text-white shadow shadow-pink-600/20',
+    otherBubbleClass: 'bg-pink-950/40 border-pink-500/20 text-pink-200 shadow-sm rounded-bl-none',
     previewBg: 'bg-gradient-to-br from-rose-950/90 via-pink-900/40 to-slate-950'
   },
   {
     name: 'Carbon Stealth',
     containerClass: 'bg-gradient-to-br from-zinc-950 via-neutral-900/20 to-black border-zinc-800',
     myBubbleClass: 'bg-zinc-800 border-zinc-700 text-zinc-100 shadow shadow-black/40',
-    otherBubbleClass: 'bg-zinc-900/80 border-zinc-805/80 text-zinc-300 shadow-sm rounded-bl-none',
+    otherBubbleClass: 'bg-zinc-900/80 border-zinc-800/80 text-zinc-300 shadow-sm rounded-bl-none',
     previewBg: 'bg-gradient-to-br from-zinc-900 via-neutral-950 to-black'
   },
   {
     name: 'Golden Desert',
     containerClass: 'bg-gradient-to-br from-slate-950 via-amber-950/30 to-yellow-950/20 border-amber-500/20',
-    myBubbleClass: 'bg-amber-600 border-amber-500 text-white shadow shadow-amber-650/25',
-    otherBubbleClass: 'bg-amber-950/50 border-amber-500/20 text-amber-250 shadow-sm rounded-bl-none',
+    myBubbleClass: 'bg-amber-600 border-amber-500 text-white shadow shadow-amber-600/25',
+    otherBubbleClass: 'bg-amber-950/50 border-amber-500/20 text-amber-200 shadow-sm rounded-bl-none',
     previewBg: 'bg-gradient-to-br from-amber-950 via-yellow-950 to-slate-950'
   },
   {
@@ -258,7 +258,7 @@ const CHAT_THEMES: ChatTheme[] = [
       backgroundRepeat: 'repeat',
       backgroundColor: '#050510'
     },
-    myBubbleClass: 'bg-indigo-650/90 border-indigo-500 text-white shadow shadow-indigo-650/20',
+    myBubbleClass: 'bg-indigo-600/90 border-indigo-500 text-white shadow shadow-indigo-600/20',
     otherBubbleClass: 'bg-indigo-950/70 border-indigo-800/40 text-indigo-200 shadow-sm rounded-bl-none',
     previewBg: 'bg-indigo-950',
     previewStyle: {
@@ -269,7 +269,7 @@ const CHAT_THEMES: ChatTheme[] = [
   },
   {
     name: 'Study Vibe',
-    containerClass: 'border-amber-700/20 text-slate-805',
+    containerClass: 'border-amber-700/20 text-slate-800',
     style: {
       backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'%3E%3Crect width='36' height='36' fill='%23FDFBF7'/%3E%3Cpath d='M0 36 L36 36 M36 0 L36 36' stroke='rgba(139,92,26,0.035)' stroke-width='0.8' fill='none'/%3E%3C/svg%3E")`,
       backgroundRepeat: 'repeat',
@@ -2040,6 +2040,18 @@ export const Chat: React.FC = () => {
     }, 1000);
   };
 
+  const isCurrentThemeDark = () => {
+    const roomId = activeTab === 'dm' && selectedDmUser ? selectedDmUser.id : 'global';
+    const themeName = chatThemes[roomId] || 'Default';
+    const mappedName = themeName === 'Midnight Purple' ? 'Midnight Nebula' : 
+                       themeName === 'Sunset Crimson' ? 'Sunset Ember' :
+                       themeName === 'Cyberpunk Neon' ? 'Tokyo Neon' :
+                       themeName === 'Emerald Forest' ? 'Emerald Canopy' : themeName;
+    if (mappedName === 'Default') return isDark;
+    if (mappedName === 'Study Vibe') return false;
+    return true;
+  };
+
   const getThemeClasses = () => {
     const roomId = activeTab === 'dm' && selectedDmUser ? selectedDmUser.id : 'global';
     const themeName = chatThemes[roomId] || 'Default';
@@ -2097,13 +2109,13 @@ export const Chat: React.FC = () => {
     const renderMobileMessages = (msgList: any[]) => (
       <>
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center text-slate-500 text-xs font-bold">
+          <div className={`flex-1 flex items-center justify-center ${isCurrentThemeDark() ? 'text-slate-400' : 'text-slate-500'} text-xs font-bold`}>
             🔐 Loading messages...
           </div>
         ) : msgList.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 px-6">
             <div className="w-14 h-14 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-2xl">💬</div>
-            <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>No messages yet</p>
+            <p className={`text-xs font-bold ${isCurrentThemeDark() ? 'text-white' : 'text-slate-800'}`}>No messages yet</p>
             <p className="text-[11px] text-slate-500">Send a message to start the conversation!</p>
           </div>
         ) : (
@@ -2139,7 +2151,7 @@ export const Chat: React.FC = () => {
                   {activeTab === 'global' && (
                     <span
                       onClick={() => senderUid && navigate(`/profile/${senderUid}`)}
-                      className={`text-[10px] font-extrabold px-1 cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                      className={`text-[10px] font-extrabold px-1 cursor-pointer ${isCurrentThemeDark() ? 'text-slate-300' : 'text-slate-600'}`}
                     >
                       {senderName} {getBranchIcon(senderBranch || 'cse')}
                     </span>
@@ -2215,7 +2227,7 @@ export const Chat: React.FC = () => {
 
                         {/* Shared note */}
                         {msg.shared_note_id && (
-                          <div className={`mt-2 p-2.5 rounded-xl border flex flex-col gap-1.5 ${isDark ? 'bg-slate-900/80 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
+                          <div className={`mt-2 p-2.5 rounded-xl border flex flex-col gap-1.5 ${isCurrentThemeDark() ? 'bg-slate-900/80 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
                             <div className="flex items-center gap-1.5 text-indigo-400 text-[11px] font-bold">
                               <FileText className="w-4 h-4" /> Shared Study Note
                             </div>
@@ -2227,7 +2239,7 @@ export const Chat: React.FC = () => {
 
                         {/* Poll */}
                         {msg.poll_data && (
-                          <div className={`mt-2 p-2.5 rounded-xl border flex flex-col gap-1.5 ${isDark ? 'bg-slate-900/60 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                          <div className={`mt-2 p-2.5 rounded-xl border flex flex-col gap-1.5 ${isCurrentThemeDark() ? 'bg-slate-900/60 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
                             <h5 className="text-[11px] font-black flex items-center gap-1.5"><BarChart2 className="w-3.5 h-3.5 text-indigo-400" />{msg.poll_data.question}</h5>
                             <div className="space-y-1">
                               {msg.poll_data.options.map((opt: string, optIdx: number) => {
@@ -2237,7 +2249,7 @@ export const Chat: React.FC = () => {
                                 const hasVoted = votesList.includes(user?.uid || '');
                                 return (
                                   <button key={optIdx} onClick={() => handleCastPollVote(msg.id, optIdx)}
-                                    className={`w-full text-left p-1.5 rounded-lg border text-[10px] relative overflow-hidden cursor-pointer ${hasVoted ? 'border-indigo-500 bg-indigo-600/10 text-white font-bold' : isDark ? 'border-white/5 bg-white/[0.02] text-slate-400' : 'border-slate-200 bg-white text-slate-700'}`}>
+                                    className={`w-full text-left p-1.5 rounded-lg border text-[10px] relative overflow-hidden cursor-pointer ${hasVoted ? 'border-indigo-500 bg-indigo-600/10 text-white font-bold' : isCurrentThemeDark() ? 'border-white/5 bg-white/[0.02] text-slate-400' : 'border-slate-200 bg-white text-slate-700'}`}>
                                     <div className="absolute left-0 top-0 bottom-0 bg-indigo-500/10" style={{ width: `${pct}%` }} />
                                     <div className="flex justify-between relative z-10"><span>{opt}</span><span className="text-[9px] text-slate-400">{pct}%</span></div>
                                   </button>
@@ -2258,7 +2270,7 @@ export const Chat: React.FC = () => {
                         const hasReacted = uidsList.includes(user?.uid || '');
                         return (
                           <button key={emoji} onClick={() => handleAddReaction(msg.id, emoji)}
-                            className={`px-1.5 py-0.5 rounded-full border text-[10px] font-bold flex items-center gap-0.5 cursor-pointer ${hasReacted ? 'bg-indigo-600/30 border-indigo-500 text-indigo-300' : isDark ? 'bg-slate-900/60 border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                            className={`px-1.5 py-0.5 rounded-full border text-[10px] font-bold flex items-center gap-0.5 cursor-pointer ${hasReacted ? 'bg-indigo-600/30 border-indigo-500 text-indigo-300' : isCurrentThemeDark() ? 'bg-slate-900/60 border-white/5 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                             {emoji} {uidsList.length}
                           </button>
                         );
@@ -2295,121 +2307,130 @@ export const Chat: React.FC = () => {
                   </div>
                 )}
                 {!isMe && userProfile?.role === 'admin' && (
-                  <button onClick={() => handleDeleteChat(msg.id)} className="p-1 rounded-lg bg-rose-500/10 text-rose-400 cursor-pointer self-end mb-1 flex-shrink-0 opacity-0 group-hover:opacity-100">
-                    <Trash2 className="w-3 h-3" />
+                  <button 
+                    onClick={() => handleDeleteChat(msg.id)} 
+                    className="p-1 rounded-lg bg-rose-500/10 text-rose-500 cursor-pointer self-end mb-1 flex-shrink-0 opacity-60 active:scale-95"
+                    title="Delete message"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
               </motion.div>
             );
           })
         )}
-        <div ref={messagesEndRef} />
       </>
     );
 
-    // ── Mobile Input Bar (shared for global + DM) ──
-    const MobileInputBar = () => (
-      <div className={`flex-shrink-0 border-t px-3 py-2 ${isDark ? 'border-white/[0.06] bg-[#0D0D14]' : 'border-slate-200 bg-white'}`}
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.5rem)' }}>
-        {/* Reply preview */}
-        {activeTab === 'dm' && replyingTo && selectedDmUser && (
-          <div className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl mb-2 ${isDark ? 'bg-indigo-950/40 border border-indigo-500/20' : 'bg-indigo-50 border border-indigo-200'}`}>
-            <div className="flex-1 min-w-0">
-              <span className="block text-[9px] font-black text-indigo-400 uppercase">↩ {replyingTo.sender_id === user?.uid ? 'You' : selectedDmUser.displayName}</span>
-              <p className={`text-[10px] truncate ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{replyingTo.message}</p>
+    // Mobile Input Bar component (footer inputs + action sheets)
+    const MobileInputBar = () => {
+      const isDarkTheme = isCurrentThemeDark();
+      return (
+        <div className={`flex-shrink-0 p-3 border-t ${
+          isDarkTheme 
+            ? 'border-white/[0.06] bg-[#0E0E14]/90 text-white' 
+            : 'border-slate-200 bg-white/95 text-slate-800'
+        }`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.5rem)' }}>
+          {/* Reply preview */}
+          {activeTab === 'dm' && replyingTo && selectedDmUser && (
+            <div className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl mb-2 ${isDarkTheme ? 'bg-indigo-950/40 border border-indigo-500/20' : 'bg-indigo-50 border border-indigo-200'}`}>
+              <div className="flex-1 min-w-0">
+                <span className="block text-[9px] font-black text-indigo-400 uppercase">↩ {replyingTo.sender_id === user?.uid ? 'You' : selectedDmUser.displayName}</span>
+                <p className={`text-[10px] truncate ${isDarkTheme ? 'text-slate-300' : 'text-slate-600'}`}>{replyingTo.message}</p>
+              </div>
+              <button onClick={() => setReplyingTo(null)} className="p-1 text-slate-400 cursor-pointer flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
             </div>
-            <button onClick={() => setReplyingTo(null)} className="p-1 text-slate-400 cursor-pointer flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
-          </div>
-        )}
+          )}
 
-        {/* Image preview */}
-        {selectedImage && (
-          <div className={`flex items-center gap-2 p-2 rounded-xl mb-2 ${isDark ? 'bg-slate-950/50 border border-white/[0.06]' : 'bg-slate-100 border border-slate-200'}`}>
-            <img src={selectedImage} alt="Attachment" className="w-10 h-10 rounded-lg object-cover border border-white/10 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <span className="block text-[10px] font-bold text-emerald-400">Ready to send</span>
-              {activeTab === 'dm' && (
-                <label className="flex items-center gap-1.5 cursor-pointer mt-0.5">
-                  <input type="checkbox" checked={isViewOnceSelected} onChange={(e) => setIsViewOnceSelected(e.target.checked)} className="w-3 h-3 rounded" />
-                  <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1"><Clock className="w-3 h-3" /> View Once</span>
-                </label>
-              )}
-            </div>
-            <button onClick={removeSelectedImage} className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 cursor-pointer flex-shrink-0 active:bg-rose-500 active:text-white">
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        {/* Quick replies - horizontal scroll */}
-        {!isGuest && (
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none mb-2 pb-0.5">
-            {['👍 Sure!', '📚 Library', 'Kal class?', 'Got it!', 'Check notes', '🧠 Study?'].map(r => (
-              <button key={r} onClick={() => setInputText(r)}
-                className={`px-2.5 py-1 rounded-full border text-[10px] font-bold whitespace-nowrap flex-shrink-0 cursor-pointer active:scale-95 ${isDark ? 'border-white/[0.06] bg-white/[0.02] text-slate-400 active:bg-indigo-600/20 active:text-indigo-300' : 'border-slate-200 bg-slate-100 text-slate-600 active:bg-slate-200'}`}>
-                {r}
+          {/* Image preview */}
+          {selectedImage && (
+            <div className={`flex items-center gap-2 p-2 rounded-xl mb-2 ${isDarkTheme ? 'bg-slate-950/50 border border-white/[0.06]' : 'bg-slate-100 border border-slate-200'}`}>
+              <img src={selectedImage} alt="Attachment" className="w-10 h-10 rounded-lg object-cover border border-white/10 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <span className="block text-[10px] font-bold text-emerald-400">Ready to send</span>
+                {activeTab === 'dm' && (
+                  <label className="flex items-center gap-1.5 cursor-pointer mt-0.5">
+                    <input type="checkbox" checked={isViewOnceSelected} onChange={(e) => setIsViewOnceSelected(e.target.checked)} className="w-3 h-3 rounded" />
+                    <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1"><Clock className="w-3 h-3" /> View Once</span>
+                  </label>
+                )}
+              </div>
+              <button onClick={removeSelectedImage} className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 cursor-pointer flex-shrink-0 active:bg-rose-500 active:text-white">
+                <Trash2 className="w-4 h-4" />
               </button>
-            ))}
-          </div>
-        )}
-
-        {isGuest ? (
-          <div className={`py-3 px-4 rounded-2xl border text-xs font-semibold flex items-center justify-center gap-2 ${isDark ? 'bg-slate-950/40 border-white/[0.04] text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
-            <Lock className="w-3.5 h-3.5" /> Guest Mode — Register to send messages
-          </div>
-        ) : (
-          <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-            <input type="file" accept="image/*" onChange={handleImageSelect} ref={fileInputRef} className="hidden" />
-
-            {/* Attachment + dropdown */}
-            <div className="relative flex-shrink-0">
-              <button type="button" onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                className={`w-10 h-10 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/[0.08] bg-[#1A1A24] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
-                <Plus className={`w-5 h-5 transition-transform duration-200 ${showAttachmentMenu ? 'rotate-45' : ''}`} />
-              </button>
-              {showAttachmentMenu && (
-                <>
-                  <div className="fixed inset-0 z-20" onClick={() => setShowAttachmentMenu(false)} />
-                  <div className={`absolute bottom-12 left-0 rounded-2xl border p-2 flex flex-col gap-1 z-30 shadow-2xl min-w-[160px] ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
-                    <button type="button" onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }}
-                      className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
-                      <ImageIcon className="w-4 h-4 text-indigo-400" /> Attach Photo
-                    </button>
-                    {activeTab === 'dm' && selectedDmUser && (
-                      <>
-                        <button type="button" onClick={() => { setShowAttachmentMenu(false); setIsNoteShareModalOpen(true); }}
-                          className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
-                          <Paperclip className="w-4 h-4 text-sky-400" /> Share Notes
-                        </button>
-                        <button type="button" onClick={() => { setShowAttachmentMenu(false); setIsPollModalOpen(true); }}
-                          className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
-                          <BarChart2 className="w-4 h-4 text-purple-400" /> Create Poll
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </>
-              )}
             </div>
+          )}
 
-            {/* Text input */}
-            <input
-              type="text"
-              placeholder={activeTab === 'global' ? 'Message the lounge...' : `Message ${selectedDmUser?.displayName || ''}...`}
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              className={`flex-1 min-w-0 h-10 px-4 rounded-2xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-500 ${isDark ? 'bg-[#1A1A24] border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
-            />
+          {/* Quick replies - horizontal scroll */}
+          {!isGuest && (
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none mb-2 pb-0.5">
+              {['👍 Sure!', '📚 Library', 'Kal class?', 'Got it!', 'Check notes', '🧠 Study?'].map(r => (
+                <button key={r} onClick={() => setInputText(r)}
+                  className={`px-2.5 py-1 rounded-full border text-[10px] font-bold whitespace-nowrap flex-shrink-0 cursor-pointer active:scale-95 ${isDarkTheme ? 'border-white/[0.06] bg-white/[0.02] text-slate-400 active:bg-indigo-600/20 active:text-indigo-300' : 'border-slate-200 bg-slate-100 text-slate-600 active:bg-slate-200'}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
 
-            {/* Send button */}
-            <button type="submit" disabled={isSending || (!inputText.trim() && !selectedImage)}
-              className="w-10 h-10 flex-shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center disabled:opacity-40 cursor-pointer active:scale-90 shadow-lg shadow-indigo-600/25">
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
-        )}
-      </div>
-    );
+          {isGuest ? (
+            <div className={`py-3 px-4 rounded-2xl border text-xs font-semibold flex items-center justify-center gap-2 ${isDarkTheme ? 'bg-slate-950/40 border-white/[0.04] text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
+              <Lock className="w-3.5 h-3.5" /> Guest Mode — Register to send messages
+            </div>
+          ) : (
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+              <input type="file" accept="image/*" onChange={handleImageSelect} ref={fileInputRef} className="hidden" />
+
+              {/* Attachment + dropdown */}
+              <div className="relative flex-shrink-0">
+                <button type="button" onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                  className={`w-10 h-10 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDarkTheme ? 'border-white/[0.08] bg-[#1A1A24] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
+                  <Plus className={`w-5 h-5 transition-transform duration-200 ${showAttachmentMenu ? 'rotate-45' : ''}`} />
+                </button>
+                {showAttachmentMenu && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setShowAttachmentMenu(false)} />
+                    <div className={`absolute bottom-12 left-0 rounded-2xl border p-2 flex flex-col gap-1 z-30 shadow-2xl min-w-[160px] ${isDarkTheme ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+                      <button type="button" onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }}
+                        className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${isDarkTheme ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
+                        <ImageIcon className="w-4 h-4 text-indigo-400" /> Attach Photo
+                      </button>
+                      {activeTab === 'dm' && selectedDmUser && (
+                        <>
+                          <button type="button" onClick={() => { setShowAttachmentMenu(false); setIsNoteShareModalOpen(true); }}
+                            className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${isDarkTheme ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
+                            <Paperclip className="w-4 h-4 text-sky-400" /> Share Notes
+                          </button>
+                          <button type="button" onClick={() => { setShowAttachmentMenu(false); setIsPollModalOpen(true); }}
+                            className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${isDarkTheme ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
+                            <BarChart2 className="w-4 h-4 text-purple-400" /> Create Poll
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Text input */}
+              <input
+                type="text"
+                placeholder={activeTab === 'global' ? 'Message the lounge...' : `Message ${selectedDmUser?.displayName || ''}...`}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                className={`flex-1 min-w-0 h-10 px-4 rounded-2xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-500 ${isDarkTheme ? 'bg-[#1A1A24] border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+              />
+
+              {/* Send button */}
+              <button type="submit" disabled={isSending || (!inputText.trim() && !selectedImage)}
+                className="w-10 h-10 flex-shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center disabled:opacity-40 cursor-pointer active:scale-90 shadow-lg shadow-indigo-600/25">
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+          )}
+        </div>
+      );
+    };
 
     // ── MOBILE: DM Contact List Screen ──
     if (activeTab === 'dm' && mobileView === 'list') {
@@ -2496,7 +2517,7 @@ export const Chat: React.FC = () => {
                   const isOnline = onlineUsers.some(u => u.uid === contact.uid);
                   return (
                     <button key={contact.uid} onClick={() => { setSelectedDmUser({ id: contact.uid, displayName: contact.displayName, photoURL: contact.photoURL, username: contact.username, branch: contact.branch }); setMobileView('chat'); fetchDmMessages(contact.uid); }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 border-b cursor-pointer active:scale-[0.98] text-left transition-colors ${isDark ? 'border-white/[0.04] active:bg-white/[0.04]' : 'border-slate-100 active:bg-slate-50'}`}>
+                      className={`w-full flex items-center gap-3 px-4 py-3 border-b cursor-pointer active:scale-[0.98] text-left transition-colors ${isDark ? 'border-white/[0.04] bg-[#0D0D14]/45 active:bg-white/[0.04]' : 'border-slate-100 bg-white active:bg-slate-100'}`}>
                       {/* Avatar with online dot */}
                       <div className="relative flex-shrink-0">
                         {renderAvatar(contact.photoURL, 'w-12 h-12 text-xl')}
@@ -2530,30 +2551,31 @@ export const Chat: React.FC = () => {
 
     // ── MOBILE: Global Lounge Screen ──
     if (activeTab === 'global') {
+      const isLoungeDark = isCurrentThemeDark();
       return (
-        <div className={`fixed inset-0 flex flex-col ${isDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'} ${getThemeClasses()}`}
+        <div className={`fixed inset-0 flex flex-col ${isLoungeDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'} ${getThemeClasses()}`}
           style={{ ...getThemeStyle() }}>
 
           {/* Header */}
-          <div className={`flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b ${isDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`}
+          <div className={`flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b ${isLoungeDark ? 'border-white/[0.06] bg-[#0D0D14]/80 text-white' : 'border-slate-200 bg-white/90 text-slate-800'}`}
             style={{ backdropFilter: 'blur(12px)', paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
             <div className="flex items-center gap-2">
               <button onClick={() => navigate('/')}
-                className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 bg-white/[0.04] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isLoungeDark ? 'border-white/10 bg-white/[0.04] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <div className="w-8 h-8 rounded-full bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-base flex-shrink-0">💬</div>
               <div>
-                <h1 className={`text-xs font-black leading-none ${isDark ? 'text-white' : 'text-slate-800'}`}>Campus Lounge</h1>
+                <h1 className={`text-xs font-black leading-none ${isLoungeDark ? 'text-white' : 'text-slate-800'}`}>Campus Lounge</h1>
                 <span className="text-[9px] text-slate-500 font-bold block mt-0.5">{onlineUsers.length} online</span>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => setIsThemeModalOpen(true)} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+              <button onClick={() => setIsThemeModalOpen(true)} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isLoungeDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
                 <Paintbrush className="w-4 h-4" />
               </button>
               <button onClick={() => { setActiveTab('dm'); setMobileView('list'); }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black border cursor-pointer active:scale-95 ${isDark ? 'border-white/[0.08] text-slate-300 bg-white/[0.03]' : 'border-slate-200 text-slate-600 bg-slate-50'}`}>
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black border cursor-pointer active:scale-95 ${isLoungeDark ? 'border-white/[0.08] text-slate-300 bg-white/[0.03]' : 'border-slate-200 text-slate-600 bg-slate-50'}`}>
                 <MessageCircle className="w-3.5 h-3.5" />
                 DMs
                 {dmContacts.reduce((a, c) => a + c.unreadCount, 0) > 0 && <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
@@ -2596,9 +2618,9 @@ export const Chat: React.FC = () => {
                     const isSelected = currentTheme === themeItem.name;
                     return (
                       <button key={themeItem.name} onClick={() => { const updated = { ...chatThemes, [currentRoomId]: themeItem.name }; setChatThemes(updated); localStorage.setItem('noteweb-chat-themes', JSON.stringify(updated)); toastSuccess(`${themeItem.name} applied!`); setIsThemeModalOpen(false); }}
-                        className={`p-2 rounded-2xl border text-left cursor-pointer active:scale-95 ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500/30' : isDark ? 'border-white/[0.05] bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
+                        className={`p-2 rounded-2xl border text-left cursor-pointer active:scale-95 ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500/30' : isLoungeDark ? 'border-white/[0.05] bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
                         <div className={`h-14 rounded-xl mb-1.5 ${themeItem.previewBg}`} style={themeItem.previewStyle} />
-                        <span className={`text-[10px] font-black truncate block ${isSelected ? 'text-indigo-400' : isDark ? 'text-slate-300' : 'text-slate-700'}`}>{themeItem.name}</span>
+                        <span className={`text-[10px] font-black truncate block ${isSelected ? 'text-indigo-400' : isLoungeDark ? 'text-slate-300' : 'text-slate-700'}`}>{themeItem.name}</span>
                       </button>
                     );
                   })}
@@ -2611,16 +2633,17 @@ export const Chat: React.FC = () => {
     }
 
     // ── MOBILE: DM Chat Screen ──
+    const isDmChatDark = isCurrentThemeDark();
     return (
-      <div className={`fixed inset-0 flex flex-col ${isDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'} ${getThemeClasses()}`}
+      <div className={`fixed inset-0 flex flex-col ${isDmChatDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'} ${getThemeClasses()}`}
         style={{ ...getThemeStyle() }}>
 
         {/* DM Chat Header */}
-        <div className={`flex-shrink-0 flex items-center gap-2 px-3 pb-3 border-b ${isDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`}
+        <div className={`flex-shrink-0 flex items-center gap-2 px-3 pb-3 border-b ${isDmChatDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`}
           style={{ backdropFilter: 'blur(12px)', paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
           {/* Back button */}
           <button onClick={() => { setMobileView('list'); setSelectedDmUser(null); navigate('/chat', { replace: true }); }}
-            className={`w-9 h-9 flex-shrink-0 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 bg-white/[0.04] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+            className={`w-9 h-9 flex-shrink-0 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDmChatDark ? 'border-white/10 bg-white/[0.04] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
             <ChevronLeft className="w-5 h-5" />
           </button>
 
@@ -2633,7 +2656,7 @@ export const Chat: React.FC = () => {
               )}
             </div>
             <div className="min-w-0">
-              <h2 className={`text-sm font-black leading-none truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>
+              <h2 className={`text-sm font-black leading-none truncate ${isDmChatDark ? 'text-white' : 'text-slate-800'}`}>
                 {selectedDmUser?.displayName} <span className="text-sm">{getBranchIcon(selectedDmUser?.branch || 'cse')}</span>
               </h2>
               <span className="text-[10px] mt-0.5 block">
@@ -2649,19 +2672,19 @@ export const Chat: React.FC = () => {
 
           {/* Action buttons */}
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={() => startWebRtcCall('voice')} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><Phone className="w-4 h-4" /></button>
-            <button onClick={() => startWebRtcCall('video')} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><Video className="w-4 h-4" /></button>
+            <button onClick={() => startWebRtcCall('voice')} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDmChatDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><Phone className="w-4 h-4" /></button>
+            <button onClick={() => startWebRtcCall('video')} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDmChatDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><Video className="w-4 h-4" /></button>
 
             {/* Three-dot menu */}
             <div className="relative">
               <button type="button" onClick={() => setShowHeaderMenu(!showHeaderMenu)}
-                className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${showHeaderMenu ? 'border-indigo-500 bg-indigo-600/20 text-indigo-400' : isDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+                className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${showHeaderMenu ? 'border-indigo-500 bg-indigo-600/20 text-indigo-400' : isDmChatDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
                 <MoreVertical className="w-4 h-4" />
               </button>
               {showHeaderMenu && (
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setShowHeaderMenu(false)} />
-                  <div className={`absolute right-0 top-10 rounded-2xl border p-2 flex flex-col gap-1 z-30 shadow-2xl min-w-[190px] ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+                  <div className={`absolute right-0 top-10 rounded-2xl border p-2 flex flex-col gap-1 z-30 shadow-2xl min-w-[190px] ${isDmChatDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
                     {[
                       { icon: <Paintbrush className="w-4 h-4 text-indigo-400" />, label: 'Personalize Theme', action: () => { setShowHeaderMenu(false); setIsThemeModalOpen(true); } },
                       { icon: <Star className="w-4 h-4 text-amber-400" />, label: 'Starred Messages', action: () => { setShowHeaderMenu(false); setIsStarDrawerOpen(true); } },
@@ -2670,7 +2693,7 @@ export const Chat: React.FC = () => {
                       { icon: <Shield className="w-4 h-4 text-rose-400" />, label: 'Block Classmate', action: () => { setShowHeaderMenu(false); handleToggleBlock(selectedDmUser?.id || ''); }, danger: true },
                     ].map(item => (
                       <button key={item.label} type="button" onClick={item.action}
-                        className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${item.danger ? 'text-rose-400 hover:bg-rose-500/10' : isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
+                        className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${item.danger ? 'text-rose-400 hover:bg-rose-500/10' : isDmChatDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
                         {item.icon} {item.label}
                       </button>
                     ))}
@@ -2700,7 +2723,7 @@ export const Chat: React.FC = () => {
         {isStarDrawerOpen && (
           <div className="fixed inset-0 z-50 flex flex-col justify-end">
             <div onClick={() => setIsStarDrawerOpen(false)} className="absolute inset-0 bg-black/60" />
-            <div className={`w-full rounded-t-3xl border-t p-5 relative z-10 max-h-[75vh] flex flex-col ${isDark ? 'bg-[#0E0E12] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+            <div className={`w-full rounded-t-3xl border-t p-5 relative z-10 max-h-[75vh] flex flex-col ${isDmChatDark ? 'bg-[#0E0E12] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-black text-sm flex items-center gap-2"><Star className="w-4 h-4 text-amber-400 fill-current" /> Starred Messages</h3>
                 <button onClick={() => setIsStarDrawerOpen(false)} className="p-1.5 rounded-xl text-slate-400 cursor-pointer"><X className="w-4 h-4" /></button>
@@ -2712,7 +2735,7 @@ export const Chat: React.FC = () => {
                     <p className="text-xs text-slate-400 font-bold">No starred messages yet</p>
                   </div>
                 ) : starredMessages.map(msg => (
-                  <div key={msg.id} className={`p-3 rounded-2xl border relative ${isDark ? 'bg-white/[0.02] border-white/[0.04]' : 'bg-slate-50 border-slate-200'}`}>
+                  <div key={msg.id} className={`p-3 rounded-2xl border relative ${isDmChatDark ? 'bg-white/[0.02] border-white/[0.04]' : 'bg-slate-50 border-slate-200'}`}>
                     <button onClick={() => handleToggleStar(msg)} className="absolute top-2 right-2 p-1 text-amber-400 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                     <div className="flex items-center gap-2 mb-1.5">
                       {renderAvatar(msg.sender_avatar || '', 'w-6 h-6 text-xs')}
@@ -2731,7 +2754,7 @@ export const Chat: React.FC = () => {
         {isThemeModalOpen && (
           <div className="fixed inset-0 z-50 flex items-end">
             <div onClick={() => setIsThemeModalOpen(false)} className="absolute inset-0 bg-black/60" />
-            <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+            <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] ${isDmChatDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><Paintbrush className="w-4 h-4" /> Chat Theme</h3>
                 <button onClick={() => setIsThemeModalOpen(false)} className="p-1.5 rounded-xl cursor-pointer active:scale-90 text-slate-400"><X className="w-4 h-4" /></button>
@@ -2743,9 +2766,9 @@ export const Chat: React.FC = () => {
                   const isSelected = currentTheme === themeItem.name;
                   return (
                     <button key={themeItem.name} onClick={() => { const updated = { ...chatThemes, [currentRoomId]: themeItem.name }; setChatThemes(updated); localStorage.setItem('noteweb-chat-themes', JSON.stringify(updated)); toastSuccess(`${themeItem.name} applied!`); setIsThemeModalOpen(false); }}
-                      className={`p-2 rounded-2xl border text-left cursor-pointer active:scale-95 ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500/30' : isDark ? 'border-white/[0.05] bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
+                      className={`p-2 rounded-2xl border text-left cursor-pointer active:scale-95 ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500/30' : isDmChatDark ? 'border-white/[0.05] bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
                       <div className={`h-14 rounded-xl mb-1.5 ${themeItem.previewBg}`} style={themeItem.previewStyle} />
-                      <span className={`text-[10px] font-black truncate block ${isSelected ? 'text-indigo-400' : isDark ? 'text-slate-300' : 'text-slate-700'}`}>{themeItem.name}</span>
+                      <span className={`text-[10px] font-black truncate block ${isSelected ? 'text-indigo-400' : isDmChatDark ? 'text-slate-300' : 'text-slate-700'}`}>{themeItem.name}</span>
                     </button>
                   );
                 })}
@@ -2758,7 +2781,7 @@ export const Chat: React.FC = () => {
         {isNoteShareModalOpen && (
           <div className="fixed inset-0 z-50 flex items-end">
             <div onClick={() => { setIsNoteShareModalOpen(false); setSearchNoteQuery(''); setNoteSearchResults([]); }} className="absolute inset-0 bg-black/60" />
-            <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+            <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] ${isDmChatDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><Paperclip className="w-4 h-4" /> Share Study Notes</h3>
                 <button onClick={() => { setIsNoteShareModalOpen(false); setSearchNoteQuery(''); setNoteSearchResults([]); }} className="p-1.5 rounded-xl cursor-pointer text-slate-400"><X className="w-4 h-4" /></button>
@@ -2766,7 +2789,7 @@ export const Chat: React.FC = () => {
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input type="text" placeholder="Search notes by subject..." value={searchNoteQuery} onChange={(e) => handleSearchNotes(e.target.value)}
-                  className={`w-full h-10 pl-9 pr-3 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDark ? 'bg-white/[0.05] border-white/[0.08] text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400'}`} />
+                  className={`w-full h-10 pl-9 pr-3 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDmChatDark ? 'bg-white/[0.05] border-white/[0.08] text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400'}`} />
               </div>
               <div className="flex-1 overflow-y-auto space-y-2">
                 {searchNoteQuery.trim() === '' ? (
@@ -2775,9 +2798,9 @@ export const Chat: React.FC = () => {
                   <p className="text-center py-6 text-slate-500 text-xs font-bold">No notes found</p>
                 ) : noteSearchResults.map(note => (
                   <button key={note.id} onClick={() => handleShareNoteMessage(note)}
-                    className={`w-full p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer text-left active:scale-[0.98] ${isDark ? 'border-white/[0.06] bg-white/[0.02] active:bg-indigo-600/10' : 'border-slate-200 bg-slate-50 active:bg-indigo-50'}`}>
+                    className={`w-full p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer text-left active:scale-[0.98] ${isDmChatDark ? 'border-white/[0.06] bg-white/[0.02] active:bg-indigo-600/10' : 'border-slate-200 bg-slate-50 active:bg-indigo-50'}`}>
                     <div className="min-w-0">
-                      <span className={`block text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{note.subject}</span>
+                      <span className={`block text-sm font-bold truncate ${isDmChatDark ? 'text-white' : 'text-slate-800'}`}>{note.subject}</span>
                       <span className="text-xs text-slate-500">{note.branch?.toUpperCase()} · {note.professor || 'Unknown'}</span>
                     </div>
                     <span className="px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 text-[10px] font-black flex-shrink-0">Share</span>
@@ -2792,18 +2815,18 @@ export const Chat: React.FC = () => {
         {isPollModalOpen && (
           <div className="fixed inset-0 z-50 flex items-end">
             <div onClick={() => { setIsPollModalOpen(false); setPollQuestion(''); setPollOptions(['', '']); }} className="absolute inset-0 bg-black/60" />
-            <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+            <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 ${isDmChatDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><BarChart2 className="w-4 h-4" /> Create Poll</h3>
                 <button onClick={() => { setIsPollModalOpen(false); setPollQuestion(''); setPollOptions(['', '']); }} className="p-1.5 rounded-xl cursor-pointer text-slate-400"><X className="w-4 h-4" /></button>
               </div>
               <input type="text" placeholder="Poll question..." value={pollQuestion} onChange={(e) => setPollQuestion(e.target.value)}
-                className={`w-full h-10 px-3.5 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDark ? 'bg-white/[0.05] border-white/[0.08] text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800'}`} />
+                className={`w-full h-10 px-3.5 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDmChatDark ? 'bg-white/[0.05] border-white/[0.08] text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800'}`} />
               <div className="space-y-2">
                 {pollOptions.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <input type="text" placeholder={`Option ${idx + 1}`} value={opt} onChange={(e) => { const u = [...pollOptions]; u[idx] = e.target.value; setPollOptions(u); }}
-                      className={`flex-1 h-10 px-3.5 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDark ? 'bg-white/[0.05] border-white/[0.08] text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800'}`} />
+                      className={`flex-1 h-10 px-3.5 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDmChatDark ? 'bg-white/[0.05] border-white/[0.08] text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800'}`} />
                     {pollOptions.length > 2 && <button type="button" onClick={() => setPollOptions(pollOptions.filter((_, i) => i !== idx))} className="p-2 rounded-xl bg-rose-500/10 text-rose-400 cursor-pointer active:bg-rose-500 active:text-white"><Trash2 className="w-4 h-4" /></button>}
                   </div>
                 ))}
@@ -2912,7 +2935,7 @@ export const Chat: React.FC = () => {
         {/* Lounge banner warning */}
         {activeTab === 'global' && (
           <div className={`flex items-center gap-2 p-2.5 border rounded-xl text-xs text-left ${isDark ? 'bg-rose-500/5 border-rose-500/10 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700 font-medium'}`}>
-            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-rose-450" />
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-rose-500" />
             <p className="leading-tight">
               <strong>Lounge:</strong> Messages expire in 7 days. No PDFs. Be respectful.
             </p>
@@ -3041,14 +3064,14 @@ export const Chat: React.FC = () => {
                             <div className="relative">
                               {renderAvatar(contact.photoURL, "w-10 h-10 text-xl")}
                               {isContactOnline ? (
-                                <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-555 border-2 border-[#121218]" />
+                                <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#121218]" />
                               ) : (
                                 <span className="absolute -bottom-1 -right-1 text-xs">{getBranchIcon(contact.branch)}</span>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
-                                <span className={`text-xs font-extrabold truncate ${isSelected ? 'text-white' : isDark ? 'text-white' : 'text-slate-805'}`}>{contact.displayName}</span>
+                                <span className={`text-xs font-extrabold truncate ${isSelected ? 'text-white' : isDark ? 'text-white' : 'text-slate-800'}`}>{contact.displayName}</span>
                                 <span className={`text-[8px] font-bold ${isSelected ? 'text-indigo-200' : 'text-slate-500'}`}>{formatTime(contact.lastMessageTime)}</span>
                               </div>
                               <p className={`text-[10px] truncate mt-0.5 ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
@@ -3074,7 +3097,7 @@ export const Chat: React.FC = () => {
                               className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-lg opacity-0 group-hover/contact:opacity-100 transition-all active:scale-90 ${
                                 isPinned 
                                   ? 'opacity-100 text-indigo-400' 
-                                  : isDark ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-750'
+                                  : isDark ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-700'
                               }`}
                               title={isPinned ? "Unpin chat" : "Pin chat to top"}
                             >
@@ -3102,7 +3125,7 @@ export const Chat: React.FC = () => {
                     💬
                   </div>
                   <div className="min-w-0">
-                    <h4 className={`text-xs font-black leading-none truncate ${isDark ? 'text-white' : 'text-slate-805'}`}>
+                    <h4 className={`text-xs font-black leading-none truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>
                       Campus Lounge
                     </h4>
                     <span className="text-[9px] text-slate-500 mt-0.5 block leading-none">
@@ -3117,7 +3140,7 @@ export const Chat: React.FC = () => {
                   <button
                     onClick={() => setIsThemeModalOpen(true)}
                     className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
-                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-350' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
+                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
                     }`}
                     title="Select lounge theme"
                   >
@@ -3172,7 +3195,7 @@ export const Chat: React.FC = () => {
                   <button
                     onClick={() => startWebRtcCall('voice')}
                     className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
-                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-350' : 'border-slate-200 hover:bg-slate-100 text-slate-655'
+                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
                     }`}
                     title="Start voice call"
                   >
@@ -3181,7 +3204,7 @@ export const Chat: React.FC = () => {
                   <button
                     onClick={() => startWebRtcCall('video')}
                     className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
-                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-355' : 'border-slate-200 hover:bg-slate-100 text-slate-655'
+                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
                     }`}
                     title="Start video call"
                   >
@@ -3195,8 +3218,8 @@ export const Chat: React.FC = () => {
                       onClick={() => setShowHeaderMenu(!showHeaderMenu)}
                       className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
                         showHeaderMenu
-                          ? 'border-indigo-500 bg-indigo-650/20 text-indigo-400'
-                          : isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-50 text-slate-705'
+                          ? 'border-indigo-500 bg-indigo-600/20 text-indigo-400'
+                          : isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                       }`}
                       title="More chat settings"
                     >
@@ -3225,7 +3248,7 @@ export const Chat: React.FC = () => {
                               isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
                             }`}
                           >
-                            <Paintbrush className="w-4 h-4 text-indigo-455" />
+                            <Paintbrush className="w-4 h-4 text-indigo-500" />
                             <span>Personalize Theme</span>
                           </button>
 
@@ -3271,14 +3294,14 @@ export const Chat: React.FC = () => {
                             }}
                             className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left ${
                               mutedUids.includes(selectedDmUser.id) 
-                                ? 'bg-rose-600/10 text-rose-455' 
+                                ? 'bg-rose-600/10 text-rose-500' 
                                 : isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
                             }`}
                           >
                             {mutedUids.includes(selectedDmUser.id) ? (
-                              <><Volume2 className="w-4 h-4 text-emerald-450" /><span>Unmute Notifications</span></>
+                              <><Volume2 className="w-4 h-4 text-emerald-500" /><span>Unmute Notifications</span></>
                             ) : (
-                              <><VolumeX className="w-4 h-4 text-rose-455" /><span>Mute Notifications</span></>
+                              <><VolumeX className="w-4 h-4 text-rose-500" /><span>Mute Notifications</span></>
                             )}
                           </button>
 
@@ -3289,7 +3312,7 @@ export const Chat: React.FC = () => {
                               setShowHeaderMenu(false);
                               handleToggleBlock(selectedDmUser.id);
                             }}
-                            className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left text-rose-455 hover:bg-rose-500/10`}
+                            className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left text-rose-500 hover:bg-rose-500/10`}
                           >
                             <Shield className="w-4 h-4" />
                             <span>Block Classmate</span>
@@ -3508,7 +3531,7 @@ export const Chat: React.FC = () => {
                                   {msg.is_view_once && imageUrl && (
                                     <div className="mt-2.5 max-w-xs text-left">
                                       {viewOnceRevealed.includes(msg.id) ? (
-                                        <div className="p-3 border border-white/10 rounded-xl bg-black/45 text-slate-400 text-[10px] flex items-center gap-2">
+                                        <div className="p-3 border border-white/10 rounded-xl bg-black/40 text-slate-400 text-[10px] flex items-center gap-2">
                                           <EyeOff className="w-4 h-4 text-rose-500" />
                                           <span>📷 View Once image expired</span>
                                         </div>
@@ -3520,7 +3543,7 @@ export const Chat: React.FC = () => {
                                             className="max-h-60 w-full object-cover select-none"
                                           />
                                           <div className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur text-white text-[9px] font-bold flex items-center gap-1 animate-pulse">
-                                            <Clock className="w-3 h-3 text-indigo-450" />
+                                            <Clock className="w-3 h-3 text-indigo-500" />
                                             <span>Self destructs in {viewOnceTimer[msg.id] || 5}s</span>
                                           </div>
                                         </div>
@@ -3528,7 +3551,7 @@ export const Chat: React.FC = () => {
                                         <button
                                           type="button"
                                           onClick={() => startViewOnceTimer(msg.id)}
-                                          className="p-3 border border-indigo-500/20 rounded-xl bg-indigo-600/10 hover:bg-indigo-650/20 text-indigo-300 text-[10px] flex items-center gap-2 font-bold transition-all active:scale-98 cursor-pointer"
+                                          className="p-3 border border-indigo-500/20 rounded-xl bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300 text-[10px] flex items-center gap-2 font-bold transition-all active:scale-98 cursor-pointer"
                                         >
                                           <Eye className="w-4 h-4 animate-pulse" />
                                           <span>📷 Tap to View Once (5 seconds)</span>
@@ -3555,11 +3578,11 @@ export const Chat: React.FC = () => {
                                   {/* shared note card uploader link */}
                                   {msg.shared_note_id && (
                                     <div className={`mt-2.5 p-3 rounded-xl border text-left flex flex-col gap-2 ${
-                                      isDark ? 'bg-slate-900/80 border-white/10' : 'bg-slate-100 border-slate-250 shadow-sm'
+                                      isDark ? 'bg-slate-900/80 border-white/10' : 'bg-slate-100 border-slate-300 shadow-sm'
                                     }`}>
                                       <div className="flex items-center gap-2 text-indigo-400">
                                         <FileText className="w-5 h-5 flex-shrink-0" />
-                                        <span className="text-xs font-black text-slate-250 light-mode:text-slate-800 truncate">Shared Study Note</span>
+                                        <span className="text-xs font-black text-slate-300 light-mode:text-slate-800 truncate">Shared Study Note</span>
                                       </div>
                                       <div className="text-[10px] text-slate-400 light-mode:text-slate-600">
                                         Open this uploader notes attachment directly in the study player.
@@ -3568,7 +3591,7 @@ export const Chat: React.FC = () => {
                                         href={`/notes?noteId=${msg.shared_note_id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="py-1.5 px-3 rounded-lg bg-indigo-650 hover:bg-indigo-755 text-white font-extrabold text-[10px] text-center transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow shadow-indigo-600/10 cursor-pointer"
+                                        className="py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] text-center transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow shadow-indigo-600/10 cursor-pointer"
                                       >
                                         <Download className="w-3.5 h-3.5" /> View PDF Notes
                                       </a>
@@ -3598,8 +3621,8 @@ export const Chat: React.FC = () => {
                                               onClick={() => handleCastPollVote(msg.id, optIdx)}
                                               className={`w-full text-left p-2 rounded-lg border text-[10px] relative overflow-hidden transition-all active:scale-98 cursor-pointer ${
                                                 hasVoted 
-                                                  ? 'border-indigo-500 bg-indigo-605/10 text-white font-extrabold' 
-                                                  : isDark ? 'border-white/[0.04] bg-white/[0.02] text-slate-350 hover:bg-white/5' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                                                  ? 'border-indigo-500 bg-indigo-600/10 text-white font-extrabold' 
+                                                  : isDark ? 'border-white/[0.04] bg-white/[0.02] text-slate-300 hover:bg-white/5' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
                                               }`}
                                             >
                                               <div 
@@ -3623,7 +3646,7 @@ export const Chat: React.FC = () => {
                             {!isMe && userProfile?.role === 'admin' && (
                               <button
                                 onClick={() => handleDeleteChat(msg.id)}
-                                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-455 hover:text-white transition-all opacity-0 group-hover/msg:opacity-100 cursor-pointer flex-shrink-0 active:scale-95 border border-rose-500/20"
+                                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all opacity-0 group-hover/msg:opacity-100 cursor-pointer flex-shrink-0 active:scale-95 border border-rose-500/20"
                                 title="Delete message"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -3643,7 +3666,7 @@ export const Chat: React.FC = () => {
                                     onClick={() => handleAddReaction(msg.id, emoji)}
                                     className={`px-2 py-0.5 rounded-full border text-[9px] font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-90 ${
                                       hasReacted 
-                                        ? 'bg-indigo-650/30 border-indigo-500 text-indigo-300' 
+                                        ? 'bg-indigo-600/30 border-indigo-500 text-indigo-300' 
                                         : isDark ? 'bg-slate-900/60 border-white/5 text-slate-400 hover:bg-slate-800' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                                     }`}
                                   >
@@ -3677,12 +3700,12 @@ export const Chat: React.FC = () => {
             {selectedImage && selectedDmUser && (
               <div className={`p-3 border rounded-2xl mb-4 flex items-center justify-between gap-4 ${isDark ? 'bg-slate-950/50 border-white/[0.06]' : 'bg-slate-100 border-slate-200'}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-lg overflow-hidden border ${isDark ? 'border-white/10 bg-black/50' : 'border-slate-250 bg-white'}`}>
+                  <div className={`w-12 h-12 rounded-lg overflow-hidden border ${isDark ? 'border-white/10 bg-black/50' : 'border-slate-200 bg-white'}`}>
                     <img src={selectedImage} alt="Attachment Thumbnail" className="w-full h-full object-cover" />
                   </div>
                   <div className="text-left">
                     <span className={`block text-xs font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>Attachment Loaded</span>
-                    <span className="block text-[9px] text-emerald-450 font-semibold uppercase tracking-wider">Ready to send</span>
+                    <span className="block text-[9px] text-emerald-500 font-semibold uppercase tracking-wider">Ready to send</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -3692,7 +3715,7 @@ export const Chat: React.FC = () => {
                       type="checkbox"
                       checked={isViewOnceSelected}
                       onChange={(e) => setIsViewOnceSelected(e.target.checked)}
-                      className="rounded border-white/20 bg-slate-950/50 text-indigo-650 focus:ring-indigo-500 focus:ring-offset-0 w-3.5 h-3.5"
+                      className="rounded border-white/20 bg-slate-950/50 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 w-3.5 h-3.5"
                     />
                     <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-indigo-400" /> View Once
@@ -3721,7 +3744,7 @@ export const Chat: React.FC = () => {
                     className={`px-2.5 py-1 rounded-full border text-[9px] sm:text-[10px] font-extrabold whitespace-nowrap cursor-pointer transition-all active:scale-95 flex-shrink-0 ${
                       isDark 
                         ? 'bg-[#1b1b26]/50 border-white/[0.06] text-slate-400 hover:text-white hover:border-indigo-500/40 hover:bg-indigo-600/10' 
-                        : 'bg-slate-100 border-slate-200 text-slate-650 hover:bg-slate-200 hover:text-slate-800'
+                        : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-800'
                     }`}
                   >
                     {reply}
@@ -3733,11 +3756,11 @@ export const Chat: React.FC = () => {
             {/* Replying-to Preview Banner */}
             {activeTab === 'dm' && replyingTo && selectedDmUser && (
               <div className={`p-2.5 border rounded-2xl mb-2 flex items-center justify-between gap-3 text-left animate-fade-in ${
-                isDark ? 'bg-indigo-950/30 border-indigo-550/20 text-[#E2E8F0]' : 'bg-indigo-50 border-indigo-200 text-slate-800'
+                isDark ? 'bg-indigo-950/30 border-indigo-500/20 text-[#E2E8F0]' : 'bg-indigo-50 border-indigo-200 text-slate-800'
               }`}>
                 <div className="flex-1 min-w-0">
                   <span className="block text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">Replying to {replyingTo.sender_id === user?.uid ? 'You' : selectedDmUser.displayName}</span>
-                  <p className={`text-[10px] truncate ${isDark ? 'text-slate-300' : 'text-slate-650'}`}>{replyingTo.message}</p>
+                  <p className={`text-[10px] truncate ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{replyingTo.message}</p>
                 </div>
                 <button
                   type="button"
@@ -3756,7 +3779,7 @@ export const Chat: React.FC = () => {
                 className={`mt-2 pt-2.5 border-t flex items-center gap-1.5 sm:gap-2 relative ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}
               >
                 {isGuest ? (
-                  <div className={`w-full py-3 border rounded-2xl text-xs font-semibold text-slate-505 flex items-center justify-center gap-1.5 ${isDark ? 'bg-slate-950/40 border-white/[0.04]' : 'bg-slate-100 border-slate-200'}`}>
+                  <div className={`w-full py-3 border rounded-2xl text-xs font-semibold text-slate-500 flex items-center justify-center gap-1.5 ${isDark ? 'bg-slate-950/40 border-white/[0.04]' : 'bg-slate-100 border-slate-200'}`}>
                     <Lock className="w-3.5 h-3.5" /> Guest Mode: Access is Read-Only. Register to send messages.
                   </div>
                 ) : (
@@ -3774,7 +3797,7 @@ export const Chat: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                        className={`sm:hidden p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-455 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                        className={`sm:hidden p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
                         title="Add attachments"
                       >
                         <Plus className={`w-5 h-5 transition-transform duration-200 ${showAttachmentMenu ? 'rotate-45' : ''}`} />
@@ -3785,7 +3808,7 @@ export const Chat: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                          className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
                           title="Attach Photo"
                         >
                           <ImageIcon className="w-5 h-5" />
@@ -3796,7 +3819,7 @@ export const Chat: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setIsNoteShareModalOpen(true)}
-                              className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                              className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
                               title="Share study notes"
                             >
                               <Paperclip className="w-5 h-5" />
@@ -3804,7 +3827,7 @@ export const Chat: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setIsPollModalOpen(true)}
-                              className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-450 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                              className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
                               title="Create study poll"
                             >
                               <BarChart2 className="w-5 h-5" />
@@ -3878,7 +3901,7 @@ export const Chat: React.FC = () => {
                       placeholder={activeTab === 'global' ? "Share update..." : `Message ${selectedDmUser?.displayName || ''}...`}
                       value={inputText}
                       onChange={(e) => handleInputChange(e.target.value)}
-                      className={`flex-1 min-w-0 border rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-600 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-850'}`}
+                      className={`flex-1 min-w-0 border rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-600 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
                     />
 
                     <button
@@ -3970,7 +3993,7 @@ export const Chat: React.FC = () => {
             <div className="flex-1 overflow-y-auto space-y-4 pr-1">
               {starredMessages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center gap-2 text-slate-500 py-12">
-                  <Star className="w-8 h-8 text-slate-650" />
+                  <Star className="w-8 h-8 text-slate-600" />
                   <span className="text-xs font-black text-slate-400">No starred messages</span>
                   <span className="text-[10px] text-slate-500 max-w-[200px]">Hover any message bubble and click the star icon to save it here for reference.</span>
                 </div>
@@ -3994,7 +4017,7 @@ export const Chat: React.FC = () => {
                       {renderAvatar(msg.sender_avatar || '', "w-7 h-7 text-xs")}
                       <div className="min-w-0">
                         <span className="block text-[10px] font-black leading-none">{msg.sender_name}</span>
-                        <span className="text-[8px] text-slate-505 mt-0.5 block">{formatTime(msg.created_at)}</span>
+                        <span className="text-[8px] text-slate-500 mt-0.5 block">{formatTime(msg.created_at)}</span>
                       </div>
                       {msg.isDM && (
                         <span className="text-[8px] font-black bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded ml-auto">Private DM</span>
@@ -4042,7 +4065,7 @@ export const Chat: React.FC = () => {
                   setNoteSearchResults([]);
                 }}
                 className={`p-1.5 rounded-lg border cursor-pointer active:scale-90 ${
-                  isDark ? 'border-white/10 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-505'
+                  isDark ? 'border-white/10 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-500'
                 }`}
               >
                 <X className="w-4 h-4" />
@@ -4051,13 +4074,13 @@ export const Chat: React.FC = () => {
 
             <div className="space-y-4">
               <div className="relative">
-                <Search className="w-4 h-4 text-slate-505 absolute left-3 top-3.5" />
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                 <input
                   type="text"
                   placeholder="Search notes by subject name..."
                   value={searchNoteQuery}
                   onChange={(e) => handleSearchNotes(e.target.value)}
-                  className={`w-full border rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-650 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+                  className={`w-full border rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-500 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
                 />
               </div>
 
@@ -4067,7 +4090,7 @@ export const Chat: React.FC = () => {
                     Type a subject name above to search approved notes
                   </div>
                 ) : noteSearchResults.length === 0 ? (
-                  <div className="text-center py-6 text-slate-505 text-[11px] font-bold">
+                  <div className="text-center py-6 text-slate-500 text-[11px] font-bold">
                     No approved notes found. Try another subject.
                   </div>
                 ) : (
@@ -4080,7 +4103,7 @@ export const Chat: React.FC = () => {
                       }`}
                     >
                       <div className="min-w-0">
-                        <span className={`block text-xs font-bold truncate ${isDark ? 'text-white' : 'text-slate-850'}`}>{note.subject}</span>
+                        <span className={`block text-xs font-bold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{note.subject}</span>
                         <span className="block text-[9px] text-slate-500 mt-0.5">Branch: {note.branch.toUpperCase()} • Professor: {note.professor || 'Unknown'}</span>
                       </div>
                       <span className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[9px] font-black flex-shrink-0">
@@ -4340,7 +4363,7 @@ export const Chat: React.FC = () => {
                   {/* Hang Up Button */}
                   <button
                     onClick={endActiveCall}
-                    className="w-14 h-14 rounded-full bg-rose-650 hover:bg-rose-755 text-white flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-lg shadow-rose-650/30"
+                    className="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-lg shadow-rose-600/30"
                     title="End Call"
                   >
                     <PhoneOff className="w-6 h-6" />
@@ -4360,7 +4383,7 @@ export const Chat: React.FC = () => {
             className="absolute inset-0 bg-[#0A0A0C]/70 backdrop-blur-md" 
           />
           <GlassPanel className={`w-full max-w-xl p-6 border shadow-2xl relative z-10 rounded-3xl ${
-            isDark ? 'bg-[#0E0E12]/98 border-white/[0.08] text-[#E2E8F0]' : 'bg-white border-slate-205 text-slate-805'
+            isDark ? 'bg-[#0E0E12]/98 border-white/[0.08] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-800'
           }`}>
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b pb-3.5 mb-4 border-white/10 light-mode:border-slate-100">
@@ -4371,7 +4394,7 @@ export const Chat: React.FC = () => {
               <button
                 onClick={() => setIsThemeModalOpen(false)}
                 className={`p-1.5 rounded-lg border cursor-pointer active:scale-90 ${
-                  isDark ? 'border-white/10 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-505'
+                  isDark ? 'border-white/10 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-500'
                 }`}
               >
                 <X className="w-4 h-4" />
@@ -4432,7 +4455,7 @@ export const Chat: React.FC = () => {
 
                       {/* Selected tick badge */}
                       {isSelected && (
-                        <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-indigo-650 text-white flex items-center justify-center shadow-lg border border-indigo-400">
+                        <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg border border-indigo-400">
                           <Check className="w-2.5 h-2.5" />
                         </span>
                       )}
@@ -4443,7 +4466,7 @@ export const Chat: React.FC = () => {
                       <span className={`text-[10px] font-black truncate ${
                         isSelected 
                           ? 'text-indigo-400' 
-                          : isDark ? 'text-slate-200' : 'text-slate-805'
+                          : isDark ? 'text-slate-200' : 'text-slate-800'
                       }`}>
                         {themeItem.name}
                       </span>

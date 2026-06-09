@@ -215,14 +215,14 @@ export const Quests: React.FC = () => {
               Daily Quests & Tasks
               <Sparkles className="w-5 h-5 text-amber-400" />
             </h2>
-            <p className={`mt-2 text-sm max-w-lg ${isDark ? 'text-slate-400' : 'text-slate-650'}`}>
+            <p className={`mt-2 text-sm max-w-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               Complete daily academic activities to earn bonus XP points and rise higher on the campus leaderboard ranks!
             </p>
           </div>
 
           {/* Reset Timer PNL */}
           <GlassPanel className="p-4 px-6 rounded-2xl flex flex-col items-center md:items-end justify-center bg-[#101018]/40 border border-white/[0.06] text-center md:text-right">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-550 flex items-center gap-1.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
               Resetting In
             </span>
@@ -304,10 +304,10 @@ export const Quests: React.FC = () => {
 
         {/* Quests Checklist Title */}
         <div className="flex items-center justify-between text-left mt-4 pb-2 border-b border-white/[0.04]">
-          <h3 className={`text-base font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-750'}`}>
+          <h3 className={`text-base font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
             Today's Checklist
           </h3>
-          <span className={`text-xs font-bold ${isDark ? 'text-slate-550' : 'text-slate-500'}`}>
+          <span className={`text-xs font-bold ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
             Daily resets occur at 00:00 midnight
           </span>
         </div>
@@ -345,7 +345,7 @@ export const Quests: React.FC = () => {
                       </h4>
                       <span className={`text-[10px] font-black tracking-wide px-2 py-0.5 rounded-md border flex-shrink-0
                         ${isClaimed 
-                          ? 'border-slate-800 text-slate-550 bg-slate-900/40' 
+                          ? 'border-slate-800 text-slate-500 bg-slate-900/40' 
                           : 'border-indigo-500/30 text-indigo-400 bg-indigo-500/10'
                         }
                       `}>
@@ -353,7 +353,7 @@ export const Quests: React.FC = () => {
                       </span>
                     </div>
                     
-                    <p className={`text-[11px] font-semibold leading-relaxed mt-1 ${isClaimed ? 'text-slate-550' : (isDark ? 'text-slate-450' : 'text-slate-550')}`}>
+                    <p className={`text-[11px] font-semibold leading-relaxed mt-1 ${isClaimed ? 'text-slate-500' : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
                       {quest.description}
                     </p>
                   </div>
@@ -364,7 +364,7 @@ export const Quests: React.FC = () => {
                   
                   {/* Progress Indicator */}
                   <div className="flex flex-col gap-1 items-start">
-                    <span className={`text-[9px] font-black uppercase tracking-wider ${isClaimed ? 'text-slate-550' : (isDark ? 'text-slate-500' : 'text-slate-555')}`}>Progress</span>
+                    <span className={`text-[9px] font-black uppercase tracking-wider ${isClaimed ? 'text-slate-500' : (isDark ? 'text-slate-500' : 'text-slate-500')}`}>Progress</span>
                     <div className="flex items-center gap-1.5">
                       <span className={`text-xs font-black font-mono ${isClaimed ? 'text-slate-500' : (isCompleted ? 'text-emerald-400' : (isDark ? 'text-slate-300' : 'text-slate-700'))}`}>
                         {quest.progress} / {quest.maxProgress}
@@ -400,7 +400,7 @@ export const Quests: React.FC = () => {
                       onClick={() => navigate(getQuestRedirect(quest.id))}
                       className={`px-3.5 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer hover:bg-white/[0.04] active:scale-95 flex items-center justify-center gap-1
                         ${isDark 
-                          ? 'border-white/[0.08] text-slate-350 bg-white/[0.02]' 
+                          ? 'border-white/[0.08] text-slate-400 bg-white/[0.02]' 
                           : 'border-slate-200 text-slate-700 bg-slate-50'
                         }
                       `}
@@ -424,7 +424,7 @@ export const Quests: React.FC = () => {
             className={`px-5 py-3 rounded-2xl border text-xs font-black uppercase tracking-widest transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2
               ${isDark 
                 ? 'border-white/[0.06] text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]' 
-                : 'border-slate-200 text-slate-550 hover:text-slate-800 hover:bg-slate-100'
+                : 'border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
               }
             `}
           >
