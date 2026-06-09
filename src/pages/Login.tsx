@@ -226,6 +226,15 @@ export const Login: React.FC = () => {
     setSelectedRole('admin');
     setUsername(cleanUsername);
 
+    // Enforce admin username whitelist check
+    const whitelistStr = import.meta.env.VITE_ADMIN_EMAILS || 'admin@college.edu,sid_phantom,siddharth';
+    const whitelist = whitelistStr.split(',').map((u: string) => u.trim().toLowerCase());
+    if (!whitelist.includes(cleanUsername)) {
+      setAdminPassError('This username is not authorized to access the Admin Gate.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Attempt login with username and passcode as password
       await loginWithUsername(cleanUsername, adminPass);
@@ -313,6 +322,24 @@ export const Login: React.FC = () => {
     e.preventDefault();
     if (!validateRegForm()) return;
     setIsLoading(true);
+
+    // Enforce admin username/email whitelist check during registration
+    if (selectedRole === 'admin') {
+      const whitelistStr = import.meta.env.VITE_ADMIN_EMAILS || 'admin@college.edu,sid_phantom,siddharth';
+      const whitelist = whitelistStr.split(',').map((u: string) => u.trim().toLowerCase());
+      const cleanUsername = username.trim().toLowerCase();
+      const cleanEmail = regEmail.trim().toLowerCase();
+
+      const isUsernameWhitelisted = whitelist.includes(cleanUsername);
+      const isEmailWhitelisted = cleanEmail ? whitelist.includes(cleanEmail) : false;
+
+      if (!isUsernameWhitelisted && !isEmailWhitelisted) {
+        toastError('This account (username/email) is not authorized for Administrator registration.');
+        setIsLoading(false);
+        return;
+      }
+    }
+
     try {
       await registerUser({
         username: username.trim().toLowerCase(),

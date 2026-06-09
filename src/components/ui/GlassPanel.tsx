@@ -15,7 +15,7 @@ export const GlassPanel: React.FC<GlassPanelProps> = ({
   return (
     <div
       className={`
-        glass-panel rounded-3xl p-6
+        glass-panel rounded-3xl p-6 min-h-0
         ${glowBorder ? 'premium-border-glow' : ''}
         ${hoverEffect ? 'hover:bg-white/[0.06] light-mode:hover:bg-slate-900/[0.05] transition-all duration-300' : ''}
         ${className}

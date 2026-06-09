@@ -1002,6 +1002,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
+      // Enforce admin whitelist check at context/wrapper level
+      if (profileData.role === 'admin') {
+        const whitelistStr = import.meta.env.VITE_ADMIN_EMAILS || 'admin@college.edu,sid_phantom,siddharth';
+        const whitelist = whitelistStr.split(',').map((u: string) => u.trim().toLowerCase());
+        const cleanUsername = sanitizedUsername.trim().toLowerCase();
+        const cleanEmail = regEmail.trim().toLowerCase();
+
+        const isUsernameWhitelisted = whitelist.includes(cleanUsername);
+        const isEmailWhitelisted = cleanEmail ? whitelist.includes(cleanEmail) : false;
+
+        if (!isUsernameWhitelisted && !isEmailWhitelisted) {
+          throw new Error('This account (username/email) is not authorized for Administrator registration.');
+        }
+      }
+
       const role: 'student' | 'admin' = profileData.role === 'admin' ? 'admin' : 'student';
 
       // Fetch latest IP address for registration

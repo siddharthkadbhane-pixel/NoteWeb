@@ -346,6 +346,47 @@ html.light [class*="bg-\\[#1A1A24\\]"] {
   }
 }
 
+/* ─── Mobile Chat Optimizations ─── */
+@media (max-width: 640px) {
+  /* Prevent rubber-band overflow on mobile chat scrollable areas */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Ensure chat panels fill available vertical space correctly */
+  .chat-panel-area {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Touch-friendly tap targets - minimum 44px */
+  button, [role="button"] {
+    min-height: 36px;
+    min-width: 36px;
+  }
+
+  /* Improve horizontal scroll for quick replies */
+  .horizontal-scroll-list {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x proximity;
+  }
+
+  .horizontal-scroll-list > * {
+    scroll-snap-align: start;
+  }
+}
+
+/* ─── Visual Viewport / Keyboard-aware chat ─── */
+@supports (height: 100dvh) {
+  .chat-full-height {
+    height: 100dvh;
+  }
+}
+
 /* ─── 3D Flashcard Flipping ─── */
 .perspective-1000 {
   perspective: 1000px;

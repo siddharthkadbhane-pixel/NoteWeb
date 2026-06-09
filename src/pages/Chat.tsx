@@ -2089,71 +2089,829 @@ export const Chat: React.FC = () => {
       : 'bg-slate-50 border-slate-200 text-slate-800 rounded-bl-none shadow-sm';
   };
 
+  // ─────────────────────────────────────────────────────────────
+  // MOBILE UI — WhatsApp-style native layout (only on mobile/native)
+  // ─────────────────────────────────────────────────────────────
+  if (showMobileUI) {
+    // Shared message renderer for both global + DM tabs
+    const renderMobileMessages = (msgList: any[]) => (
+      <>
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center text-slate-500 text-xs font-bold">
+            🔐 Loading messages...
+          </div>
+        ) : msgList.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 px-6">
+            <div className="w-14 h-14 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-2xl">💬</div>
+            <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>No messages yet</p>
+            <p className="text-[11px] text-slate-500">Send a message to start the conversation!</p>
+          </div>
+        ) : (
+          msgList.map((msg: any) => {
+            const isMe = activeTab === 'global' ? msg.sender_uid === user?.uid : msg.sender_id === user?.uid;
+            const senderUid = activeTab === 'global' ? msg.sender_uid : msg.sender_id;
+            const senderName = activeTab === 'global' ? msg.sender_name : (isMe ? 'You' : selectedDmUser?.displayName);
+            const senderAvatar = activeTab === 'global' ? msg.sender_avatar : (isMe ? userProfile?.photoURL : selectedDmUser?.photoURL);
+            const senderBranch = activeTab === 'global' ? msg.sender_branch : (isMe ? userProfile?.branch : selectedDmUser?.branch);
+            const messageContent = activeTab === 'global' ? msg.content : msg.message;
+            const imageUrl = activeTab === 'global' ? msg.image_url : msg.photo_url;
+
+            return (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+                onDoubleClick={() => activeTab === 'dm' && handleAddReaction(msg.id, '❤️')}
+                className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : ''}`}
+              >
+                {/* Avatar - small on mobile */}
+                <div
+                  onClick={() => senderUid && navigate(`/profile/${senderUid}`)}
+                  className="flex-shrink-0 cursor-pointer active:scale-90 transition-transform"
+                >
+                  {renderAvatar(senderAvatar || '', 'w-7 h-7 text-sm')}
+                </div>
+
+                {/* Bubble */}
+                <div className={`max-w-[75%] flex flex-col gap-0.5 ${isMe ? 'items-end' : 'items-start'}`}>
+                  {/* Sender name (only in global) */}
+                  {activeTab === 'global' && (
+                    <span
+                      onClick={() => senderUid && navigate(`/profile/${senderUid}`)}
+                      className={`text-[10px] font-extrabold px-1 cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                    >
+                      {senderName} {getBranchIcon(senderBranch || 'cse')}
+                    </span>
+                  )}
+
+                  {/* Reply preview */}
+                  {msg.reply_to && (
+                    <div className="mb-1 px-2.5 py-1.5 rounded-xl bg-black/20 border-l-4 border-indigo-500 text-[10px] text-slate-300 w-full">
+                      <span className="block text-[9px] font-black text-indigo-400 mb-0.5">↩ {msg.reply_to.senderName}</span>
+                      <span className="truncate block">{msg.reply_to.content}</span>
+                    </div>
+                  )}
+
+                  {/* Message content bubble */}
+                  <div
+                    className={`px-3 py-2 rounded-2xl text-[13px] font-medium leading-relaxed break-words relative ${
+                      isMe
+                        ? getMyBubbleTheme() + ' rounded-br-sm'
+                        : getOtherBubbleTheme() + ' rounded-bl-sm'
+                    }`}
+                    style={{ maxWidth: '100%' }}
+                  >
+                    {editingMsgId === msg.id ? (
+                      <div className="flex flex-col gap-2 min-w-[180px]">
+                        <input
+                          type="text"
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          className="w-full py-1.5 px-2 rounded-lg bg-black/25 text-white text-xs border border-white/20 focus:outline-none"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') { handleEditMessage(msg.id, editingText); setEditingMsgId(null); }
+                            if (e.key === 'Escape') setEditingMsgId(null);
+                          }}
+                        />
+                        <div className="flex gap-2 justify-end text-[10px]">
+                          <button onClick={() => setEditingMsgId(null)} className="px-2 py-1 rounded bg-white/10 text-white font-bold cursor-pointer">Cancel</button>
+                          <button onClick={() => { handleEditMessage(msg.id, editingText); setEditingMsgId(null); }} className="px-2 py-1 rounded bg-indigo-500 text-white font-bold cursor-pointer">Save</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {messageContent}
+
+                        {/* View Once */}
+                        {msg.is_view_once && imageUrl && (
+                          <div className="mt-2">
+                            {viewOnceRevealed.includes(msg.id) ? (
+                              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 p-2 bg-black/30 rounded-xl">
+                                <EyeOff className="w-3.5 h-3.5 text-rose-500" /> View Once expired
+                              </div>
+                            ) : viewOnceViewing[msg.id] ? (
+                              <div className="relative rounded-xl overflow-hidden">
+                                <img src={imageUrl} alt="View Once" className="max-h-48 w-full object-cover select-none" />
+                                <div className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded bg-black/60 text-white text-[9px] font-bold animate-pulse">
+                                  {viewOnceTimer[msg.id] || 5}s
+                                </div>
+                              </div>
+                            ) : (
+                              <button onClick={() => startViewOnceTimer(msg.id)} className="flex items-center gap-2 text-[11px] text-indigo-300 font-bold p-2 bg-indigo-600/10 rounded-xl border border-indigo-500/20 w-full cursor-pointer">
+                                <Eye className="w-4 h-4 animate-pulse" /> Tap to View Once
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Standard image */}
+                        {!msg.is_view_once && imageUrl && (
+                          <div onClick={() => setZoomedImage(imageUrl || null)} className="mt-2 rounded-xl overflow-hidden border border-white/10 cursor-zoom-in active:scale-[0.98] transition-all">
+                            <img src={imageUrl} alt="Attachment" className="max-h-48 w-full object-cover select-none" />
+                          </div>
+                        )}
+
+                        {/* Shared note */}
+                        {msg.shared_note_id && (
+                          <div className={`mt-2 p-2.5 rounded-xl border flex flex-col gap-1.5 ${isDark ? 'bg-slate-900/80 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
+                            <div className="flex items-center gap-1.5 text-indigo-400 text-[11px] font-bold">
+                              <FileText className="w-4 h-4" /> Shared Study Note
+                            </div>
+                            <a href={`/notes?noteId=${msg.shared_note_id}`} target="_blank" rel="noopener noreferrer" className="py-1 px-2.5 rounded-lg bg-indigo-600 text-white font-extrabold text-[10px] text-center cursor-pointer">
+                              View PDF Notes
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Poll */}
+                        {msg.poll_data && (
+                          <div className={`mt-2 p-2.5 rounded-xl border flex flex-col gap-1.5 ${isDark ? 'bg-slate-900/60 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                            <h5 className="text-[11px] font-black flex items-center gap-1.5"><BarChart2 className="w-3.5 h-3.5 text-indigo-400" />{msg.poll_data.question}</h5>
+                            <div className="space-y-1">
+                              {msg.poll_data.options.map((opt: string, optIdx: number) => {
+                                const votesList = msg.poll_data.votes[String(optIdx)] || [];
+                                const totalVotes = Object.values(msg.poll_data.votes).reduce((acc: number, list: any) => acc + (list || []).length, 0);
+                                const pct = totalVotes > 0 ? Math.round((votesList.length / totalVotes) * 100) : 0;
+                                const hasVoted = votesList.includes(user?.uid || '');
+                                return (
+                                  <button key={optIdx} onClick={() => handleCastPollVote(msg.id, optIdx)}
+                                    className={`w-full text-left p-1.5 rounded-lg border text-[10px] relative overflow-hidden cursor-pointer ${hasVoted ? 'border-indigo-500 bg-indigo-600/10 text-white font-bold' : isDark ? 'border-white/5 bg-white/[0.02] text-slate-400' : 'border-slate-200 bg-white text-slate-700'}`}>
+                                    <div className="absolute left-0 top-0 bottom-0 bg-indigo-500/10" style={{ width: `${pct}%` }} />
+                                    <div className="flex justify-between relative z-10"><span>{opt}</span><span className="text-[9px] text-slate-400">{pct}%</span></div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Reactions */}
+                  {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-0.5 px-1">
+                      {Object.entries(msg.reactions).map(([emoji, uids]) => {
+                        const uidsList = uids as string[];
+                        const hasReacted = uidsList.includes(user?.uid || '');
+                        return (
+                          <button key={emoji} onClick={() => handleAddReaction(msg.id, emoji)}
+                            className={`px-1.5 py-0.5 rounded-full border text-[10px] font-bold flex items-center gap-0.5 cursor-pointer ${hasReacted ? 'bg-indigo-600/30 border-indigo-500 text-indigo-300' : isDark ? 'bg-slate-900/60 border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                            {emoji} {uidsList.length}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Message time + actions row */}
+                  <div className={`flex items-center gap-2 px-1 mt-0.5 ${isMe ? 'flex-row-reverse' : ''}`}>
+                    <span className="text-[9px] text-slate-500 font-bold">
+                      {formatTime(msg.created_at)}
+                      {activeTab === 'dm' && isMe && <span className="ml-1">{msg.is_read ? ' ✓✓' : ' ✓'}</span>}
+                    </span>
+                    {/* Quick action buttons */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                      {activeTab === 'dm' && (
+                        <button onClick={() => setReplyingTo(msg)} className="p-1 rounded-lg bg-white/10 text-slate-400 active:bg-indigo-600 active:text-white cursor-pointer">
+                          <Quote className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Long-press / tap actions for own messages */}
+                {isMe && (
+                  <div className="flex flex-col gap-1 flex-shrink-0 self-end mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => { setEditingMsgId(msg.id); setEditingText(messageContent); }} className="p-1 rounded-lg bg-white/10 text-slate-400 cursor-pointer active:bg-indigo-600 active:text-white">
+                      <Edit className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => handleDeleteChat(msg.id)} className="p-1 rounded-lg bg-rose-500/10 text-rose-400 cursor-pointer active:bg-rose-500 active:text-white">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                {!isMe && userProfile?.role === 'admin' && (
+                  <button onClick={() => handleDeleteChat(msg.id)} className="p-1 rounded-lg bg-rose-500/10 text-rose-400 cursor-pointer self-end mb-1 flex-shrink-0 opacity-0 group-hover:opacity-100">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </motion.div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </>
+    );
+
+    // ── Mobile Input Bar (shared for global + DM) ──
+    const MobileInputBar = () => (
+      <div className={`flex-shrink-0 border-t px-3 py-2 ${isDark ? 'border-white/[0.06] bg-[#0D0D14]' : 'border-slate-200 bg-white'}`}>
+        {/* Reply preview */}
+        {activeTab === 'dm' && replyingTo && selectedDmUser && (
+          <div className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl mb-2 ${isDark ? 'bg-indigo-950/40 border border-indigo-500/20' : 'bg-indigo-50 border border-indigo-200'}`}>
+            <div className="flex-1 min-w-0">
+              <span className="block text-[9px] font-black text-indigo-400 uppercase">↩ {replyingTo.sender_id === user?.uid ? 'You' : selectedDmUser.displayName}</span>
+              <p className={`text-[10px] truncate ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{replyingTo.message}</p>
+            </div>
+            <button onClick={() => setReplyingTo(null)} className="p-1 text-slate-400 cursor-pointer flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        )}
+
+        {/* Image preview */}
+        {selectedImage && (
+          <div className={`flex items-center gap-2 p-2 rounded-xl mb-2 ${isDark ? 'bg-slate-950/50 border border-white/[0.06]' : 'bg-slate-100 border border-slate-200'}`}>
+            <img src={selectedImage} alt="Attachment" className="w-10 h-10 rounded-lg object-cover border border-white/10 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="block text-[10px] font-bold text-emerald-400">Ready to send</span>
+              {activeTab === 'dm' && (
+                <label className="flex items-center gap-1.5 cursor-pointer mt-0.5">
+                  <input type="checkbox" checked={isViewOnceSelected} onChange={(e) => setIsViewOnceSelected(e.target.checked)} className="w-3 h-3 rounded" />
+                  <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1"><Clock className="w-3 h-3" /> View Once</span>
+                </label>
+              )}
+            </div>
+            <button onClick={removeSelectedImage} className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 cursor-pointer flex-shrink-0 active:bg-rose-500 active:text-white">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Quick replies - horizontal scroll */}
+        {!isGuest && (
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none mb-2 pb-0.5">
+            {['👍 Sure!', '📚 Library', 'Kal class?', 'Got it!', 'Check notes', '🧠 Study?'].map(r => (
+              <button key={r} onClick={() => setInputText(r)}
+                className={`px-2.5 py-1 rounded-full border text-[10px] font-bold whitespace-nowrap flex-shrink-0 cursor-pointer active:scale-95 ${isDark ? 'border-white/[0.06] bg-white/[0.02] text-slate-400 active:bg-indigo-600/20 active:text-indigo-300' : 'border-slate-200 bg-slate-100 text-slate-600 active:bg-slate-200'}`}>
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {isGuest ? (
+          <div className={`py-3 px-4 rounded-2xl border text-xs font-semibold flex items-center justify-center gap-2 ${isDark ? 'bg-slate-950/40 border-white/[0.04] text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
+            <Lock className="w-3.5 h-3.5" /> Guest Mode — Register to send messages
+          </div>
+        ) : (
+          <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+            <input type="file" accept="image/*" onChange={handleImageSelect} ref={fileInputRef} className="hidden" />
+
+            {/* Attachment + dropdown */}
+            <div className="relative flex-shrink-0">
+              <button type="button" onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                className={`w-10 h-10 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/[0.08] bg-[#1A1A24] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
+                <Plus className={`w-5 h-5 transition-transform duration-200 ${showAttachmentMenu ? 'rotate-45' : ''}`} />
+              </button>
+              {showAttachmentMenu && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setShowAttachmentMenu(false)} />
+                  <div className={`absolute bottom-12 left-0 rounded-2xl border p-2 flex flex-col gap-1 z-30 shadow-2xl min-w-[160px] ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+                    <button type="button" onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }}
+                      className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
+                      <ImageIcon className="w-4 h-4 text-indigo-400" /> Attach Photo
+                    </button>
+                    {activeTab === 'dm' && selectedDmUser && (
+                      <>
+                        <button type="button" onClick={() => { setShowAttachmentMenu(false); setIsNoteShareModalOpen(true); }}
+                          className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
+                          <Paperclip className="w-4 h-4 text-sky-400" /> Share Notes
+                        </button>
+                        <button type="button" onClick={() => { setShowAttachmentMenu(false); setIsPollModalOpen(true); }}
+                          className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
+                          <BarChart2 className="w-4 h-4 text-purple-400" /> Create Poll
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Text input */}
+            <input
+              type="text"
+              placeholder={activeTab === 'global' ? 'Message the lounge...' : `Message ${selectedDmUser?.displayName || ''}...`}
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              className={`flex-1 min-w-0 h-10 px-4 rounded-2xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-500 ${isDark ? 'bg-[#1A1A24] border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+            />
+
+            {/* Send button */}
+            <button type="submit" disabled={isSending || (!inputText.trim() && !selectedImage)}
+              className="w-10 h-10 flex-shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center disabled:opacity-40 cursor-pointer active:scale-90 shadow-lg shadow-indigo-600/25">
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
+        )}
+      </div>
+    );
+
+    // ── MOBILE: DM Contact List Screen ──
+    if (activeTab === 'dm' && mobileView === 'list') {
+      return (
+        <div className={`fixed inset-0 flex flex-col ${isDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`}
+          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+
+          {/* Header */}
+          <div className={`flex-shrink-0 flex items-center justify-between px-4 pt-3 pb-3 border-b ${isDark ? 'border-white/[0.06] bg-[#0D0D14]' : 'border-slate-200 bg-white'}`}>
+            <div>
+              <h1 className={`text-base font-black ${isDark ? 'text-white' : 'text-slate-800'}`}>Messages</h1>
+              <span className="text-[10px] text-slate-500">{onlineUsers.length} online now</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Switch to global */}
+              <button onClick={() => { setActiveTab('global'); navigate('/chat', { replace: true }); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black border cursor-pointer active:scale-95 ${isDark ? 'border-white/[0.08] text-slate-300 bg-white/[0.03]' : 'border-slate-200 text-slate-600 bg-slate-50'}`}>
+                <Users className="w-3.5 h-3.5" /> Lounge
+              </button>
+            </div>
+          </div>
+
+          {/* Online stories strip */}
+          {onlineUsers.length > 0 && (
+            <div className={`flex-shrink-0 flex items-center gap-4 px-4 py-3 border-b overflow-x-auto scrollbar-none ${isDark ? 'border-white/[0.04] bg-[#0D0D14]/60' : 'border-slate-100 bg-white/80'}`}>
+              {onlineUsers.map(online => (
+                <button key={online.uid} onClick={() => { setSelectedDmUser({ id: online.uid, displayName: online.displayName, photoURL: online.photoURL, username: online.displayName.toLowerCase().replace(/ /g, '_'), branch: 'cse' }); setMobileView('chat'); fetchDmMessages(online.uid); }}
+                  className="flex flex-col items-center gap-1 flex-shrink-0 cursor-pointer active:scale-90">
+                  <div className="relative">
+                    {renderAvatar(online.photoURL || '', 'w-12 h-12 text-xl border-2 border-emerald-500')}
+                    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0D0D14]" />
+                  </div>
+                  <span className="text-[9px] font-semibold text-slate-400 max-w-[48px] truncate">{online.displayName.split(' ')[0]}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Search bar */}
+          <div className={`flex-shrink-0 px-4 py-2 border-b ${isDark ? 'border-white/[0.04] bg-[#0D0D14]/40' : 'border-slate-100 bg-white/60'}`}>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input type="text" placeholder="Search classmates..." value={searchQuery} onChange={(e) => handleSearchUsers(e.target.value)}
+                className={`w-full h-9 pl-9 pr-3 rounded-xl border text-sm font-medium placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDark ? 'bg-white/[0.05] border-white/[0.08] text-white' : 'bg-slate-100 border-slate-200 text-slate-800'}`} />
+            </div>
+          </div>
+
+          {/* Contact list / search results */}
+          <div className="flex-1 overflow-y-auto">
+            {searchQuery.trim() !== '' ? (
+              <div className="p-3 space-y-2">
+                <span className="block text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Search Results</span>
+                {isSearching ? (
+                  <p className="text-xs text-slate-500 text-center py-6 font-bold">Searching...</p>
+                ) : searchResults.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-6 font-bold">No classmates found</p>
+                ) : searchResults.map(peer => (
+                  <button key={peer.id} onClick={() => handleStartDmChat(peer)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-2xl border text-left cursor-pointer active:scale-[0.98] ${isDark ? 'border-white/[0.06] bg-white/[0.02] active:bg-indigo-600/10' : 'border-slate-200 bg-white active:bg-indigo-50'}`}>
+                    {renderAvatar(peer.photoURL || '', 'w-11 h-11 text-xl')}
+                    <div className="flex-1 min-w-0">
+                      <span className={`block text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{peer.displayName}</span>
+                      <span className="block text-xs text-slate-500">@{peer.username} · {peer.branch?.toUpperCase()}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : dmContacts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center gap-3 py-20 px-6">
+                <MessageSquare className="w-12 h-12 text-slate-600" />
+                <p className={`text-sm font-black ${isDark ? 'text-white' : 'text-slate-700'}`}>No conversations yet</p>
+                <p className="text-xs text-slate-500">Search a classmate above to start a private chat!</p>
+              </div>
+            ) : (
+              <div className="py-1">
+                {dmContacts.map(contact => {
+                  const isPinned = pinnedUids.includes(contact.uid);
+                  const isOnline = onlineUsers.some(u => u.uid === contact.uid);
+                  return (
+                    <button key={contact.uid} onClick={() => { setSelectedDmUser({ id: contact.uid, displayName: contact.displayName, photoURL: contact.photoURL, username: contact.username, branch: contact.branch }); setMobileView('chat'); fetchDmMessages(contact.uid); }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 border-b cursor-pointer active:scale-[0.98] text-left transition-colors ${isDark ? 'border-white/[0.04] active:bg-white/[0.04]' : 'border-slate-100 active:bg-slate-50'}`}>
+                      {/* Avatar with online dot */}
+                      <div className="relative flex-shrink-0">
+                        {renderAvatar(contact.photoURL, 'w-12 h-12 text-xl')}
+                        {isOnline
+                          ? <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#0A0A10]" />
+                          : <span className="absolute -bottom-0.5 -right-0.5 text-sm">{getBranchIcon(contact.branch)}</span>
+                        }
+                        {isPinned && <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-indigo-600 border border-indigo-500 flex items-center justify-center"><Pin className="w-2 h-2 text-white" /></span>}
+                      </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{contact.displayName}</span>
+                          <span className="text-[10px] text-slate-500 flex-shrink-0 ml-2">{formatTime(contact.lastMessageTime)}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 truncate">{contact.lastMessage}</p>
+                      </div>
+                      {/* Unread badge */}
+                      {contact.unreadCount > 0 && (
+                        <span className="flex-shrink-0 min-w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black flex items-center justify-center px-1 animate-pulse">{contact.unreadCount}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── MOBILE: Global Lounge Screen ──
+    if (activeTab === 'global') {
+      return (
+        <div className={`fixed inset-0 flex flex-col ${isDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'} ${getThemeClasses()}`}
+          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', ...getThemeStyle() }}>
+
+          {/* Header */}
+          <div className={`flex-shrink-0 flex items-center justify-between px-4 pt-3 pb-3 border-b ${isDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`} style={{ backdropFilter: 'blur(12px)' }}>
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-full bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-lg flex-shrink-0">💬</div>
+              <div>
+                <h1 className={`text-sm font-black leading-none ${isDark ? 'text-white' : 'text-slate-800'}`}>Campus Lounge</h1>
+                <span className="text-[10px] text-slate-500">{onlineUsers.length} classmates online</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => setIsThemeModalOpen(true)} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+                <Paintbrush className="w-4 h-4" />
+              </button>
+              <button onClick={() => { setActiveTab('dm'); setMobileView('list'); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black border cursor-pointer active:scale-95 ${isDark ? 'border-white/[0.08] text-slate-300 bg-white/[0.03]' : 'border-slate-200 text-slate-600 bg-slate-50'}`}>
+                <MessageCircle className="w-3.5 h-3.5" />
+                DMs
+                {dmContacts.reduce((a, c) => a + c.unreadCount, 0) > 0 && <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Lounge notice */}
+          <div className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 border-b text-[10px] ${isDark ? 'border-white/[0.04] text-rose-400/70 bg-rose-500/5' : 'border-rose-100 text-rose-600 bg-rose-50'}`}>
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Messages expire in 7 days · No PDFs · Be respectful</span>
+          </div>
+
+          {/* Messages area */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
+            {renderMobileMessages(messages)}
+          </div>
+
+          <MobileInputBar />
+
+          {/* Shared modals */}
+          {zoomedImage && (
+            <div onClick={() => setZoomedImage(null)} className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
+              <button onClick={() => setZoomedImage(null)} className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white z-50 cursor-pointer active:scale-90"><X className="w-5 h-5" /></button>
+              <img src={zoomedImage} alt="Zoomed" className="max-w-full max-h-[80vh] object-contain rounded-2xl select-none" />
+            </div>
+          )}
+          {isThemeModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-end">
+              <div onClick={() => setIsThemeModalOpen(false)} className="absolute inset-0 bg-black/60" />
+              <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><Paintbrush className="w-4 h-4" /> Chat Theme</h3>
+                  <button onClick={() => setIsThemeModalOpen(false)} className="p-1.5 rounded-xl cursor-pointer active:scale-90 text-slate-400"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="grid grid-cols-3 gap-3 overflow-y-auto">
+                  {CHAT_THEMES.map(themeItem => {
+                    const currentRoomId = 'global';
+                    const currentTheme = chatThemes[currentRoomId] || 'Default';
+                    const isSelected = currentTheme === themeItem.name;
+                    return (
+                      <button key={themeItem.name} onClick={() => { const updated = { ...chatThemes, [currentRoomId]: themeItem.name }; setChatThemes(updated); localStorage.setItem('noteweb-chat-themes', JSON.stringify(updated)); toastSuccess(`${themeItem.name} applied!`); setIsThemeModalOpen(false); }}
+                        className={`p-2 rounded-2xl border text-left cursor-pointer active:scale-95 ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500/30' : isDark ? 'border-white/[0.05] bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
+                        <div className={`h-14 rounded-xl mb-1.5 ${themeItem.previewBg}`} style={themeItem.previewStyle} />
+                        <span className={`text-[10px] font-black truncate block ${isSelected ? 'text-indigo-400' : isDark ? 'text-slate-300' : 'text-slate-700'}`}>{themeItem.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── MOBILE: DM Chat Screen ──
+    return (
+      <div className={`fixed inset-0 flex flex-col ${isDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'} ${getThemeClasses()}`}
+        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', ...getThemeStyle() }}>
+
+        {/* DM Chat Header */}
+        <div className={`flex-shrink-0 flex items-center gap-2 px-3 pt-3 pb-3 border-b ${isDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`} style={{ backdropFilter: 'blur(12px)' }}>
+          {/* Back button */}
+          <button onClick={() => { setMobileView('list'); setSelectedDmUser(null); navigate('/chat', { replace: true }); }}
+            className={`w-9 h-9 flex-shrink-0 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 bg-white/[0.04] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          {/* User info — tappable to profile */}
+          <div onClick={() => selectedDmUser && navigate(`/profile/${selectedDmUser.id}`)} className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer active:opacity-70">
+            <div className="relative flex-shrink-0">
+              {renderAvatar(selectedDmUser?.photoURL || '', 'w-9 h-9 text-lg')}
+              {onlineUsers.some(u => u.uid === selectedDmUser?.id) && (
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0D0D14]" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <h2 className={`text-sm font-black leading-none truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                {selectedDmUser?.displayName} <span className="text-sm">{getBranchIcon(selectedDmUser?.branch || 'cse')}</span>
+              </h2>
+              <span className="text-[10px] mt-0.5 block">
+                {partnerIsTyping
+                  ? <span className="text-indigo-400 font-bold italic animate-pulse">typing...</span>
+                  : onlineUsers.some(u => u.uid === selectedDmUser?.id)
+                    ? <span className="text-emerald-400 font-bold">● Active now</span>
+                    : <span className="text-slate-500">@{selectedDmUser?.username}</span>
+                }
+              </span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button onClick={() => startWebRtcCall('voice')} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><Phone className="w-4 h-4" /></button>
+            <button onClick={() => startWebRtcCall('video')} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><Video className="w-4 h-4" /></button>
+
+            {/* Three-dot menu */}
+            <div className="relative">
+              <button type="button" onClick={() => setShowHeaderMenu(!showHeaderMenu)}
+                className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${showHeaderMenu ? 'border-indigo-500 bg-indigo-600/20 text-indigo-400' : isDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {showHeaderMenu && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setShowHeaderMenu(false)} />
+                  <div className={`absolute right-0 top-10 rounded-2xl border p-2 flex flex-col gap-1 z-30 shadow-2xl min-w-[190px] ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+                    {[
+                      { icon: <Paintbrush className="w-4 h-4 text-indigo-400" />, label: 'Personalize Theme', action: () => { setShowHeaderMenu(false); setIsThemeModalOpen(true); } },
+                      { icon: <Star className="w-4 h-4 text-amber-400" />, label: 'Starred Messages', action: () => { setShowHeaderMenu(false); setIsStarDrawerOpen(true); } },
+                      { icon: <ShieldAlert className="w-4 h-4 text-rose-400" />, label: vanishMode ? 'Disable Vanish' : 'Vanish Mode', action: () => { setShowHeaderMenu(false); setVanishMode(!vanishMode); toastSuccess(!vanishMode ? 'Vanish Mode on' : 'Vanish Mode off'); } },
+                      { icon: mutedUids.includes(selectedDmUser?.id || '') ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-rose-400" />, label: mutedUids.includes(selectedDmUser?.id || '') ? 'Unmute' : 'Mute', action: () => { setShowHeaderMenu(false); handleToggleMute(selectedDmUser?.id || ''); } },
+                      { icon: <Shield className="w-4 h-4 text-rose-400" />, label: 'Block Classmate', action: () => { setShowHeaderMenu(false); handleToggleBlock(selectedDmUser?.id || ''); }, danger: true },
+                    ].map(item => (
+                      <button key={item.label} type="button" onClick={item.action}
+                        className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold text-left cursor-pointer ${item.danger ? 'text-rose-400 hover:bg-rose-500/10' : isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}>
+                        {item.icon} {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Messages area */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
+          {renderMobileMessages(dmMessages)}
+        </div>
+
+        <MobileInputBar />
+
+        {/* Shared Modals - Lightbox */}
+        {zoomedImage && (
+          <div onClick={() => setZoomedImage(null)} className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
+            <button onClick={() => setZoomedImage(null)} className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white z-50 cursor-pointer active:scale-90"><X className="w-5 h-5" /></button>
+            <img src={zoomedImage} alt="Zoomed" className="max-w-full max-h-[80vh] object-contain rounded-2xl select-none" />
+          </div>
+        )}
+
+        {/* Starred drawer */}
+        {isStarDrawerOpen && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end">
+            <div onClick={() => setIsStarDrawerOpen(false)} className="absolute inset-0 bg-black/60" />
+            <div className={`w-full rounded-t-3xl border-t p-5 relative z-10 max-h-[75vh] flex flex-col ${isDark ? 'bg-[#0E0E12] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-black text-sm flex items-center gap-2"><Star className="w-4 h-4 text-amber-400 fill-current" /> Starred Messages</h3>
+                <button onClick={() => setIsStarDrawerOpen(false)} className="p-1.5 rounded-xl text-slate-400 cursor-pointer"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {starredMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-center gap-2 py-12">
+                    <Star className="w-8 h-8 text-slate-600" />
+                    <p className="text-xs text-slate-400 font-bold">No starred messages yet</p>
+                  </div>
+                ) : starredMessages.map(msg => (
+                  <div key={msg.id} className={`p-3 rounded-2xl border relative ${isDark ? 'bg-white/[0.02] border-white/[0.04]' : 'bg-slate-50 border-slate-200'}`}>
+                    <button onClick={() => handleToggleStar(msg)} className="absolute top-2 right-2 p-1 text-amber-400 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      {renderAvatar(msg.sender_avatar || '', 'w-6 h-6 text-xs')}
+                      <span className="text-[10px] font-black">{msg.sender_name}</span>
+                      <span className="text-[8px] text-slate-500 ml-auto">{formatTime(msg.created_at)}</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed break-words">{msg.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Theme picker bottom sheet */}
+        {isThemeModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-end">
+            <div onClick={() => setIsThemeModalOpen(false)} className="absolute inset-0 bg-black/60" />
+            <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><Paintbrush className="w-4 h-4" /> Chat Theme</h3>
+                <button onClick={() => setIsThemeModalOpen(false)} className="p-1.5 rounded-xl cursor-pointer active:scale-90 text-slate-400"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="grid grid-cols-3 gap-3 overflow-y-auto">
+                {CHAT_THEMES.map(themeItem => {
+                  const currentRoomId = selectedDmUser ? selectedDmUser.id : 'global';
+                  const currentTheme = chatThemes[currentRoomId] || 'Default';
+                  const isSelected = currentTheme === themeItem.name;
+                  return (
+                    <button key={themeItem.name} onClick={() => { const updated = { ...chatThemes, [currentRoomId]: themeItem.name }; setChatThemes(updated); localStorage.setItem('noteweb-chat-themes', JSON.stringify(updated)); toastSuccess(`${themeItem.name} applied!`); setIsThemeModalOpen(false); }}
+                      className={`p-2 rounded-2xl border text-left cursor-pointer active:scale-95 ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500/30' : isDark ? 'border-white/[0.05] bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
+                      <div className={`h-14 rounded-xl mb-1.5 ${themeItem.previewBg}`} style={themeItem.previewStyle} />
+                      <span className={`text-[10px] font-black truncate block ${isSelected ? 'text-indigo-400' : isDark ? 'text-slate-300' : 'text-slate-700'}`}>{themeItem.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Note share modal */}
+        {isNoteShareModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-end">
+            <div onClick={() => { setIsNoteShareModalOpen(false); setSearchNoteQuery(''); setNoteSearchResults([]); }} className="absolute inset-0 bg-black/60" />
+            <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><Paperclip className="w-4 h-4" /> Share Study Notes</h3>
+                <button onClick={() => { setIsNoteShareModalOpen(false); setSearchNoteQuery(''); setNoteSearchResults([]); }} className="p-1.5 rounded-xl cursor-pointer text-slate-400"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input type="text" placeholder="Search notes by subject..." value={searchNoteQuery} onChange={(e) => handleSearchNotes(e.target.value)}
+                  className={`w-full h-10 pl-9 pr-3 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDark ? 'bg-white/[0.05] border-white/[0.08] text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400'}`} />
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2">
+                {searchNoteQuery.trim() === '' ? (
+                  <p className="text-center py-6 text-slate-500 text-xs font-bold">Type subject name to search notes</p>
+                ) : noteSearchResults.length === 0 ? (
+                  <p className="text-center py-6 text-slate-500 text-xs font-bold">No notes found</p>
+                ) : noteSearchResults.map(note => (
+                  <button key={note.id} onClick={() => handleShareNoteMessage(note)}
+                    className={`w-full p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer text-left active:scale-[0.98] ${isDark ? 'border-white/[0.06] bg-white/[0.02] active:bg-indigo-600/10' : 'border-slate-200 bg-slate-50 active:bg-indigo-50'}`}>
+                    <div className="min-w-0">
+                      <span className={`block text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{note.subject}</span>
+                      <span className="text-xs text-slate-500">{note.branch?.toUpperCase()} · {note.professor || 'Unknown'}</span>
+                    </div>
+                    <span className="px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 text-[10px] font-black flex-shrink-0">Share</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Poll modal */}
+        {isPollModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-end">
+            <div onClick={() => { setIsPollModalOpen(false); setPollQuestion(''); setPollOptions(['', '']); }} className="absolute inset-0 bg-black/60" />
+            <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 ${isDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><BarChart2 className="w-4 h-4" /> Create Poll</h3>
+                <button onClick={() => { setIsPollModalOpen(false); setPollQuestion(''); setPollOptions(['', '']); }} className="p-1.5 rounded-xl cursor-pointer text-slate-400"><X className="w-4 h-4" /></button>
+              </div>
+              <input type="text" placeholder="Poll question..." value={pollQuestion} onChange={(e) => setPollQuestion(e.target.value)}
+                className={`w-full h-10 px-3.5 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDark ? 'bg-white/[0.05] border-white/[0.08] text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800'}`} />
+              <div className="space-y-2">
+                {pollOptions.map((opt, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input type="text" placeholder={`Option ${idx + 1}`} value={opt} onChange={(e) => { const u = [...pollOptions]; u[idx] = e.target.value; setPollOptions(u); }}
+                      className={`flex-1 h-10 px-3.5 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDark ? 'bg-white/[0.05] border-white/[0.08] text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800'}`} />
+                    {pollOptions.length > 2 && <button type="button" onClick={() => setPollOptions(pollOptions.filter((_, i) => i !== idx))} className="p-2 rounded-xl bg-rose-500/10 text-rose-400 cursor-pointer active:bg-rose-500 active:text-white"><Trash2 className="w-4 h-4" /></button>}
+                  </div>
+                ))}
+                {pollOptions.length < 4 && <button type="button" onClick={() => setPollOptions([...pollOptions, ''])} className="text-[11px] font-black text-indigo-400 flex items-center gap-1 cursor-pointer"><Plus className="w-3.5 h-3.5" /> Add Option</button>}
+              </div>
+              <button type="button" onClick={handleCreatePollMessage} className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm cursor-pointer active:scale-95 shadow-lg flex items-center justify-center gap-2">
+                <Plus className="w-4 h-4" /> Send Poll
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* WebRTC Call overlay */}
+        {callState !== 'idle' && (
+          <div className="fixed inset-0 z-50 bg-[#07070A]/95 flex flex-col items-center justify-center p-6 text-white text-center">
+            <div className="absolute w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
+            <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-xs">
+              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{callType === 'video' ? '📽️ Video Call' : '📞 Voice Call'}</span>
+              <h2 className="text-xl font-black">{callState === 'incoming' ? 'Incoming...' : callState === 'calling' ? 'Calling...' : 'Connected'}</h2>
+              <div className="relative w-52 h-52 rounded-3xl overflow-hidden border border-white/10 bg-slate-900/60 flex items-center justify-center">
+                {callState === 'connected' && callType === 'video' && remoteStream && !isCameraOff
+                  ? <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                  : <div className="flex flex-col items-center gap-2">
+                      {renderAvatar(callerProfile?.photoURL || '', 'w-24 h-24 text-3xl border-4 border-indigo-500/30 animate-pulse')}
+                      <span className="font-bold text-sm">{callerProfile?.displayName || 'Classmate'}</span>
+                    </div>
+                }
+                {callState === 'connected' && callType === 'video' && localStream && (
+                  <div className="absolute bottom-2 right-2 w-16 h-24 rounded-xl overflow-hidden border border-white/20 bg-black/60">
+                    {!isCameraOff ? <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-500">Cam Off</div>}
+                  </div>
+                )}
+              </div>
+              {callState === 'incoming' ? (
+                <div className="flex items-center gap-8">
+                  <button onClick={declineIncomingCall} className="w-14 h-14 rounded-full bg-rose-600 text-white flex items-center justify-center cursor-pointer active:scale-90 shadow-lg shadow-rose-600/30"><PhoneOff className="w-6 h-6" /></button>
+                  <button onClick={acceptIncomingCall} className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center cursor-pointer active:scale-95 shadow-lg shadow-emerald-600/30 animate-bounce"><Phone className="w-6 h-6" /></button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-4">
+                  {callState === 'connected' && (
+                    <>
+                      <button onClick={() => { if (localStream) { localStream.getAudioTracks().forEach(t => { t.enabled = !t.enabled; }); setIsMicMuted(!isMicMuted); } }} className={`w-12 h-12 rounded-full border flex items-center justify-center cursor-pointer active:scale-90 ${isMicMuted ? 'bg-rose-600/20 border-rose-500 text-rose-400' : 'bg-white/10 border-white/10 text-white'}`}>{isMicMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}</button>
+                      {callType === 'video' && <button onClick={() => { if (localStream) { localStream.getVideoTracks().forEach(t => { t.enabled = !t.enabled; }); setIsCameraOff(!isCameraOff); } }} className={`w-12 h-12 rounded-full border flex items-center justify-center cursor-pointer active:scale-90 ${isCameraOff ? 'bg-rose-600/20 border-rose-500 text-rose-400' : 'bg-white/10 border-white/10 text-white'}`}>{isCameraOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}</button>}
+                    </>
+                  )}
+                  <button onClick={endActiveCall} className="w-14 h-14 rounded-full bg-rose-600 text-white flex items-center justify-center cursor-pointer active:scale-90 shadow-lg shadow-rose-600/30"><PhoneOff className="w-6 h-6" /></button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  // ─────────────────────────────────────────────────────────────
+  // PC UI — Original layout below (untouched)
+  // ─────────────────────────────────────────────────────────────
   return (
     <div className={`w-full py-2 px-2 md:py-6 md:px-8 relative overflow-hidden flex flex-col items-center transition-colors duration-300 ${
       isDark ? 'bg-transparent text-[#E2E8F0]' : 'bg-transparent text-slate-800'
-    } ${
-      showMobileUI ? 'h-[calc(100dvh-9.5rem)]' : 'h-[calc(100vh-4rem)] max-h-[750px]'
-    }`}>
+    } h-[calc(100vh-4rem)] max-h-[750px]`}>
       
       {/* Background accents */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" />
 
-      <div className="w-full max-w-5xl flex-1 flex flex-col gap-2 md:gap-4 z-10 relative h-full overflow-hidden">
+      <div className="w-full max-w-5xl flex-1 flex flex-col gap-2 md:gap-4 z-10 relative h-full overflow-hidden min-h-0">
         
         {/* Toggle navigation header */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex p-1 bg-white/[0.02] border border-white/[0.04] rounded-2xl w-full sm:w-auto">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex p-1 bg-white/[0.02] border border-white/[0.04] rounded-2xl flex-1 sm:flex-initial">
             <button
               onClick={() => {
                 setActiveTab('global');
                 // Remove parameter from URL securely
                 navigate('/chat', { replace: true });
               }}
-              className={`flex-1 sm:flex-initial py-2.5 px-6 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-2 px-3 sm:px-6 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
                 activeTab === 'global' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Users className="w-4 h-4" />
-              Campus Lounge
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="truncate">Campus Lounge</span>
             </button>
             <button
               onClick={() => setActiveTab('dm')}
-              className={`flex-1 sm:flex-initial py-2.5 px-6 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-2 px-3 sm:px-6 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
                 activeTab === 'dm' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <MessageCircle className="w-4 h-4" />
-              Private DMs
+              <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="truncate">Private DMs</span>
               {dmContacts.reduce((acc, c) => acc + c.unreadCount, 0) > 0 && (
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse flex-shrink-0" />
               )}
             </button>
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl text-xs font-bold">
+          <div className="hidden sm:flex items-center gap-1.5 text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl text-xs font-bold flex-shrink-0">
             <Clock className="w-3.5 h-3.5" />
-            <span>7d Auto Expiry Shield</span>
+            <span>7d Auto Expiry</span>
           </div>
         </div>
 
         {/* Lounge banner warning */}
         {activeTab === 'global' && (
-          <div className={`flex items-center gap-2 p-3 border rounded-xl text-xs text-left ${isDark ? 'bg-rose-500/5 border-rose-500/10 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700 font-medium'}`}>
-            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-450" />
-            <p>
-              <strong>Lounge Notice:</strong> Global messages expire in 7 days. PDF sharing is prohibited in lounge. Respect your peers.
+          <div className={`flex items-center gap-2 p-2.5 border rounded-xl text-xs text-left ${isDark ? 'bg-rose-500/5 border-rose-500/10 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700 font-medium'}`}>
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-rose-450" />
+            <p className="leading-tight">
+              <strong>Lounge:</strong> Messages expire in 7 days. No PDFs. Be respectful.
             </p>
           </div>
         )}
 
         {/* Chat layout grid */}
-        <div className="flex-1 h-full flex gap-4 overflow-hidden relative">
+        <div className="flex-1 min-h-0 flex gap-2 md:gap-4 overflow-hidden relative">
           
           {/* DM LIST SIDEBAR (Only visible when activeTab === 'dm') */}
           {activeTab === 'dm' && (
-            <GlassPanel className={`w-full md:w-80 rounded-3xl p-4 flex-col gap-4 border ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
+            <GlassPanel className={`w-full md:w-80 rounded-2xl md:rounded-3xl p-3 md:p-4 flex-col gap-3 md:gap-4 border ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
               mobileView === 'chat' && selectedDmUser ? 'hidden md:flex' : 'flex'
             }`}>
               
@@ -2320,28 +3078,28 @@ export const Chat: React.FC = () => {
           )}
 
           {/* CHAT AREA (Main Display) */}
-          <GlassPanel className={`flex-1 flex-col p-4 md:p-6 rounded-3xl border ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
+          <GlassPanel className={`flex-1 min-w-0 flex-col p-3 md:p-6 rounded-2xl md:rounded-3xl border ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
             activeTab === 'dm' && (!selectedDmUser || mobileView === 'list') ? 'hidden md:flex' : 'flex'
           }`}>
             
             {activeTab === 'global' && (
-              <div className={`flex flex-row items-center justify-between gap-3 pb-3 border-b mb-3 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg">
+              <div className={`flex flex-row items-center justify-between gap-2 pb-2.5 border-b mb-2.5 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 flex-shrink-0 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-base">
                     💬
                   </div>
-                  <div>
-                    <h4 className={`text-xs font-black leading-none ${isDark ? 'text-white' : 'text-slate-805'}`}>
+                  <div className="min-w-0">
+                    <h4 className={`text-xs font-black leading-none truncate ${isDark ? 'text-white' : 'text-slate-805'}`}>
                       Campus Lounge
                     </h4>
                     <span className="text-[9px] text-slate-500 mt-0.5 block leading-none">
-                      Public community room • {onlineUsers.length} classmates online
+                      {onlineUsers.length} online
                     </span>
                   </div>
                 </div>
                 
                 {/* Advanced Action Bar for Global Chat */}
-                <div className="flex items-center gap-1.5 justify-end">
+                <div className="flex items-center gap-1.5 justify-end flex-shrink-0">
                   {/* Wallpaper Theme Picker */}
                   <button
                     onClick={() => setIsThemeModalOpen(true)}
@@ -2357,8 +3115,8 @@ export const Chat: React.FC = () => {
             )}
 
             {activeTab === 'dm' && selectedDmUser && (
-              <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b mb-3 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
-                <div className="flex items-center gap-3">
+              <div className={`flex flex-row items-center justify-between gap-2 pb-2.5 border-b mb-2.5 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <button
                     onClick={() => {
                       setMobileView('list');
@@ -2366,29 +3124,29 @@ export const Chat: React.FC = () => {
                       // Clear the URL parameter cleanly
                       navigate('/chat', { replace: true });
                     }}
-                    className={`p-2 rounded-xl border md:hidden active:scale-95 cursor-pointer ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                    className={`p-1.5 rounded-xl border md:hidden flex-shrink-0 active:scale-95 cursor-pointer ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <div 
                     onClick={() => navigate(`/profile/${selectedDmUser.id}`)}
-                    className="flex items-center gap-2.5 text-left cursor-pointer hover:scale-[1.01] transition-all"
+                    className="flex items-center gap-2 text-left cursor-pointer hover:scale-[1.01] transition-all min-w-0"
                   >
-                    {renderAvatar(selectedDmUser.photoURL || '', "w-9 h-9 text-lg")}
-                    <div>
-                      <h4 className={`text-xs font-black flex items-center gap-1 leading-none ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                        {selectedDmUser.displayName}
-                        <span className="text-[10px]">{getBranchIcon(selectedDmUser.branch)}</span>
+                    {renderAvatar(selectedDmUser.photoURL || '', "w-8 h-8 text-base flex-shrink-0")}
+                    <div className="min-w-0">
+                      <h4 className={`text-xs font-black flex items-center gap-1 leading-none truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        <span className="truncate">{selectedDmUser.displayName}</span>
+                        <span className="text-[10px] flex-shrink-0">{getBranchIcon(selectedDmUser.branch)}</span>
                       </h4>
                       <span className="text-[9px] text-slate-500 mt-0.5 block">
                         {partnerIsTyping ? (
                           <span className="text-indigo-400 font-extrabold italic animate-pulse">typing...</span>
                         ) : onlineUsers.some(u => u.uid === selectedDmUser.id) ? (
-                          <span className="text-emerald-400 font-extrabold flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-550 animate-pulse" /> Active Now
+                          <span className="text-emerald-400 font-extrabold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" /> Active
                           </span>
                         ) : (
-                          `@${selectedDmUser.username} • Offline`
+                          `@${selectedDmUser.username}`
                         )}
                       </span>
                     </div>
@@ -2545,7 +3303,7 @@ export const Chat: React.FC = () => {
             ) : (
               /* Scrollable Message Timeline area */
               <div 
-                className={`flex-1 overflow-y-auto space-y-4 pr-1 p-2 transition-all rounded-2xl ${
+                className={`flex-1 min-h-0 overflow-y-auto space-y-3 pr-0.5 p-2 transition-all rounded-xl ${
                   (activeTab === 'global' || (activeTab === 'dm' && selectedDmUser)) ? getThemeClasses() : ''
                 }`}
                 style={(activeTab === 'global' || (activeTab === 'dm' && selectedDmUser)) ? getThemeStyle() : undefined}
@@ -2597,7 +3355,7 @@ export const Chat: React.FC = () => {
                         </div>
 
                         {/* Chat Bubble */}
-                        <div className="max-w-[70%] space-y-1">
+                         <div className="max-w-[80%] sm:max-w-[70%] space-y-1 min-w-0">
                           {/* Name Header */}
                           <div className={`flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'} ${isMe ? 'justify-end' : ''}`}>
                             <span 
@@ -2941,14 +3699,13 @@ export const Chat: React.FC = () => {
 
             {/* Quick Reply Smart Chips */}
             {!isGuest && (activeTab === 'global' || selectedDmUser) && (
-              <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none horizontal-scroll-list text-left mt-2">
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 mr-1 flex-shrink-0">Quick Reply:</span>
-                {["👍 Bhej raha hu", "Got it, thanks!", "In library 📚", "Kal class hai?", "Check notes", "Study together? 🧠"].map((reply) => (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none horizontal-scroll-list text-left mt-1.5">
+                {["👍 Bhej raha hu", "Got it!", "In library 📚", "Kal class?", "Check notes", "Study? 🧠"].map((reply) => (
                   <button
                     key={reply}
                     type="button"
                     onClick={() => setInputText(reply)}
-                    className={`px-3 py-1.5 rounded-full border text-[10px] font-extrabold whitespace-nowrap cursor-pointer transition-all active:scale-95 ${
+                    className={`px-2.5 py-1 rounded-full border text-[9px] sm:text-[10px] font-extrabold whitespace-nowrap cursor-pointer transition-all active:scale-95 flex-shrink-0 ${
                       isDark 
                         ? 'bg-[#1b1b26]/50 border-white/[0.06] text-slate-400 hover:text-white hover:border-indigo-500/40 hover:bg-indigo-600/10' 
                         : 'bg-slate-100 border-slate-200 text-slate-650 hover:bg-slate-200 hover:text-slate-800'
@@ -2983,7 +3740,7 @@ export const Chat: React.FC = () => {
             {(activeTab === 'global' || selectedDmUser) && (
               <form 
                 onSubmit={handleSendMessage}
-                className={`mt-4 pt-4 border-t flex items-center gap-2 relative ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}
+                className={`mt-2 pt-2.5 border-t flex items-center gap-1.5 sm:gap-2 relative ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}
               >
                 {isGuest ? (
                   <div className={`w-full py-3 border rounded-2xl text-xs font-semibold text-slate-505 flex items-center justify-center gap-1.5 ${isDark ? 'bg-slate-950/40 border-white/[0.04]' : 'bg-slate-100 border-slate-200'}`}>
@@ -3004,7 +3761,7 @@ export const Chat: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                        className={`sm:hidden p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-455 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
+                        className={`sm:hidden p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-455 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100'}`}
                         title="Add attachments"
                       >
                         <Plus className={`w-5 h-5 transition-transform duration-200 ${showAttachmentMenu ? 'rotate-45' : ''}`} />
@@ -3105,18 +3862,18 @@ export const Chat: React.FC = () => {
 
                     <input
                       type="text"
-                      placeholder={activeTab === 'global' ? "Share an update, ask a question..." : `Message ${selectedDmUser?.displayName}...`}
+                      placeholder={activeTab === 'global' ? "Share update..." : `Message ${selectedDmUser?.displayName || ''}...`}
                       value={inputText}
                       onChange={(e) => handleInputChange(e.target.value)}
-                      className={`flex-1 border rounded-2xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-600 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-850'}`}
+                      className={`flex-1 min-w-0 border rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-600 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-850'}`}
                     />
 
                     <button
                       type="submit"
                       disabled={isSending || (!inputText.trim() && !selectedImage)}
-                      className="p-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all disabled:opacity-50 disabled:hover:bg-indigo-600 cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-95"
+                      className="p-2.5 sm:p-3 rounded-xl flex-shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white transition-all disabled:opacity-50 disabled:hover:bg-indigo-600 cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-95"
                     >
-                      <Send className="w-5 h-5" />
+                      <Send className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                   </>
                 )}
