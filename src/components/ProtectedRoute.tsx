@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Loader2 } from 'lucide-react';
+import { AppSkeleton } from './ui/AppSkeleton';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -34,19 +35,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Only block on the very first load, never on revisits
   if (loading && !initialDoneRef.current) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#0A0A0C] transition-colors duration-300">
-        <div className="relative flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20 animate-pulse">
-            <span className="font-extrabold text-white text-2xl">N</span>
-          </div>
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-          <span className="text-sm font-semibold text-slate-400 tracking-wider uppercase animate-pulse">
-            Loading NoteWeb...
-          </span>
-        </div>
-      </div>
-    );
+    return <AppSkeleton />;
   }
 
   // If still loading but we've seen a valid user before, render children optimistically

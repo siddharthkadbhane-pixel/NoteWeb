@@ -278,11 +278,11 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
   const [blockedEntry, setBlockedEntry] = useState<any | null>(null);
   const [statement, setStatement] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const checkIpStatus = async (isInitial = false) => {
     if (isInitial) {
-      setLoading(true);
+      // Run initial check silently
     }
     try {
       const userIp = await fetchUserIp();
@@ -345,9 +345,7 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
     } catch (e) {
       console.warn("Failed to verify secure IP credentials:", e);
     } finally {
-      if (isInitial) {
-        setLoading(false);
-      }
+      // Silently completed IP check
     }
   };
 
@@ -440,16 +438,7 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#020204] flex items-center justify-center text-white">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Verifying secure IP credentials...</span>
-        </div>
-      </div>
-    );
-  }
+  // Global loading splash removed to run verification silently in background
 
   if (status === 'blocked' || status === 'pending_approval') {
     return (

@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase/config';
 import { useToast } from '../context/ToastContext';
 import { TiltCard } from '../components/ui/TiltCard';
+import { Skeleton } from '../components/ui/Skeleton';
 
 interface BranchType {
   id: string;
@@ -519,11 +520,11 @@ export const Categories: React.FC = () => {
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <GlassPanel key={i} className="h-[240px] flex flex-col justify-between p-6">
                 <div className="space-y-4">
-                  <div className="w-12 h-12 rounded-xl bg-slate-900/50 animate-pulse" />
-                  <div className="h-6 w-32 bg-slate-900/50 rounded animate-pulse" />
-                  <div className="h-10 w-full bg-slate-900/50 rounded animate-pulse" />
+                  <Skeleton variant="rect" width={48} height={48} className="rounded-xl" />
+                  <Skeleton variant="rect" width={128} height={20} />
+                  <Skeleton variant="rect" className="w-full" height={40} />
                 </div>
-                <div className="h-6 w-24 bg-slate-900/50 rounded animate-pulse mt-4" />
+                <Skeleton variant="rect" width={96} height={16} className="mt-4" />
               </GlassPanel>
             ))}
           </div>
