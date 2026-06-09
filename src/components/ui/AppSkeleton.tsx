@@ -118,7 +118,7 @@ export const AppSkeleton: React.FC = () => {
               {/* Widget card 2 */}
               <div className="p-6 rounded-3xl border border-white/[0.06] light-mode:border-slate-200 bg-white/[0.02] light-mode:bg-white/50 backdrop-blur space-y-4">
                 <Skeleton variant="rect" width={100} height={16} />
-                <Skeleton variant="rect" className="w-full" height={80} className="rounded-2xl" />
+                <Skeleton variant="rect" className="w-full rounded-2xl" height={80} />
                 <div className="flex justify-between">
                   <Skeleton variant="rect" width={80} height={24} />
                   <Skeleton variant="rect" width={80} height={24} />

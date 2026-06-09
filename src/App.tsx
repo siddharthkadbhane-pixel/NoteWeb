@@ -278,12 +278,8 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
   const [blockedEntry, setBlockedEntry] = useState<any | null>(null);
   const [statement, setStatement] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const checkIpStatus = async (isInitial = false) => {
-    if (isInitial) {
-      // Run initial check silently
-    }
+  const checkIpStatus = async () => {
     try {
       const userIp = await fetchUserIp();
       setIp(userIp);
@@ -350,15 +346,15 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    checkIpStatus(true); // Initial check with visible loading screen
+    checkIpStatus(); // Initial check with visible loading screen
 
     // Setup periodic watchdog checking IP/hardware status silently every 5 minutes in the background
-    const interval = setInterval(() => checkIpStatus(false), 300000);
+    const interval = setInterval(() => checkIpStatus(), 300000);
 
     // Listen for storage changes (clearing block) across browser tabs
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'noteweb-db-blocked_ips') {
-        checkIpStatus(false);
+        checkIpStatus();
       }
     };
     window.addEventListener('storage', handleStorageChange);
@@ -373,7 +369,7 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
           { event: '*', schema: 'public', table: 'blocked_ips' },
           () => {
             console.log('[IpBlockGuard] Real-time IP table change detected, refreshing...');
-            checkIpStatus(false);
+            checkIpStatus();
           }
         )
         .subscribe();
@@ -506,7 +502,7 @@ const IpBlockGuard: React.FC<IpBlockGuardProps> = ({ children }) => {
               </div>
 
               <button
-                onClick={() => checkIpStatus(true)}
+                onClick={() => checkIpStatus()}
                 className="w-full py-3 rounded-xl font-black text-xs text-slate-300 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer animate-pulse"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Check Approval Status
