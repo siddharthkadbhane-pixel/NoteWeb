@@ -428,6 +428,29 @@ export const Chat: React.FC = () => {
   const [myTypingState, setMyTypingState] = useState(false);
   const typingTimeoutRef = useRef<any>(null);
 
+  // Touch swipe gesture for chat navigation
+  const [chatTouchStart, setChatTouchStart] = useState<{ x: number; y: number } | null>(null);
+
+  const handleChatTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setChatTouchStart({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleChatTouchEnd = (e: React.TouchEvent) => {
+    if (!chatTouchStart) return;
+    const touch = e.changedTouches[0];
+    const diffX = touch.clientX - chatTouchStart.x;
+    const diffY = touch.clientY - chatTouchStart.y;
+
+    // Swipe right to go back to list
+    if (diffX > 80 && Math.abs(diffY) < 45) {
+      setMobileView('list');
+      setSelectedDmUser(null);
+      navigate('/chat', { replace: true });
+    }
+    setChatTouchStart(null);
+  };
+
   const getSafeTime = (dateStr: any, id?: string) => {
     if (id && id.startsWith('broadcast-')) {
       const parts = id.split('-');
@@ -2325,7 +2348,7 @@ export const Chat: React.FC = () => {
     );
 
     // Mobile Input Bar component (footer inputs + action sheets)
-    const MobileInputBar = () => {
+    const renderMobileInputBar = () => {
       const isDarkTheme = isCurrentThemeDark();
       return (
         <div className={`flex-shrink-0 p-3 border-t ${
@@ -2596,7 +2619,7 @@ export const Chat: React.FC = () => {
             {renderMobileMessages(messages)}
           </div>
 
-          <MobileInputBar />
+          {renderMobileInputBar()}
 
           {/* Shared modals */}
           {zoomedImage && (
@@ -2707,11 +2730,16 @@ export const Chat: React.FC = () => {
         </div>
 
         {/* Messages area */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
+        <div 
+          className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3" 
+          style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
+          onTouchStart={handleChatTouchStart}
+          onTouchEnd={handleChatTouchEnd}
+        >
           {renderMobileMessages(dmMessages)}
         </div>
 
-        <MobileInputBar />
+        {renderMobileInputBar()}
 
         {/* Shared Modals - Lightbox */}
         {zoomedImage && (

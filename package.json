@@ -16,7 +16,9 @@
     "mobile:build": "vite build && npx cap sync"
   },
   "dependencies": {
+    "@capacitor/app": "^6.0.0",
     "@capacitor/core": "^6.2.0",
+    "@capacitor/local-notifications": "^6.0.0",
     "@capgo/capacitor-updater": "^6.45.10",
     "@supabase/supabase-js": "^2.106.1",
     "framer-motion": "^12.39.0",

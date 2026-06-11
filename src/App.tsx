@@ -8,6 +8,12 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { supabase } from './supabase/config';
 import { ShieldAlert, Send, RefreshCw, UploadCloud } from 'lucide-react';
 import { leavePresence } from './services/presence';
+import { LocalNotifications } from '@capacitor/local-notifications';
+
+const isNativePlatform = typeof window !== 'undefined' && (
+  typeof (window as any).Capacitor !== 'undefined' && 
+  (window as any).Capacitor.getPlatform() !== 'web'
+);
 
 // Import NoteWeb Pages
 import { Home } from './pages/Home';
@@ -29,8 +35,25 @@ import { PageWrapper } from './components/ui/PageWrapper';
 import { LocalErrorBoundary } from './components/LocalErrorBoundary';
 
 // System Notifications Helper
-const showSystemNotification = (title: string, body: string) => {
-  if (typeof window !== 'undefined' && 'Notification' in window) {
+const showSystemNotification = async (title: string, body: string) => {
+  if (isNativePlatform) {
+    try {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title: title,
+            body: body,
+            id: Math.floor(Math.random() * 100000),
+            extra: {
+              route: '/chat'
+            }
+          }
+        ]
+      });
+    } catch (err) {
+      console.warn('Failed to show native local notification:', err);
+    }
+  } else if (typeof window !== 'undefined' && 'Notification' in window) {
     if (Notification.permission === 'granted') {
       try {
         new Notification(title, {
@@ -68,8 +91,23 @@ export const ChatNotificationListener: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
+    let nativeListener: any = null;
+
     // Request system notification permission on first interaction
-    if (typeof window !== 'undefined' && 'Notification' in window) {
+    if (isNativePlatform) {
+      LocalNotifications.checkPermissions().then((perm) => {
+        if (perm.display !== 'granted') {
+          LocalNotifications.requestPermissions();
+        }
+      });
+
+      LocalNotifications.addListener('localNotificationActionPerformed', (notification) => {
+        const route = notification.notification.extra?.route || '/chat';
+        navigate(route);
+      }).then((listener) => {
+        nativeListener = listener;
+      });
+    } else if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'default') {
         const handleGesture = () => {
           Notification.requestPermission().then((permission) => {
@@ -202,6 +240,11 @@ export const ChatNotificationListener: React.FC = () => {
           } else {
             channel.unsubscribe();
           }
+        } catch (e) {}
+      }
+      if (nativeListener) {
+        try {
+          nativeListener.remove();
         } catch (e) {}
       }
     };

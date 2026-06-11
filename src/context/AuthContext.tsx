@@ -1,6 +1,43 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, isMockMode } from '../supabase/config';
 import { joinPresence, leavePresence } from '../services/presence';
+import { registerPlugin } from '@capacitor/core';
+
+const isNativePlatform = typeof window !== 'undefined' && (
+  typeof (window as any).Capacitor !== 'undefined' && 
+  (window as any).Capacitor.getPlatform() !== 'web'
+);
+
+interface NoteWebHelperPlugin {
+  saveUserUid(options: { uid: string }): Promise<{ success: boolean }>;
+  clearUserUid(): Promise<{ success: boolean }>;
+}
+
+const NoteWebHelper = isNativePlatform
+  ? registerPlugin<NoteWebHelperPlugin>('NoteWebHelper')
+  : null;
+
+const saveNativeUserUid = async (uid: string) => {
+  if (NoteWebHelper) {
+    try {
+      await NoteWebHelper.saveUserUid({ uid });
+      console.log('[Native] User UID saved successfully');
+    } catch (e) {
+      console.warn('[Native] Failed to save User UID:', e);
+    }
+  }
+};
+
+const clearNativeUserUid = async () => {
+  if (NoteWebHelper) {
+    try {
+      await NoteWebHelper.clearUserUid();
+      console.log('[Native] User UID cleared successfully');
+    } catch (e) {
+      console.warn('[Native] Failed to clear User UID:', e);
+    }
+  }
+};
 
 export interface UserProfile {
   uid: string;
@@ -279,6 +316,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           photoURL: profile.photoURL,
         });
         setUserProfile(profile);
+        
+        // Sync native SharedPreferences
+        saveNativeUserUid(profile.uid);
 
         // Register online presence across all devices/browsers
         try {
@@ -305,6 +345,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               photoURL: profile.photoURL
             });
             setUserProfile(profile);
+            
+            // Sync native SharedPreferences
+            saveNativeUserUid(profile.uid);
+            
             // Register mock user presence
             try {
               await joinPresence({
@@ -323,6 +367,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         // Clear presence on sign-out
         try { await leavePresence(); } catch (_) {}
+        
+        // Clear native SharedPreferences
+        clearNativeUserUid();
+        
         setUser(null);
         setUserProfile(null);
       }
@@ -802,6 +850,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.warn("Supabase signout failed:", e);
     }
+    
+    // Clear native SharedPreferences
+    clearNativeUserUid();
+
     setUser(null);
     setUserProfile(null);
     setLoading(false);
@@ -946,6 +998,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         photoURL: profile.photoURL,
       });
       setUserProfile(profile);
+      
+      // Sync native SharedPreferences
+      saveNativeUserUid(profile.uid);
+      
       setLoading(false);
       return profile;
     } catch (error) {
@@ -1060,6 +1116,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         photoURL: newProfile.photoURL,
       });
       setUserProfile(newProfile);
+      
+      // Sync native SharedPreferences
+      saveNativeUserUid(uid);
+      
       setLoading(false);
       return newProfile;
     } catch (error) {

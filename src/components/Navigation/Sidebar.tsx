@@ -80,6 +80,44 @@ export const Sidebar: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !showMobileUI) return;
+
+    let startX = 0;
+    let startY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touch = e.changedTouches[0];
+      const diffX = touch.clientX - startX;
+      const diffY = touch.clientY - startY;
+
+      // Only perform drawer gestures if horizontal movement is strong and vertical is weak
+      if (Math.abs(diffX) > 80 && Math.abs(diffY) < 50) {
+        if (diffX > 80 && startX < 40) {
+          // Swipe right from left edge: Open sidebar
+          setIsLauncherOpen(true);
+        } else if (diffX < -80 && isLauncherOpen) {
+          // Swipe left anywhere: Close sidebar
+          setIsLauncherOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [showMobileUI, isLauncherOpen]);
+
   const isNative = typeof window !== 'undefined' && (
     typeof (window as any).Capacitor !== 'undefined' || 
     /android|iphone|ipad|ipod|capacitor/i.test(navigator.userAgent)
