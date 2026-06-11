@@ -9,6 +9,10 @@
   "plugins": {
     "CapacitorUpdater": {
       "autoUpdate": true
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
     }
   }
 }

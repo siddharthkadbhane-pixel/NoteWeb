@@ -71,6 +71,13 @@ export const Sidebar: React.FC = () => {
 
   const [isLargeScreen, setIsLargeScreen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
 
+  const isNative = typeof window !== 'undefined' && (
+    typeof (window as any).Capacitor !== 'undefined' || 
+    /android|iphone|ipad|ipod|capacitor/i.test(navigator.userAgent)
+  );
+
+  const showMobileUI = isNative || !isLargeScreen;
+
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleResize = () => {
@@ -118,12 +125,6 @@ export const Sidebar: React.FC = () => {
     };
   }, [showMobileUI, isLauncherOpen]);
 
-  const isNative = typeof window !== 'undefined' && (
-    typeof (window as any).Capacitor !== 'undefined' || 
-    /android|iphone|ipad|ipod|capacitor/i.test(navigator.userAgent)
-  );
-
-  const showMobileUI = isNative || !isLargeScreen;
 
   const handleLogout = async () => {
     try {
