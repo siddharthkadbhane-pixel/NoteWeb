@@ -151,6 +151,8 @@ interface DMContact {
   lastMessage: string;
   lastMessageTime: string;
   unreadCount: number;
+  lastMessageSenderId?: string;
+  lastMessageIsRead?: boolean;
 }
 
 interface UserProfile {
@@ -782,7 +784,9 @@ export const Chat: React.FC = () => {
             username: p.username,
             lastMessage: lastDm ? (lastDm.photo_url ? '📷 Shared a photo' : lastDm.message) : 'No messages',
             lastMessageTime: lastDm ? lastDm.created_at : new Date().toISOString(),
-            unreadCount: unreadCount
+            unreadCount: unreadCount,
+            lastMessageSenderId: lastDm ? lastDm.sender_id : undefined,
+            lastMessageIsRead: lastDm ? lastDm.is_read : undefined
           };
         });
 
@@ -2459,9 +2463,13 @@ export const Chat: React.FC = () => {
 
                   {/* Message time + actions row */}
                   <div className={`flex items-center gap-2 px-1 mt-0.5 ${isMe ? 'flex-row-reverse' : ''}`}>
-                    <span className="text-[9px] text-slate-500 font-bold">
-                      {formatTime(msg.created_at)}
-                      {activeTab === 'dm' && isMe && <span className="ml-1">{msg.is_read ? ' ✓✓' : ' ✓'}</span>}
+                    <span className="text-[9px] text-slate-500 font-bold flex items-center">
+                      <span>{formatTime(msg.created_at)}</span>
+                      {activeTab === 'dm' && isMe && (
+                        <span className={`ml-1 font-bold ${msg.is_read ? 'text-[#00F2FE] drop-shadow-[0_0_4px_rgba(0,242,254,0.6)]' : 'text-slate-500'}`}>
+                          {msg.is_read ? ' ✓✓ Seen' : ' ✓ Sent'}
+                        </span>
+                      )}
                     </span>
                     {/* Quick action buttons */}
                     <div className="flex items-center gap-1 opacity-60">
@@ -2604,7 +2612,14 @@ export const Chat: React.FC = () => {
                           <span className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{contact.displayName}</span>
                           <span className="text-[10px] text-slate-500 flex-shrink-0 ml-2">{formatTime(contact.lastMessageTime)}</span>
                         </div>
-                        <p className="text-xs text-slate-500 truncate">{contact.lastMessage}</p>
+                        <p className="text-xs text-slate-500 truncate flex items-center gap-1">
+                          {contact.lastMessageSenderId === user?.uid && (
+                            <span className={contact.lastMessageIsRead ? 'text-[#00F2FE] font-black' : 'text-slate-500'}>
+                              {contact.lastMessageIsRead ? '✓✓' : '✓'}
+                            </span>
+                          )}
+                          <span>{contact.lastMessage}</span>
+                        </p>
                       </div>
                       {/* Unread badge */}
                       {contact.unreadCount > 0 && (
@@ -3194,8 +3209,13 @@ export const Chat: React.FC = () => {
                                 <span className={`text-xs font-extrabold truncate ${isSelected ? 'text-white' : isDark ? 'text-white' : 'text-slate-800'}`}>{contact.displayName}</span>
                                 <span className={`text-[8px] font-bold ${isSelected ? 'text-indigo-200' : 'text-slate-500'}`}>{formatTime(contact.lastMessageTime)}</span>
                               </div>
-                              <p className={`text-[10px] truncate mt-0.5 ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
-                                {contact.lastMessage}
+                              <p className={`text-[10px] truncate mt-0.5 flex items-center gap-1 ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
+                                {contact.lastMessageSenderId === user?.uid && (
+                                  <span className={contact.lastMessageIsRead ? (isSelected ? 'text-cyan-200 font-black' : 'text-[#00F2FE] font-black') : (isSelected ? 'text-indigo-200' : 'text-slate-500')}>
+                                    {contact.lastMessageIsRead ? '✓✓' : '✓'}
+                                  </span>
+                                )}
+                                <span>{contact.lastMessage}</span>
                               </p>
                             </div>
                             
@@ -3802,8 +3822,8 @@ export const Chat: React.FC = () => {
                           <span className="block text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">
                             {formatTime(msg.created_at)}
                             {activeTab === 'dm' && isMe && (
-                              <span className="ml-1.5">
-                                {msg.is_read ? '✓✓ Read' : '✓ Sent'}
+                              <span className={`ml-1.5 font-bold ${msg.is_read ? 'text-[#00F2FE] drop-shadow-[0_0_4px_rgba(0,242,254,0.6)]' : 'text-slate-500'}`}>
+                                {msg.is_read ? '✓✓ Seen' : '✓ Sent'}
                               </span>
                             )}
                           </span>

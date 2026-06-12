@@ -423,12 +423,12 @@ export const Sidebar: React.FC = () => {
             {location.pathname === '/upload' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
           </NavLink>
 
-          {/* Quests */}
+          {/* Lounge */}
           {user && !isGuest && (
-            <NavLink to="/quests" onClick={playTapSound} className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
-              <Target className="w-5 h-5" />
-              <span className="text-[8px] font-black tracking-wide">Quests</span>
-              {location.pathname === '/quests' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
+            <NavLink to="/chat" onClick={playTapSound} className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+              <MessageSquare className="w-5 h-5 text-indigo-400" />
+              <span className="text-[8px] font-black tracking-wide">Lounge</span>
+              {location.pathname === '/chat' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
             </NavLink>
           )}
 
@@ -488,7 +488,6 @@ export const Sidebar: React.FC = () => {
                   {[
                     { label: 'Departments', icon: <Grid className="w-5 h-5 text-sky-400" />, path: '/categories' },
                     ...(user && !isGuest ? [
-                      { label: 'Lounge', icon: <MessageSquare className="w-5 h-5 text-indigo-400" />, path: '/chat' },
                       { label: 'Quests', icon: <Target className="w-5 h-5 text-[#00F2FE]" />, path: '/quests' },
                       { label: 'Rankings', icon: <Trophy className="w-5 h-5 text-amber-400" />, path: '/leaderboard' },
                       { label: 'Profile', icon: <User className="w-5 h-5 text-teal-400" />, path: '/profile' },

@@ -252,6 +252,9 @@ CREATE POLICY "Allow users to send messages" ON public.direct_messages FOR INSER
     WITH CHECK (auth.uid()::text = sender_id);
 CREATE POLICY "Allow senders to update/delete their messages" ON public.direct_messages FOR ALL 
     USING (auth.uid()::text = sender_id);
+CREATE POLICY "Allow recipients to mark messages as read" ON public.direct_messages FOR UPDATE
+    USING (auth.uid()::text = recipient_id)
+    WITH CHECK (auth.uid()::text = recipient_id);
 
 -- ════════════════════════════════════════════════════════════
 -- 6. SETUP SUPABASE STORAGE PUBLIC BUCKET FOR PDF UPLOADS

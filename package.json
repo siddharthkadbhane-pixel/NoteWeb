@@ -13,7 +13,12 @@
     "deploy": "gh-pages -d dist",
     "electron:start": "vite build && electron electron/main.cjs",
     "desktop:sync": "powershell -Command \"Copy-Item -Path 'dist/*' -Destination 'dist-desktop/NoteWeb-win32-x64/resources/app/dist' -Recurse -Force; Copy-Item -Path 'electron/main.cjs' -Destination 'dist-desktop/NoteWeb-win32-x64/resources/app/electron/main.cjs' -Force\"",
-    "mobile:build": "vite build && npx cap sync"
+    "mobile:build": "vite build && npx cap sync",
+    "git:status": "git status",
+    "git:diff": "git diff",
+    "git:add": "git add .",
+    "git:commit": "git commit -m \"Implement chat seen indicators, mobile bottom nav swap, android camera/audio permissions, and Supabase RLS update policy\"",
+    "git:push": "git push"
   },
   "dependencies": {
     "@capacitor/app": "^6.0.0",
