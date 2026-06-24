@@ -131,7 +131,7 @@ export const Login: React.FC = () => {
 
   const labelCls = `block text-[11px] font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
 
-  const selectCls = `w-full rounded-xl px-3 py-2.5 text-sm font-semibold outline-none transition-all border
+  const selectCls = `w-full rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all border
     ${isDark
       ? 'bg-slate-900 border-white/[0.08] text-white focus:border-indigo-500/60'
       : 'bg-white border-slate-200 text-slate-800 focus:border-indigo-400'
@@ -425,151 +425,222 @@ export const Login: React.FC = () => {
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
                   
-                  {/* LEFT COLUMN: Student Section */}
-                  <div className={`flex flex-col justify-between p-6 rounded-2xl border-2 transition-all duration-300 ${
+                  {/* LEFT COLUMN: Premium Value Proposition Showcase */}
+                  <div className={`flex flex-col justify-between p-6 sm:p-8 rounded-2xl border-2 text-left relative overflow-hidden transition-all duration-300 ${
                     isDark
-                      ? 'bg-indigo-950/5 border-indigo-500/10 hover:border-indigo-500/30'
-                      : 'bg-indigo-50/20 border-indigo-100 hover:border-indigo-400/40 shadow-sm'
+                      ? 'bg-indigo-950/5 border-indigo-500/10'
+                      : 'bg-indigo-50/20 border-indigo-100 shadow-sm'
                   }`}>
-                    <div>
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-500/20">
-                          <GraduationCap className="w-5.5 h-5.5 text-white" />
-                        </div>
-                        <div className="text-left">
-                          <h3 className={`text-base font-black ${isDark ? 'text-slate-100' : 'text-indigo-950'}`}>Student Entrance</h3>
-                          <span className={`text-[10px] font-bold ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>BROWSE & UPLOAD NOTES</span>
-                        </div>
+                    {/* Glowing backlight effect */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl pointer-events-none" />
+                    
+                    <div className="space-y-6">
+                      <div>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-indigo-400' : 'text-indigo-650'} bg-indigo-500/10 px-2.5 py-1 rounded-md`}>
+                          Platform Features
+                        </span>
+                        <h2 className={`text-2xl font-black tracking-tight mt-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          Why join NoteWeb?
+                        </h2>
+                        <p className={`text-xs mt-1.5 leading-relaxed font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          NoteWeb is a premium collaborative hub designed specifically for college engineering students.
+                        </p>
                       </div>
-                      <p className={`text-xs mb-5 font-medium leading-relaxed text-left ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Unlock notes library, download PDFs, view categories, and chat in real-time with classmates.
-                      </p>
+
+                      {/* Feature Grid */}
+                      <div className="space-y-4">
+                        {[
+                          { emoji: '📚', title: 'Syllabus Note Library', desc: 'Browse, download, and share verified branch-specific lecture notes.' },
+                          { emoji: '🧠', title: 'AI Exam Roadmaps', desc: 'Consult Gemini AI to generate step-by-step study plans for any subject.' },
+                          { emoji: '⏱️', title: 'Focus Commander', desc: 'Use the integrated Pomodoro focus timer to maintain high productivity.' },
+                          { emoji: '💬', title: 'Classroom Chat Lounge', desc: 'Collaborate and chat in real-time with classmates and peers.' },
+                          { emoji: '🏆', title: 'XP Rewards & Quests', desc: 'Earn points by uploading notes and completing daily academic goals.' }
+                        ].map((feat) => (
+                          <div key={feat.title} className="flex items-start gap-3">
+                            <span className="text-xl flex-shrink-0 mt-0.5">{feat.emoji}</span>
+                            <div className="space-y-0.5">
+                              <h4 className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                {feat.title}
+                              </h4>
+                              <p className={`text-[11px] leading-relaxed font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                                {feat.desc}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
-                    <form onSubmit={handleStudentSubmit} className="space-y-4 text-left">
-                      <div>
-                        <label className={labelCls}>Your Username</label>
-                        <div className="relative">
-                          <User className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                          <input
-                            type="text"
-                            value={studentUsername}
-                            onChange={(e) => setStudentUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
-                            placeholder="e.g. sid_phantom"
-                            className={inputCls + " pl-10"}
-                          />
-                        </div>
-                        {formErrors.studentUsername && (
-                          <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.studentUsername}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className={labelCls}>Your Password</label>
-                        <div className="relative">
-                          <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                          <input
-                            type={showStudentPassword ? 'text' : 'password'}
-                            value={studentPassword}
-                            onChange={(e) => setStudentPassword(e.target.value)}
-                            placeholder="Enter password..."
-                            className={inputCls + " pl-10 pr-10"}
-                            required
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowStudentPassword(!showStudentPassword)}
-                            className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}`}
-                          >
-                            {showStudentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                        {formErrors.studentPassword && (
-                          <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.studentPassword}</p>
-                        )}
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full py-3 rounded-xl font-black text-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-115 shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-                      >
-                        {isLoading && selectedRole === 'student' ? (
-                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <><ArrowRight className="w-4 h-4" /> Enter Campus</>
-                        )}
-                      </button>
-                    </form>
+                    <div className={`mt-6 pt-4 border-t text-[10px] font-bold ${isDark ? 'border-white/[0.04] text-slate-500' : 'border-slate-200/60 text-slate-400'}`}>
+                      ⚡ Trusted by campus engineers worldwide
+                    </div>
                   </div>
 
-                  {/* RIGHT COLUMN: Admin Section */}
-                  <div className={`flex flex-col justify-between p-6 rounded-2xl border-2 transition-all duration-300 ${
-                    isDark ? 'bg-rose-950/5 border-rose-500/10 hover:border-rose-500/30' : 'bg-rose-50/20 border-rose-100 hover:border-rose-400/40 shadow-sm'
+                  {/* RIGHT COLUMN: Entrance Gate (Combined Form with role tabs switcher) */}
+                  <div className={`flex flex-col justify-between p-6 sm:p-8 rounded-2xl border-2 transition-all duration-300 ${
+                    selectedRole === 'admin'
+                      ? (isDark ? 'bg-rose-955/5 border-rose-500/10 hover:border-rose-500/20' : 'bg-rose-50/20 border-rose-100 hover:border-rose-300/40 shadow-sm')
+                      : (isDark ? 'bg-indigo-950/5 border-indigo-500/10 hover:border-indigo-500/20' : 'bg-indigo-50/20 border-indigo-100 hover:border-indigo-300/40 shadow-sm')
                   }`}>
                     <div>
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-orange-500 flex items-center justify-center shadow-md shadow-rose-500/20">
-                          <ShieldCheck className="w-5.5 h-5.5 text-white" />
+                      {/* Section Header */}
+                      <div className="flex items-center gap-3 mb-4 text-left">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md transition-all ${
+                          selectedRole === 'admin' 
+                            ? 'bg-gradient-to-tr from-rose-500 to-orange-500 shadow-rose-500/20' 
+                            : 'bg-gradient-to-tr from-indigo-500 to-purple-600 shadow-indigo-500/20'
+                        }`}>
+                          {selectedRole === 'admin' ? <ShieldCheck className="w-5.5 h-5.5 text-white" /> : <GraduationCap className="w-5.5 h-5.5 text-white" />}
                         </div>
-                        <div className="text-left">
-                          <h3 className={`text-base font-black ${isDark ? 'text-slate-100' : 'text-rose-955'}`}>Admin Gate</h3>
-                          <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400">
-                            ENTER PASSCODE TO UNLOCK
+                        <div>
+                          <h3 className={`text-base font-black ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                            {selectedRole === 'admin' ? 'Admin Gate' : 'Student Entrance'}
+                          </h3>
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${selectedRole === 'admin' ? 'text-rose-550 dark:text-rose-400' : 'text-indigo-650 dark:text-indigo-400'}`}>
+                            {selectedRole === 'admin' ? 'Enter passcode to unlock' : 'Browse & upload notes'}
                           </span>
                         </div>
                       </div>
-                      <p className={`text-xs mb-5 font-medium leading-relaxed text-left ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Elevated workspace to moderate pending resources, view user presence, and prune accounts.
-                      </p>
-                    </div>
 
-                    {/* Admin Passcode Gate */}
-                    <form onSubmit={handleAdminVerify} className="space-y-4 text-left">
-                      <div>
-                        <label className={labelCls}>Admin Username</label>
-                        <div className="relative">
-                          <User className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                          <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => { setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase()); setAdminPassError(''); }}
-                            placeholder="e.g. admin_siddharth"
-                            className={inputCls + " pl-10"}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className={labelCls}>Admin Gate Password</label>
-                        <div className="relative">
-                          <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                          <input
-                            type={showAdminPass ? 'text' : 'password'}
-                            value={adminPass}
-                            onChange={(e) => { setAdminPass(e.target.value); setAdminPassError(''); }}
-                            placeholder="Enter admin passcode..."
-                            className={inputCls + " pl-10 pr-10"}
-                            required
-                          />
+                      {/* Role selection tab button switch */}
+                      <div className={`flex rounded-xl p-1 mb-5 border ${isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-slate-100 border-slate-200'}`}>
+                        {(['student', 'admin'] as const).map((role) => (
                           <button
+                            key={role}
                             type="button"
-                            onClick={() => setShowAdminPass(!showAdminPass)}
-                            className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}`}
+                            onClick={() => setSelectedRole(role)}
+                            className={`flex-1 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer tap-target-compact ${
+                              selectedRole === role
+                                ? (role === 'admin' 
+                                    ? 'bg-gradient-to-r from-rose-600 to-orange-500 text-white shadow' 
+                                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow')
+                                : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-550 hover:text-slate-700')
+                            }`}
                           >
-                            {showAdminPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            {role === 'student' ? <GraduationCap className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                            {role === 'student' ? 'Student' : 'Admin'}
                           </button>
-                        </div>
-                        {adminPassError && (
-                          <p className="mt-1 text-xs text-rose-500 font-semibold">{adminPassError}</p>
-                        )}
+                        ))}
                       </div>
 
-                      <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full py-3 rounded-xl font-black text-sm text-white bg-gradient-to-r from-rose-600 to-orange-500 hover:brightness-115 shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                      {/* Dynamic forms */}
+                      {selectedRole === 'student' ? (
+                        /* STUDENT FORM */
+                        <form onSubmit={handleStudentSubmit} className="space-y-4 text-left">
+                          <div>
+                            <label className={labelCls}>Your Username</label>
+                            <div className="relative">
+                              <User className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-450'}`} />
+                              <input
+                                type="text"
+                                value={studentUsername}
+                                onChange={(e) => setStudentUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
+                                placeholder="e.g. sid_phantom"
+                                className={inputCls + " pl-10"}
+                              />
+                            </div>
+                            {formErrors.studentUsername && (
+                              <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.studentUsername}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className={labelCls}>Your Password</label>
+                            <div className="relative">
+                              <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-450'}`} />
+                              <input
+                                type={showStudentPassword ? 'text' : 'password'}
+                                value={studentPassword}
+                                onChange={(e) => setStudentPassword(e.target.value)}
+                                placeholder="Enter password..."
+                                className={inputCls + " pl-10 pr-10"}
+                                required
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowStudentPassword(!showStudentPassword)}
+                                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors tap-target-compact tap-target-expanded ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}`}
+                              >
+                                {showStudentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                            </div>
+                            {formErrors.studentPassword && (
+                              <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.studentPassword}</p>
+                            )}
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full py-3 rounded-xl font-black text-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-115 shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                          >
+                            {isLoading ? (
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <><ArrowRight className="w-4 h-4" /> Enter Campus</>
+                            )}
+                          </button>
+                        </form>
+                      ) : (
+                        /* ADMIN FORM */
+                        <form onSubmit={handleAdminVerify} className="space-y-4 text-left">
+                          <div>
+                            <label className={labelCls}>Admin Username</label>
+                            <div className="relative">
+                              <User className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-450'}`} />
+                              <input
+                                type="text"
+                                value={username}
+                                onChange={(e) => { setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase()); setAdminPassError(''); }}
+                                placeholder="e.g. admin_siddharth"
+                                className={inputCls + " pl-10"}
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className={labelCls}>Admin Gate Password</label>
+                            <div className="relative">
+                              <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-450'}`} />
+                              <input
+                                type={showAdminPass ? 'text' : 'password'}
+                                value={adminPass}
+                                onChange={(e) => { setAdminPass(e.target.value); setAdminPassError(''); }}
+                                placeholder="Enter admin passcode..."
+                                className={inputCls + " pl-10 pr-10"}
+                                required
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowAdminPass(!showAdminPass)}
+                                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors tap-target-compact tap-target-expanded ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}`}
+                              >
+                                {showAdminPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                            </div>
+                            {adminPassError && (
+                              <p className="mt-1 text-xs text-rose-500 font-semibold">{adminPassError}</p>
+                            )}
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full py-3 rounded-xl font-black text-sm text-white bg-gradient-to-r from-rose-600 to-orange-500 hover:brightness-115 shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                          >
+                            {isLoading ? (
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <><Lock className="w-4 h-4" /> Admin Access</>
+                            )}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </div>
+
+                </div>adow-rose-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                       >
                         {isLoading && selectedRole === 'admin' ? (
                           <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

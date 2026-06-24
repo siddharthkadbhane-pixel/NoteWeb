@@ -544,7 +544,7 @@ Example raw format:
           <div className="lg:col-span-5 flex flex-col gap-6 w-full">
             
             {/* WIDGET 1: AESTHETIC INTERACTIVE NOTEPAD */}
-            <div className={`rounded-3xl border p-5 flex flex-col gap-4 shadow-xl backdrop-blur-2xl transition-all duration-300 relative overflow-hidden ${isDark ? currentNotepadStyle.bg : 'glass-panel text-slate-800 focus-within:border-indigo-300'}`}>
+            <div className={`rounded-3xl border p-6 flex flex-col gap-4 shadow-xl backdrop-blur-2xl transition-all duration-300 relative overflow-hidden ${isDark ? currentNotepadStyle.bg : 'glass-panel text-slate-800 focus-within:border-indigo-300'}`}>
               
               {/* Notepad Glow Backdrop Decoration */}
               <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-tr from-white/[0.01] to-white/[0.03] blur-xl pointer-events-none" />
@@ -556,18 +556,19 @@ Example raw format:
                     <AlignLeft className={`w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                   </div>
                   <div>
-                    <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Study Scratchpad</h3>
+                    <h3 className={`text-sm sm:text-base font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Study Scratchpad</h3>
                     <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Stored in local cache</p>
                   </div>
                 </div>
 
                 {/* Theme presets togglers */}
-                <div className="flex items-center gap-1 bg-white/[0.02] border border-white/[0.05] p-1 rounded-xl">
+                <div className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.05] p-1.5 rounded-xl">
                   {(['obsidian', 'cyber', 'crimson', 'emerald'] as const).map(t => (
                     <button
                       key={t}
+                      type="button"
                       onClick={() => setNoteTheme(t)}
-                      className={`w-3.5 h-3.5 rounded-full border transition-all active:scale-75 ${
+                      className={`w-5 h-5 sm:w-4 sm:h-4 rounded-full border transition-all active:scale-75 tap-target-compact tap-target-expanded ${
                         t === 'obsidian' ? 'bg-[#00F2FE] border-[#00F2FE]/40' :
                         t === 'cyber' ? 'bg-[#7F00FF] border-[#7F00FF]/40' :
                         t === 'crimson' ? 'bg-[#FF007F] border-[#FF007F]/40' :
@@ -636,7 +637,7 @@ Example raw format:
             </div>
 
             {/* WIDGET 2: HIGH-FIDELITY POMODORO FOCUS TIMER */}
-            <div className="glass-panel rounded-3xl p-5 flex flex-col gap-4 shadow-xl relative overflow-hidden premium-border-glow">
+            <div className="glass-panel rounded-3xl p-6 flex flex-col gap-4 shadow-xl relative overflow-hidden premium-border-glow">
               
               {/* Radiant Inner Glow Deco */}
               <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#7F00FF]/5 blur-3xl pointer-events-none" />
@@ -648,7 +649,7 @@ Example raw format:
                     <Clock className="w-4 h-4 text-purple-400" />
                   </div>
                   <div>
-                    <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Focus Commander</h3>
+                    <h3 className={`text-sm sm:text-base font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Focus Commander</h3>
                     <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Pomodoro cycle interval</p>
                   </div>
                 </div>
@@ -786,7 +787,7 @@ Example raw format:
           <div className="lg:col-span-7 flex flex-col gap-6 w-full">
             
             {/* WIDGET 3: STUDENT GREETING & RANK BADGE PANEL */}
-            <div className="glass-panel rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-center sm:justify-between gap-6 relative overflow-hidden premium-border-glow">
+            <div className="glass-panel rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-6 relative overflow-hidden premium-border-glow">
               
               {/* Dynamic decorative visual neon particle line overlay */}
               <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-[#00F2FE] via-[#7F00FF] to-[#FF007F]" />
@@ -864,7 +865,7 @@ Example raw format:
                     <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
                   </div>
                   <div>
-                    <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>AI Study Planner</h3>
+                    <h3 className={`text-sm sm:text-base font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>AI Study Planner</h3>
                     <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Custom roadmaps generated by Gemini</p>
                   </div>
                 </div>
@@ -895,18 +896,69 @@ Example raw format:
                             : 'bg-slate-50/80 border-slate-200 text-slate-800 placeholder-slate-400 focus:border-purple-500/50 focus:bg-white'
                         }`}
                       />
+                      {/* Quick Subject Tags */}
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {['Data Structures', 'Database Systems', 'Linear Algebra', 'Operating Systems', 'Computer Networks'].map((sub) => (
+                          <button
+                            key={sub}
+                            type="button"
+                            onClick={() => setPlannerSubj(sub)}
+                            className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all active:scale-95 cursor-pointer tap-target-compact ${
+                              plannerSubj === sub
+                                ? 'bg-purple-600 text-white border-purple-600'
+                                : isDark
+                                  ? 'bg-white/[0.02] border-white/[0.06] text-slate-300 hover:bg-white/[0.05]'
+                                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            {sub}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Quick Timeframe & Goal Presets */}
+                    <div className="flex flex-col gap-1.5 mt-0.5">
+                      <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Quick Presets
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: '🔥 1-Day Cram', time: '1 Day', goal: 'Pass Exam' },
+                          { label: '🚀 3-Day Sprint', time: '3 Days', goal: 'Score A+' },
+                          { label: '📖 1-Week Pace', time: '1 Week', goal: 'Score A+' }
+                        ].map((preset) => (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => {
+                              setPlannerTime(preset.time);
+                              setPlannerGoal(preset.goal);
+                            }}
+                            className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all active:scale-95 cursor-pointer tap-target-compact ${
+                              plannerTime === preset.time && plannerGoal === preset.goal
+                                ? 'bg-indigo-600 text-white border-indigo-650 dark:bg-indigo-600 dark:border-indigo-600'
+                                : isDark
+                                  ? 'bg-white/[0.02] border-white/[0.06] text-slate-300 hover:bg-white/[0.05]'
+                                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3.5">
                       {/* Timeframe Selector */}
                       <div className="flex flex-col gap-1.5">
                         <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                          Preparation Timeframe
+                          Custom Timeframe
                         </label>
                         <select
                           value={plannerTime}
                           onChange={(e) => setPlannerTime(e.target.value)}
-                          className={`w-full px-3.5 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none cursor-pointer ${
+                          className={`w-full px-4 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none cursor-pointer ${
                             isDark 
                               ? 'bg-[#0A0A0F] border-white/[0.04] text-white focus:border-purple-500/40' 
                               : 'bg-slate-50/80 border-slate-200 text-slate-700 focus:border-purple-500/50'
@@ -922,12 +974,12 @@ Example raw format:
                       {/* Goal Selector */}
                       <div className="flex flex-col gap-1.5">
                         <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                          Preparation Goal
+                          Custom Goal
                         </label>
                         <select
                           value={plannerGoal}
                           onChange={(e) => setPlannerGoal(e.target.value)}
-                          className={`w-full px-3.5 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none cursor-pointer ${
+                          className={`w-full px-4 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none cursor-pointer ${
                             isDark 
                               ? 'bg-[#0A0A0F] border-white/[0.04] text-white focus:border-purple-500/40' 
                               : 'bg-slate-50/80 border-slate-200 text-slate-700 focus:border-purple-500/50'
@@ -1043,7 +1095,7 @@ Example raw format:
                                   }`}
                                 >
                                   {/* Custom Checkbox circle */}
-                                  <span className={`w-3.5 h-3.5 rounded-full flex-shrink-0 border flex items-center justify-center text-[8px] transition-all mt-0.5 ${
+                                  <span className={`w-5 h-5 rounded-full flex-shrink-0 border flex items-center justify-center text-[9px] transition-all mt-0.5 ${
                                     isChecked 
                                       ? 'bg-emerald-500 border-emerald-500 text-white font-extrabold shadow-[0_0_8px_rgba(16,185,129,0.3)]' 
                                       : 'border-slate-400/50 hover:border-purple-500'
@@ -1096,7 +1148,7 @@ Example raw format:
                     <BookMarked className="w-4 h-4 text-sky-400" />
                   </div>
                   <div>
-                    <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Curriculum Branches</h3>
+                    <h3 className={`text-sm sm:text-base font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Curriculum Branches</h3>
                     <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Browse notes by department</p>
                   </div>
                 </div>

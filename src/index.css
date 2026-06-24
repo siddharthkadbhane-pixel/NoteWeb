@@ -91,6 +91,18 @@
   button, a, [role="button"] {
     touch-action: manipulation;
   }
+
+  /* Focus indicator for keyboard accessibility */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2.5px solid var(--accent-violet, #7F00FF);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 4px rgba(127, 0, 255, 0.25) !important;
+  }
 }
 
 @layer utilities {
@@ -225,6 +237,22 @@
 
   html.light ::-webkit-scrollbar-thumb:hover,
   body.light-mode ::-webkit-scrollbar-thumb:hover { background: rgba(79, 70, 229, 0.25); }
+
+  /* Touch-friendly tap targets expansion without visual stretching */
+  .tap-target-expanded {
+    position: relative;
+  }
+  .tap-target-expanded::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 44px;
+    min-height: 44px;
+    width: 100%;
+    height: 100%;
+  }
 }
 
 /* ─── Premium Animated Border Glow ─── */
@@ -270,16 +298,16 @@ body.light-mode .pdf-page-shadow { box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1)
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 /* ─── Light mode card text fix (ensure readability) ─── */
-html.light .text-slate-100,
-html.light .text-slate-200,
-html.light .text-slate-300,
-html.light .text-slate-400,
-html.light .text-white,
-body.light-mode .text-slate-100,
-body.light-mode .text-slate-200,
-body.light-mode .text-slate-300,
-body.light-mode .text-slate-400,
-body.light-mode .text-white {
+html.light .text-slate-100:not(button):not(a):not(option):not([role="button"]):not([class*="bg-"]):not(button *):not(a *):not([role="button"] *),
+html.light .text-slate-200:not(button):not(a):not(option):not([role="button"]):not([class*="bg-"]):not(button *):not(a *):not([role="button"] *),
+html.light .text-slate-300:not(button):not(a):not(option):not([role="button"]):not([class*="bg-"]):not(button *):not(a *):not([role="button"] *),
+html.light .text-slate-400:not(button):not(a):not(option):not([role="button"]):not([class*="bg-"]):not(button *):not(a *):not([role="button"] *),
+html.light .text-white:not(button):not(a):not(option):not([role="button"]):not([class*="bg-"]):not(button *):not(a *):not([role="button"] *),
+body.light-mode .text-slate-100:not(button):not(a):not(option):not([role="button"]):not([class*="bg-"]):not(button *):not(a *):not([role="button"] *),
+body.light-mode .text-slate-200:not(button):not(a):not(option):not([role="button"]):not([class*="bg-"]):not(button *):not(a *):not([role="button"] *),
+body.light-mode .text-slate-300:not(button):not(a):not(option):not([role="button"]):not([class*="bg-"]):not(button *):not(a *):not([role="button"] *),
+body.light-mode .text-slate-400:not(button):not(a):not(option):not([role="button"]):not([class*="bg-"]):not(button *):not(a *):not([role="button"] *),
+body.light-mode .text-white:not(button):not(a):not(option):not([role="button"]):not([class*="bg-"]):not(button *):not(a *):not([role="button"] *) {
   color: var(--text-charcoal) !important;
 }
 
@@ -362,9 +390,9 @@ html.light [class*="bg-\\[#1A1A24\\]"] {
   }
 
   /* Touch-friendly tap targets - minimum 44px */
-  button, [role="button"] {
-    min-height: 36px;
-    min-width: 36px;
+  button:not(.tap-target-compact), [role="button"]:not(.tap-target-compact), a:not(.tap-target-compact) {
+    min-height: 44px;
+    min-width: 44px;
   }
 
   /* Improve horizontal scroll for quick replies */
