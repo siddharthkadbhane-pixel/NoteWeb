@@ -506,31 +506,96 @@ Example raw format:
   };
 
   return (
-    <div className={`min-h-screen w-full relative py-6 px-3 sm:px-6 lg:px-8 flex flex-col justify-start items-center overflow-x-hidden text-left ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+    <>
+      {/* Skip-to-content link for keyboard users */}
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+
+      <div
+        id="main-content"
+        role="main"
+        className={`min-h-screen w-full relative py-6 px-3 sm:px-6 lg:px-8 flex flex-col justify-start items-center overflow-x-hidden text-left ${isDark ? 'text-slate-100' : 'text-slate-900'}`}
+      >
       
       {/* Background ambient glows */}
       <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-purple-600/5 rounded-full pointer-events-none blur-3xl" />
       <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-[#00F2FE]/5 rounded-full pointer-events-none blur-3xl" />
 
       <div className="max-w-7xl mx-auto z-10 relative flex flex-col gap-8 w-full">
-        
-        {/* Workspace Title Block */}
-        <div className={`flex flex-col gap-2.5 border-b pb-5 ${isDark ? 'border-white/[0.06]' : 'border-slate-200/80'}`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase border ${isDark ? 'bg-[#00F2FE]/10 border-[#00F2FE]/25 text-[#00F2FE]' : 'bg-indigo-50 border-indigo-200 text-indigo-600'}`}>
-              <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Active Workspace Desk
+
+        {/* ── FULL-WIDTH HERO — CONVERSION CLARITY (DesignMeter Critical Fix) ── */}
+        <section
+          aria-labelledby="hero-heading"
+          className={`rounded-3xl border p-6 sm:p-8 lg:p-10 flex flex-col items-center text-center gap-6 relative overflow-hidden ${isDark ? 'bg-indigo-600/[0.06] border-indigo-500/15' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200/60'}`}
+        >
+          {/* Background glow accent */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-gradient-to-b from-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col items-center gap-4 max-w-3xl">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black tracking-wider uppercase border ${isDark ? 'bg-[#00F2FE]/10 border-[#00F2FE]/25 text-[#00F2FE]' : 'bg-indigo-100 border-indigo-200 text-indigo-700'}`}>
+              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" /> Academic Study Platform
             </span>
-            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border ${isDark ? 'text-slate-500 bg-white/[0.02] border-white/[0.04]' : 'text-slate-400 bg-slate-100/80 border-slate-200/60'}`}>
-              <Clock className="w-3 h-3" /> Auto-saved Desk
-            </span>
+
+            <h1 id="hero-heading" className={`heading-display ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              Study Smarter with{' '}
+              <span className="bg-gradient-to-r from-[#00F2FE] via-[#7F00FF] to-[#FF007F] bg-clip-text text-transparent">AI-Powered Notes</span>
+            </h1>
+
+            <p className={`text-sm sm:text-base font-medium leading-relaxed prose-readable mx-auto ${isDark ? 'text-muted-accessible' : 'text-slate-600'}`}>
+              Access peer-verified college notes, generate custom study roadmaps with Gemini AI, and stay focused with a built-in Pomodoro timer — all in one platform.
+            </p>
+
+            {/* Feature badges */}
+            <div className="flex flex-wrap justify-center gap-2 mt-1" role="list" aria-label="Key features">
+              {[
+                { label: '📚 Notes Library', color: isDark ? 'bg-sky-500/10 border-sky-500/20 text-sky-400' : 'bg-sky-50 border-sky-200 text-sky-700' },
+                { label: '🤖 AI Study Planner', color: isDark ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' : 'bg-purple-50 border-purple-200 text-purple-700' },
+                { label: '⏱ Focus Timer', color: isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700' },
+              ].map(f => (
+                <span key={f.label} role="listitem" className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold border ${f.color}`}>{f.label}</span>
+              ))}
+            </div>
+
+            {/* Primary CTAs */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 mt-2 w-full sm:w-auto">
+              <button
+                onClick={() => navigate('/feed')}
+                aria-label="Browse the notes library"
+                className="cta-hero group"
+              >
+                Browse Notes Library <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+              </button>
+              {isGuest && (
+                <button
+                  onClick={() => navigate('/login')}
+                  aria-label="Sign up or log in"
+                  className="cta-secondary"
+                >
+                  Sign Up — It's Free
+                </button>
+              )}
+            </div>
+
+            {/* Social proof */}
+            <p className={`text-xs font-semibold flex items-center gap-1.5 ${isDark ? 'text-muted-accessible' : 'text-slate-500'}`}>
+              <Smile className="w-3.5 h-3.5 text-indigo-400" aria-hidden="true" />
+              {stats.notesCount} verified notes uploaded by students
+            </p>
           </div>
-          
-          <h1 className={`text-3xl font-black tracking-tight leading-none mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            Welcome back, <span className="bg-gradient-to-r from-[#00F2FE] via-[#7F00FF] to-[#FF007F] bg-clip-text text-transparent">{studentName}</span>
-          </h1>
-          <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            Manage notes, trigger timer bursts, study daily trivia concept teasers, and coordinate library modules.
-          </p>
+        </section>
+
+        {/* Workspace Context Bar */}
+        <div className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 border-b pb-5 ${isDark ? 'border-white/[0.06]' : 'border-slate-200/80'}`}>
+          <div className="flex-1 min-w-0">
+            <h2 className={`text-xl sm:text-2xl font-black tracking-tight leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              Welcome back, <span className="bg-gradient-to-r from-[#00F2FE] via-[#7F00FF] to-[#FF007F] bg-clip-text text-transparent">{studentName}</span>
+            </h2>
+            <p className={`text-sm font-medium leading-relaxed mt-1 ${isDark ? 'text-muted-accessible' : 'text-slate-500'}`}>
+              Manage notes, run focus sessions, generate AI study roadmaps, and browse your curriculum library.
+            </p>
+          </div>
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border self-start ${isDark ? 'text-muted-accessible bg-white/[0.02] border-white/[0.04]' : 'text-slate-500 bg-slate-100/80 border-slate-200/60'}`}>
+            <Clock className="w-3 h-3" aria-hidden="true" /> Auto-saved Desk
+          </span>
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
@@ -557,24 +622,25 @@ Example raw format:
                   </div>
                   <div>
                     <h3 className={`text-sm sm:text-base font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Study Scratchpad</h3>
-                    <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Stored in local cache</p>
+                    <p className="text-xs font-semibold mt-0.5 text-muted-accessible">Stored in local cache</p>
                   </div>
                 </div>
 
                 {/* Theme presets togglers */}
-                <div className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.05] p-1.5 rounded-xl">
+                <div className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.05] p-1.5 rounded-xl" role="group" aria-label="Note colour theme">
                   {(['obsidian', 'cyber', 'crimson', 'emerald'] as const).map(t => (
                     <button
                       key={t}
                       type="button"
                       onClick={() => setNoteTheme(t)}
-                      className={`w-5 h-5 sm:w-4 sm:h-4 rounded-full border transition-all active:scale-75 tap-target-compact tap-target-expanded ${
+                      aria-label={`Switch to ${t} note theme`}
+                      aria-pressed={noteTheme === t}
+                      className={`w-6 h-6 rounded-full border transition-all active:scale-75 tap-target-compact tap-target-expanded ${
                         t === 'obsidian' ? 'bg-[#00F2FE] border-[#00F2FE]/40' :
                         t === 'cyber' ? 'bg-[#7F00FF] border-[#7F00FF]/40' :
                         t === 'crimson' ? 'bg-[#FF007F] border-[#FF007F]/40' :
                         'bg-[#00FF87] border-[#00FF87]/40'
                       } ${noteTheme === t ? 'ring-2 ring-white/60 scale-110' : 'scale-90 opacity-60'}`}
-                      title={`${t.toUpperCase()} note theme`}
                     />
                   ))}
                 </div>
@@ -591,12 +657,14 @@ Example raw format:
               {/* Editor Controls Bar */}
               <div className={`flex flex-wrap items-center justify-between gap-3 pt-3 border-t z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
                 {/* Font Size Preset Toggles */}
-                <div className="flex items-center gap-1.5 bg-white/[0.02] border border-white/[0.04] p-0.5 rounded-lg text-[9px] font-bold text-slate-400">
+                <div className="flex items-center gap-1.5 bg-white/[0.02] border border-white/[0.04] p-0.5 rounded-lg text-xs font-bold text-muted-accessible" role="group" aria-label="Font size">
                   {(['sm', 'base', 'lg'] as const).map(sz => (
                     <button
                       key={sz}
                       onClick={() => setFontSize(sz)}
-                      className={`px-2 py-1 rounded transition-all capitalize ${
+                      aria-label={`Font size ${sz}`}
+                      aria-pressed={fontSize === sz}
+                      className={`px-2.5 py-1 rounded transition-all capitalize ${
                         fontSize === sz ? 'bg-white/5 text-white shadow' : 'hover:text-slate-300'
                       }`}
                     >
@@ -606,30 +674,27 @@ Example raw format:
                 </div>
 
                 {/* Operations tools */}
-                <div className="flex items-center gap-1.5">
-                  {/* Clipboard tool */}
+                <div className="flex items-center gap-1.5" role="toolbar" aria-label="Notepad actions">
                   <button
                     onClick={copyNotepadToClipboard}
-                    className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06] hover:text-white transition-all active:scale-90 text-slate-400"
-                    title="Copy note text to clipboard"
+                    aria-label="Copy note text to clipboard"
+                    className="btn-icon tap-target-compact"
                   >
-                    <Copy className="w-3.5 h-3.5" />
+                    <Copy className="w-4 h-4" />
                   </button>
-                  {/* Download tool */}
                   <button
                     onClick={downloadNotepadText}
-                    className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06] hover:text-white transition-all active:scale-90 text-slate-400"
-                    title="Download scratch note as TXT file"
+                    aria-label="Download scratch note as TXT file"
+                    className="btn-icon tap-target-compact"
                   >
-                    <Download className="w-3.5 h-3.5" />
+                    <Download className="w-4 h-4" />
                   </button>
-                  {/* Wipe tool */}
                   <button
                     onClick={clearNotepad}
-                    className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20 transition-all active:scale-90 text-slate-400"
-                    title="Clear notepad text"
+                    aria-label="Clear all notepad text"
+                    className="btn-icon btn-icon-danger tap-target-compact"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -650,21 +715,22 @@ Example raw format:
                   </div>
                   <div>
                     <h3 className={`text-sm sm:text-base font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Focus Commander</h3>
-                    <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Pomodoro cycle interval</p>
+                    <p className="text-xs font-semibold mt-0.5 text-muted-accessible">Pomodoro cycle interval</p>
                   </div>
                 </div>
 
                 {/* Sound alert switch */}
                 <button
                   onClick={() => setAudioEnabled(!audioEnabled)}
-                  className={`p-1.5 rounded-lg border transition-all ${
+                  aria-label={audioEnabled ? 'Mute timer sound cues' : 'Enable timer sound cues'}
+                  aria-pressed={audioEnabled}
+                  className={`p-2.5 rounded-lg border transition-all ${
                     audioEnabled 
                       ? 'bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20' 
                       : 'bg-white/[0.01] border-white/[0.05] text-slate-500'
                   }`}
-                  title={audioEnabled ? 'Sound cues active' : 'Sound cues muted'}
                 >
-                  {audioEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                  {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                 </button>
               </div>
 
@@ -699,7 +765,7 @@ Example raw format:
                     <span className={`text-xl font-black font-mono tracking-tight leading-none ${isDark ? 'text-white' : 'text-slate-800'}`}>
                       {formatTime(timeRemaining)}
                     </span>
-                    <span className="text-[7.5px] font-black uppercase text-purple-400 tracking-wider mt-1 block">
+                    <span className="text-xs font-black uppercase text-purple-400 tracking-wider mt-1 block">
                       {timerMode}
                     </span>
                   </div>
@@ -717,7 +783,7 @@ Example raw format:
                       <button
                         key={mode}
                         onClick={() => switchTimerMode(mode)}
-                        className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                        className={`py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                           timerMode === mode 
                             ? (isDark 
                                 ? 'bg-purple-500/20 text-purple-300 border border-purple-500/20' 
@@ -738,40 +804,41 @@ Example raw format:
                   <div className="flex items-center justify-center sm:justify-start gap-2.5">
                     <button
                       onClick={toggleTimer}
-                      className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl font-black text-xs transition-all active:scale-95 cursor-pointer ${
+                      aria-label={timerActive ? 'Pause focus timer' : 'Start focus timer'}
+                      className={`flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-sm transition-all active:scale-95 cursor-pointer min-h-[48px] ${
                         timerActive 
                           ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20' 
-                          : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg'
+                          : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg'
                       }`}
                     >
                       {timerActive ? (
                         <>
-                          <Pause className="w-3.5 h-3.5" /> Pause
+                          <Pause className="w-4 h-4" /> Pause Timer
                         </>
                       ) : (
                         <>
-                          <Play className="w-3.5 h-3.5 fill-current" /> Start Focus
+                          <Play className="w-4 h-4 fill-current" /> Start Focus
                         </>
                       )}
                     </button>
 
                     <button
                       onClick={resetTimer}
-                      className={`p-2.5 rounded-xl border transition-all active:scale-90 cursor-pointer ${
+                      aria-label="Reset focus timer to start"
+                      className={`p-3 rounded-xl border transition-all active:scale-90 cursor-pointer min-h-[48px] ${
                         isDark 
                           ? 'border-white/[0.04] bg-white/[0.01] text-slate-400 hover:text-white hover:bg-white/5' 
                           : 'border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-800 hover:bg-slate-100'
                       }`}
-                      title="Reset focus clock"
                     >
                       <RotateCcw className="w-4 h-4" />
                     </button>
                   </div>
 
                   {/* Stats note */}
-                  <div className="text-[9px] font-bold text-slate-500 flex items-center justify-center sm:justify-start gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span>Completed Pomodoros: {completedPomodoros}</span>
+                  <div className="text-xs font-semibold text-muted-accessible flex items-center justify-center sm:justify-start gap-1.5" role="status" aria-live="polite">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
+                    <span>Sessions completed: {completedPomodoros}</span>
                   </div>
                 </div>
 
@@ -794,8 +861,8 @@ Example raw format:
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#00F2FE]/5 blur-3xl pointer-events-none" />
 
               <div className="space-y-2.5 z-10 flex-1">
-                <div className={`flex items-center gap-1.5 text-[9px] font-black tracking-wider uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  <Award className="w-3.5 h-3.5 text-amber-400" /> Student Profile Standing
+                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-accessible">
+                  <Award className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" /> Student Profile Standing
                 </div>
                 <h3 className={`text-xl font-black leading-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
                   Academic Rank Dashboard
@@ -824,8 +891,8 @@ Example raw format:
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto flex-shrink-0">
                 <div className="w-full sm:w-32 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex sm:flex-col items-center justify-between sm:justify-center gap-2.5 z-10">
                   <div className="text-left sm:text-center">
-                    <span className="text-[9px] font-black tracking-wider uppercase text-slate-500 block">Total points</span>
-                    <span className="text-2xl font-black text-white tracking-tight mt-0.5 block">
+                    <span className="text-xs font-black tracking-wider uppercase text-label-accessible block">Total points</span>
+                    <span className={`text-2xl font-black tracking-tight mt-0.5 block ${isDark ? 'text-white' : 'text-slate-800'}`}>
                       {stats.score + (isGuest ? 0 : (userProfile?.points || 0))} Pts
                     </span>
                   </div>
@@ -837,7 +904,7 @@ Example raw format:
                 {!isGuest && user && (
                   <div className="w-full sm:w-32 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex sm:flex-col items-center justify-between sm:justify-center gap-2.5 z-10">
                     <div className="text-left sm:text-center">
-                      <span className="text-[9px] font-black tracking-wider uppercase text-slate-500 block">Study Streak</span>
+                      <span className="text-xs font-black tracking-wider uppercase text-label-accessible block">Study Streak</span>
                       <span className="text-2xl font-black text-amber-500 tracking-tight mt-0.5 block">
                         {localStorage.getItem(`noteweb-study-streak-${user.uid}`) || '0'} Days
                       </span>
@@ -862,15 +929,15 @@ Example raw format:
               <div className={`flex items-center justify-between border-b pb-3.5 z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
+                    <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" aria-hidden="true" />
                   </div>
                   <div>
                     <h3 className={`text-sm sm:text-base font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>AI Study Planner</h3>
-                    <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Custom roadmaps generated by Gemini</p>
+                    <p className="text-xs font-semibold mt-0.5 text-muted-accessible">Enter a subject — get a custom Gemini roadmap</p>
                   </div>
                 </div>
 
-                <span className="text-[9px] font-black tracking-wider uppercase text-purple-500 bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded-lg">
+                <span className="text-xs font-black tracking-wider uppercase text-purple-500 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1.5 rounded-lg">
                   AI POWERED
                 </span>
               </div>
@@ -879,23 +946,32 @@ Example raw format:
               <div className="z-10">
                 {!studyPlan ? (
                   /* ================= FORM MODE ================= */
-                  <form onSubmit={handleGenerateStudyPlan} className="flex flex-col gap-4 text-left">
+                  <form onSubmit={handleGenerateStudyPlan} className="flex flex-col gap-4 text-left" aria-label="AI Study Planner form">
+                    {/* Step indicator */}
+                    <div className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-semibold ${isDark ? 'bg-purple-500/5 border border-purple-500/15 text-purple-300' : 'bg-purple-50 border border-purple-200 text-purple-700'}`}>
+                      <span className="step-badge" aria-hidden="true">1</span>
+                      <span>Choose your subject &amp; timeframe, then click <strong>Generate</strong> — it takes under 5 seconds.</span>
+                    </div>
                     <div className="flex flex-col gap-1.5">
-                      <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <label className="label-xs text-muted-accessible" htmlFor="planner-subject">
                         What exam are you studying for?
                       </label>
                       <input
+                        id="planner-subject"
                         type="text"
                         value={plannerSubj}
                         onChange={(e) => setPlannerSubj(e.target.value)}
                         placeholder="e.g. Data Structures, Linear Algebra, Basic Sciences..."
                         maxLength={50}
-                        className={`w-full px-4 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none focus:scale-[1.01] ${
+                        aria-required="true"
+                        aria-describedby="planner-subject-hint"
+                        className={`w-full px-4 py-3 min-h-[48px] rounded-2xl border text-sm font-medium leading-normal transition-all outline-none focus:scale-[1.01] ${
                           isDark 
                             ? 'bg-white/[0.01] border-white/[0.04] text-white placeholder-slate-500 focus:border-purple-500/40 focus:bg-[#08080E]' 
                             : 'bg-slate-50/80 border-slate-200 text-slate-800 placeholder-slate-400 focus:border-purple-500/50 focus:bg-white'
                         }`}
                       />
+                      <p id="planner-subject-hint" className="text-xs text-muted-accessible">Type any subject name or pick a tag below.</p>
                       {/* Quick Subject Tags */}
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         {['Data Structures', 'Database Systems', 'Linear Algebra', 'Operating Systems', 'Computer Networks'].map((sub) => (
@@ -903,7 +979,7 @@ Example raw format:
                             key={sub}
                             type="button"
                             onClick={() => setPlannerSubj(sub)}
-                            className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all active:scale-95 cursor-pointer tap-target-compact ${
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 cursor-pointer tap-target-compact ${
                               plannerSubj === sub
                                 ? 'bg-purple-600 text-white border-purple-600'
                                 : isDark
@@ -919,9 +995,9 @@ Example raw format:
 
                     {/* Quick Timeframe & Goal Presets */}
                     <div className="flex flex-col gap-1.5 mt-0.5">
-                      <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <span className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-label-accessible' : 'text-slate-500'}`}>
                         Quick Presets
-                      </label>
+                      </span>
                       <div className="flex flex-wrap gap-1.5">
                         {[
                           { label: '🔥 1-Day Cram', time: '1 Day', goal: 'Pass Exam' },
@@ -935,7 +1011,7 @@ Example raw format:
                               setPlannerTime(preset.time);
                               setPlannerGoal(preset.goal);
                             }}
-                            className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all active:scale-95 cursor-pointer tap-target-compact ${
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 cursor-pointer tap-target-compact ${
                               plannerTime === preset.time && plannerGoal === preset.goal
                                 ? 'bg-indigo-600 text-white border-indigo-650 dark:bg-indigo-600 dark:border-indigo-600'
                                 : isDark
@@ -952,10 +1028,11 @@ Example raw format:
                     <div className="grid grid-cols-2 gap-3.5">
                       {/* Timeframe Selector */}
                       <div className="flex flex-col gap-1.5">
-                        <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <label htmlFor="planner-timeframe" className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-label-accessible' : 'text-slate-500'}`}>
                           Custom Timeframe
                         </label>
                         <select
+                          id="planner-timeframe"
                           value={plannerTime}
                           onChange={(e) => setPlannerTime(e.target.value)}
                           className={`w-full px-4 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none cursor-pointer ${
@@ -973,10 +1050,11 @@ Example raw format:
 
                       {/* Goal Selector */}
                       <div className="flex flex-col gap-1.5">
-                        <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <label htmlFor="planner-goal" className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-label-accessible' : 'text-slate-500'}`}>
                           Custom Goal
                         </label>
                         <select
+                          id="planner-goal"
                           value={plannerGoal}
                           onChange={(e) => setPlannerGoal(e.target.value)}
                           className={`w-full px-4 py-3 rounded-2xl border text-xs font-bold leading-normal transition-all outline-none cursor-pointer ${
@@ -995,20 +1073,19 @@ Example raw format:
                     <button
                       type="submit"
                       disabled={plannerLoading}
-                      className={`w-full py-3.5 px-4 rounded-2xl font-black text-xs transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
-                        plannerLoading 
-                          ? 'bg-purple-600/30 text-purple-400 border border-purple-500/20 cursor-wait' 
-                          : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-500/10'
-                      }`}
+                      aria-disabled={plannerLoading}
+                      className="cta-primary w-full"
                     >
                       {plannerLoading ? (
-                        <>
-                          <Clock className="w-4 h-4 animate-spin text-purple-400" /> Consult Gemini AI...
-                        </>
+                        <span role="status" aria-live="polite" className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 animate-spin" aria-hidden="true" />
+                          Generating roadmap…
+                        </span>
                       ) : (
-                        <>
-                          <Sparkles className="w-4 h-4 text-purple-200 animate-pulse" /> Generate Study Roadmap
-                        </>
+                        <span className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4" aria-hidden="true" />
+                          Generate My Study Roadmap
+                        </span>
                       )}
                     </button>
                   </form>
@@ -1023,11 +1100,11 @@ Example raw format:
                         : 'bg-slate-50 border-slate-200'
                     }`}>
                       <div className="min-w-0">
-                        <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Active Study Roadmap</span>
+                        <span className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-label-accessible' : 'text-slate-400'}`}>Active Study Roadmap</span>
                         <h4 className={`text-sm font-extrabold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{activePlanSubj}</h4>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <span className="text-[10px] font-black text-purple-500 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md uppercase tracking-wide">
+                        <span className="text-xs font-black text-purple-500 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md uppercase tracking-wide">
                           {plannerTime}
                         </span>
                       </div>
@@ -1035,7 +1112,7 @@ Example raw format:
 
                     {/* Progress Bar */}
                     <div>
-                      <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 mb-1.5">
+                      <div className="flex items-center justify-between text-xs font-bold text-label-accessible mb-1.5">
                         <span>PLAN COMPLETION PROGRESS</span>
                         <span className="text-purple-400 font-black">
                           {Math.round(
@@ -1070,7 +1147,7 @@ Example raw format:
                             <h5 className={`text-xs font-black tracking-wide ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                               {phase.title}
                             </h5>
-                            <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded ${
+                            <span className={`text-xs font-extrabold px-1.5 py-0.5 rounded ${
                               isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'
                             }`}>
                               {phase.duration}
@@ -1120,16 +1197,17 @@ Example raw format:
 
                     {/* Bottom Reset action */}
                     <div className="flex items-center justify-between gap-4 mt-1.5 pt-3.5 border-t border-dashed border-slate-500/20">
-                      <span className={`text-[9px] font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                        Completing tasks awards +5 Study Points!
+                      <span className="text-xs font-semibold text-muted-accessible">
+                        ✅ Each completed task awards +5 Study Points!
                       </span>
                       <button
                         onClick={handleClearStudyPlan}
-                        className={`text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1 ${
+                        aria-label="Clear active study plan"
+                        className={`text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 min-h-[36px] px-2 ${
                           isDark ? 'text-slate-500 hover:text-rose-400' : 'text-slate-400 hover:text-rose-500'
                         }`}
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> Clear Plan
+                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Clear Plan
                       </button>
                     </div>
 
@@ -1145,19 +1223,20 @@ Example raw format:
               <div className={`flex items-center justify-between border-b pb-3 z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
-                    <BookMarked className="w-4 h-4 text-sky-400" />
+                    <BookMarked className="w-4 h-4 text-sky-400" aria-hidden="true" />
                   </div>
                   <div>
                     <h3 className={`text-sm sm:text-base font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Curriculum Branches</h3>
-                    <p className={`text-[9px] font-bold mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Browse notes by department</p>
+                    <p className="text-xs font-semibold mt-0.5 text-muted-accessible">Browse notes by department</p>
                   </div>
                 </div>
 
                 <button
                   onClick={() => navigate('/categories')}
-                  className="inline-flex items-center gap-1 text-[10px] font-black text-slate-400 hover:text-white transition-colors"
+                  aria-label="View all curriculum branches"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-muted-accessible hover:text-white transition-colors min-h-[44px] px-2"
                 >
-                  View All <ChevronRight className="w-3 h-3" />
+                  View All <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
               </div>
 
@@ -1201,16 +1280,20 @@ Example raw format:
                   return (
                     <div 
                       key={b.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => navigate('/feed', { state: { branchFilter: b.id } })}
-                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer group active:scale-95 ${isDark ? 'bg-white/[0.01] border-white/[0.04] ' + borderHoverCls : 'bg-slate-50/80 border-slate-200/60 ' + borderHoverCls}`}
+                      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate('/feed', { state: { branchFilter: b.id } })}
+                      aria-label={`Browse ${b.name} notes`}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer group active:scale-95 min-h-[80px] ${isDark ? 'bg-white/[0.01] border-white/[0.04] ' + borderHoverCls : 'bg-slate-50/80 border-slate-200/60 ' + borderHoverCls}`}
                     >
-                      <span className={`text-[8px] font-black uppercase border px-1.5 py-0.5 rounded ${badgeCls}`}>
+                      <span className={`text-xs font-black uppercase border px-1.5 py-0.5 rounded ${badgeCls}`}>
                         {b.notes_count || b.notesCount || b.id.toUpperCase()}
                       </span>
                       <h4 className={`text-xs font-extrabold mt-2 ${textHoverCls} ${isDark ? 'text-white' : 'text-slate-800'}`}>
                         {b.name}
                       </h4>
-                      <span className={`text-[9px] font-medium mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      <span className={`text-xs font-medium mt-1 block text-muted-accessible`}>
                         {shortDesc}
                       </span>
                     </div>
@@ -1219,13 +1302,17 @@ Example raw format:
               </div>
 
               {/* Feed CTA panel */}
-              <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 mt-2.5 pt-4 border-t text-[10px] font-bold z-10 ${isDark ? 'border-white/[0.04] text-slate-500' : 'border-slate-200/60 text-slate-400'}`}>
-                <span className="flex items-center gap-1.5"><Smile className="w-3.5 h-3.5 text-indigo-400 animate-bounce" /> Library catalog: {stats.notesCount} verified uploads</span>
+              <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 mt-2.5 pt-4 border-t z-10 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-accessible">
+                  <Smile className="w-3.5 h-3.5 text-indigo-400" aria-hidden="true" />
+                  Library catalog: {stats.notesCount} verified uploads
+                </span>
                 <button
                   onClick={() => navigate('/feed')}
-                  className={`transition-colors flex items-center gap-0.5 group active:scale-95 ${isDark ? 'text-indigo-400 hover:text-white' : 'text-indigo-600 hover:text-indigo-800'}`}
+                  aria-label="Go to the full Notes Library feed"
+                  className="cta-hero group"
                 >
-                  Go to Library Feed <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-all" />
+                  Go to Library <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
                 </button>
               </div>
 
@@ -1236,7 +1323,8 @@ Example raw format:
         </div>
 
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

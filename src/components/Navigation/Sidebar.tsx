@@ -137,16 +137,16 @@ export const Sidebar: React.FC = () => {
   };
 
   const navItems = [
-    { to: '/', label: 'Home', icon: <HomeIcon className="w-4 h-4" /> },
-    { to: '/feed', label: 'Library', icon: <BookOpen className="w-4 h-4" /> },
-    { to: '/categories', label: 'Departments', icon: <Grid className="w-4 h-4" /> },
-    { to: '/upload', label: 'Upload', icon: <UploadCloud className="w-4 h-4" /> },
-    { to: '/chat', label: 'Campus Chat', icon: <MessageSquare className="w-4 h-4 text-indigo-400" />, protected: true },
-    { to: '/quests', label: 'Daily Quests', icon: <Target className="w-4 h-4 text-[#00F2FE]" />, protected: true },
-    { to: '/leaderboard', label: 'Rankings', icon: <Trophy className="w-4 h-4 text-amber-400" />, protected: true },
-    { to: '/profile', label: 'Dashboard', icon: <User className="w-4 h-4" />, protected: true },
-    { to: '/feedback', label: 'Feedback', icon: <Star className="w-4 h-4 text-amber-400" />, protected: true },
-    { to: '/admin', label: 'Admin', icon: <ShieldAlert className="w-4 h-4 text-rose-400" />, protected: true, adminOnly: true },
+    { to: '/', label: 'Home', icon: <HomeIcon className="w-4 h-4" />, ariaLabel: 'Go to Home dashboard' },
+    { to: '/feed', label: 'Notes Library', icon: <BookOpen className="w-4 h-4" />, ariaLabel: 'Browse the Notes Library feed' },
+    { to: '/categories', label: 'Departments', icon: <Grid className="w-4 h-4" />, ariaLabel: 'View all academic departments' },
+    { to: '/upload', label: 'Upload Notes', icon: <UploadCloud className="w-4 h-4" />, ariaLabel: 'Upload your notes' },
+    { to: '/chat', label: 'Campus Chat', icon: <MessageSquare className="w-4 h-4 text-indigo-400" />, ariaLabel: 'Open Campus Chat', protected: true },
+    { to: '/quests', label: 'Daily Quests', icon: <Target className="w-4 h-4 text-[#00F2FE]" />, ariaLabel: 'View daily quests and rewards', protected: true },
+    { to: '/leaderboard', label: 'Rankings', icon: <Trophy className="w-4 h-4 text-amber-400" />, ariaLabel: 'View student rankings leaderboard', protected: true },
+    { to: '/profile', label: 'My Profile', icon: <User className="w-4 h-4" />, ariaLabel: 'Open your profile and dashboard', protected: true },
+    { to: '/feedback', label: 'Feedback', icon: <Star className="w-4 h-4 text-amber-400" />, ariaLabel: 'Submit feedback', protected: true },
+    { to: '/admin', label: 'Admin Panel', icon: <ShieldAlert className="w-4 h-4 text-rose-400" />, ariaLabel: 'Open admin panel', protected: true, adminOnly: true },
   ];
 
   const visibleItems = navItems.filter(item => {
@@ -191,15 +191,16 @@ export const Sidebar: React.FC = () => {
           </div>
 
           {/* Nav Links */}
-          <nav className="flex-1 flex flex-col gap-1 py-2 overflow-y-auto overflow-x-hidden scrollbar-none">
+          <nav className="flex-1 flex flex-col gap-1 py-2 overflow-y-auto overflow-x-hidden scrollbar-none" aria-label="Main navigation">
             {visibleItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.to === '/'}
                 onClick={playTapSound}
+                aria-label={item.ariaLabel || item.label}
                 className={({ isActive }) => `
-                  flex items-center h-9 rounded-xl font-semibold transition-all duration-200 relative overflow-hidden
+                  flex items-center h-10 rounded-xl font-semibold transition-all duration-200 relative overflow-hidden
                   ${isActive
                     ? isDark
                       ? 'bg-gradient-to-r from-[#00F2FE]/10 to-[#7F00FF]/5 text-white border border-white/10'
@@ -210,10 +211,10 @@ export const Sidebar: React.FC = () => {
                   }
                 `}
               >
-                <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+                <div className="w-9 h-9 flex items-center justify-center flex-shrink-0" aria-hidden="true">
                   {item.icon}
                 </div>
-                <span className="opacity-0 translate-x-2 whitespace-nowrap pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-200 delay-75 text-[11px] tracking-wide pr-3">
+                <span className="opacity-0 translate-x-2 whitespace-nowrap pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-200 delay-75 text-xs tracking-wide pr-3">
                   {item.label}
                 </span>
               </NavLink>

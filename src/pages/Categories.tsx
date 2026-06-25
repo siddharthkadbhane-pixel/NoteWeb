@@ -508,7 +508,8 @@ export const Categories: React.FC = () => {
           
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 text-white font-extrabold text-sm self-start md:self-auto shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+            aria-label="Create a new category or department"
+            className="flex items-center gap-2 px-5 py-3 min-h-[48px] rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-sm self-start md:self-auto shadow-lg shadow-indigo-600/25 active:scale-95 transition-all"
           >
             <Plus className="w-4 h-4" /> Create Category / Department
           </button>
@@ -721,7 +722,7 @@ export const Categories: React.FC = () => {
                 </button>
                 <button
                   onClick={() => navigate('/upload')}
-                  className="w-full h-11 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 text-white flex items-center justify-center font-bold text-xs gap-1.5 shadow-lg shadow-indigo-600/10 active:scale-[0.98] transition-all"
+                  className="w-full h-11 min-h-[44px] rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center font-bold text-xs gap-1.5 shadow-lg shadow-indigo-600/15 active:scale-[0.98] transition-all"
                 >
                   Upload Notes under {selectedBranch.name}
                 </button>
@@ -906,7 +907,7 @@ export const Categories: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="px-6 py-2 rounded-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg hover:brightness-110 text-xs transition-transform active:scale-95"
+                      className="px-6 py-2 min-h-[44px] rounded-xl font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg text-xs transition-transform active:scale-95"
                     >
                       {isSubmitting ? 'Saving...' : 'Register Department'}
                     </button>
@@ -984,7 +985,7 @@ export const Categories: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="px-6 py-2 rounded-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg hover:brightness-110 text-xs transition-transform active:scale-95"
+                      className="px-6 py-2 min-h-[44px] rounded-xl font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg text-xs transition-transform active:scale-95"
                     >
                       {isSubmitting ? 'Saving...' : 'Add Subject Category'}
                     </button>

@@ -49,6 +49,7 @@ interface NoteDocument {
 
 interface UserProfile {
   uid: string;
+  username?: string;
   email: string;
   displayName: string;
   role: 'student' | 'admin';
@@ -87,6 +88,7 @@ const mapDbNoteToNoteDocument = (n: any): NoteDocument => {
 const mapDbProfileToUserProfile = (p: any): UserProfile => {
   return {
     uid: p.id || p.uid || '',
+    username: p.username || '',
     email: p.email || '',
     displayName: p.display_name || p.displayName || '',
     role: p.role || 'student',
@@ -191,7 +193,30 @@ export const Admin: React.FC = () => {
       if (usersErr) throw usersErr;
       
       const users = (usersData || []).map(mapDbProfileToUserProfile);
-      setUsersList(users);
+      
+      // Deduplicate users list by lowercased username or email to prevent mock/real duplicate accounts
+      const uniqueUsersMap = new Map<string, UserProfile>();
+      users.forEach((usr) => {
+        const key = (usr.username || usr.email || usr.displayName || usr.uid).toLowerCase();
+        const existing = uniqueUsersMap.get(key);
+        if (!existing) {
+          uniqueUsersMap.set(key, usr);
+        } else {
+          // Prefer the real authenticated account (non-mock ID)
+          const existingIsMock = existing.uid.startsWith('mock-');
+          const newIsMock = usr.uid.startsWith('mock-');
+          if (existingIsMock && !newIsMock) {
+            uniqueUsersMap.set(key, usr);
+          } else if (!existingIsMock && !newIsMock) {
+            // If both are real, keep the one with the latest createdAt
+            if (new Date(usr.createdAt).getTime() > new Date(existing.createdAt).getTime()) {
+              uniqueUsersMap.set(key, usr);
+            }
+          }
+        }
+      });
+      
+      setUsersList(Array.from(uniqueUsersMap.values()));
 
       // 4. Fetch Feedbacks
       let fetchedFeedbacks: FeedbackItem[] = [];

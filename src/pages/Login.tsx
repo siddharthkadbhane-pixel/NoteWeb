@@ -279,10 +279,7 @@ export const Login: React.FC = () => {
       navigate(from, { replace: true });
     } catch (err: any) {
       if (err.message?.includes('not found')) {
-        setUsername(cleanUsername);
-        setRegPassword(studentPassword); // Prefill for registration setup
-        setStep('register');
-        success("New username! Let's build your profile.");
+        toastError('Username not found. If you are new to NoteWeb, click "Create an Account / Sign Up" below to register.');
       } else {
         toastError(err.message || 'Login failed. Please try again.');
       }
@@ -293,6 +290,11 @@ export const Login: React.FC = () => {
 
   const validateRegForm = () => {
     const errors: Record<string, string> = {};
+    if (!username.trim()) {
+      errors.username = 'Username is required';
+    } else if (username.trim().length < 3) {
+      errors.username = 'Username must be at least 3 characters';
+    }
     if (!regName.trim()) errors.name = 'Full name is required';
     if (!regMobile.trim()) {
       errors.mobile = 'Mobile number is required';
@@ -572,7 +574,8 @@ export const Login: React.FC = () => {
                           <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full py-3 rounded-xl font-black text-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-115 shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                            aria-label="Log in and enter campus"
+                            className="w-full py-3.5 min-h-[48px] rounded-xl font-black text-sm text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                           >
                             {isLoading ? (
                               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -580,6 +583,22 @@ export const Login: React.FC = () => {
                               <><ArrowRight className="w-4 h-4" /> Enter Campus</>
                             )}
                           </button>
+
+                          <div className="mt-4 text-center">
+                            <span className={`text-xs font-semibold ${isDark ? 'text-slate-450' : 'text-slate-500'}`}>
+                              New to NoteWeb?{' '}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUsername(studentUsername);
+                                setStep('register');
+                              }}
+                              className={`text-xs font-black hover:underline cursor-pointer ${isDark ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-850'}`}
+                            >
+                              Create an Account / Sign Up
+                            </button>
+                          </div>
                         </form>
                       ) : (
                         /* ADMIN FORM */
@@ -629,7 +648,7 @@ export const Login: React.FC = () => {
                             disabled={isLoading}
                             className="w-full py-3 rounded-xl font-black text-sm text-white bg-gradient-to-r from-rose-600 to-orange-500 hover:brightness-115 shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                           >
-                            {isLoading ? (
+                            {isLoading && selectedRole === 'admin' ? (
                               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (
                               <><Lock className="w-4 h-4" /> Admin Access</>
@@ -639,18 +658,6 @@ export const Login: React.FC = () => {
                       )}
                     </div>
                   </div>
-
-                </div>adow-rose-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-                      >
-                        {isLoading && selectedRole === 'admin' ? (
-                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <><Lock className="w-4 h-4" /> Admin Access</>
-                        )}
-                      </button>
-                    </form>
-                  </div>
-
                 </div>
 
                 {/* Divider */}
@@ -850,14 +857,37 @@ export const Login: React.FC = () => {
                 {/* ── PERSONAL INFO ── */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
+                    <label className={labelCls}>Desired Username *</label>
+                    <div className="relative">
+                      <User className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-450'}`} />
+                      <input
+                        type="text"
+                        placeholder="e.g. sid_phantom"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())}
+                        className={inputCls + " pl-10"}
+                        required
+                      />
+                    </div>
+                    {formErrors.username && <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.username}</p>}
+                  </div>
+                  <div>
                     <label className={labelCls}>Full Name *</label>
                     <input type="text" placeholder="e.g. Sid Kadbhane" value={regName} onChange={(e) => setRegName(e.target.value)} className={inputCls} />
                     {formErrors.name && <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.name}</p>}
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className={labelCls}>Mobile Number *</label>
                     <input type="tel" placeholder="e.g. +91 9876543210" value={regMobile} onChange={(e) => setRegMobile(e.target.value)} className={inputCls} />
                     {formErrors.mobile && <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.mobile}</p>}
+                  </div>
+                  <div>
+                    <label className={labelCls}>Email <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>(Optional)</span></label>
+                    <input type="email" placeholder="you@college.edu" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className={inputCls} />
+                    {formErrors.email && <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.email}</p>}
                   </div>
                 </div>
 
@@ -867,7 +897,7 @@ export const Login: React.FC = () => {
                     <select value={regBranch} onChange={(e) => setRegBranch(e.target.value)} className={selectCls}>
                       {dbBranches.length > 0 ? (
                         dbBranches.map((b) => (
-                          <option key={b.id} value={b.id} className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-850 font-semibold">
+                          <option key={b.id} value={b.id} className="bg-slate-900 text-white light-mode:bg-white light-mode:text-slate-855 font-semibold">
                             {b.name}
                           </option>
                         ))
@@ -894,17 +924,10 @@ export const Login: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelCls}>Email <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>(Optional)</span></label>
-                    <input type="email" placeholder="you@college.edu" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className={inputCls} />
-                    {formErrors.email && <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.email}</p>}
-                  </div>
-                  <div>
-                    <label className={labelCls}>CGPA <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>(Optional)</span></label>
-                    <input type="text" placeholder="e.g. 9.15" value={regCgpa} onChange={(e) => setRegCgpa(e.target.value.replace(/[^0-9.]/g, ''))} className={inputCls} />
-                    {formErrors.cgpa && <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.cgpa}</p>}
-                  </div>
+                <div className="w-full">
+                  <label className={labelCls}>CGPA <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>(Optional)</span></label>
+                  <input type="text" placeholder="e.g. 9.15" value={regCgpa} onChange={(e) => setRegCgpa(e.target.value.replace(/[^0-9.]/g, ''))} className={inputCls} />
+                  {formErrors.cgpa && <p className="mt-1 text-xs text-rose-500 font-semibold">{formErrors.cgpa}</p>}
                 </div>
 
                 <div className="w-full">
@@ -942,10 +965,11 @@ export const Login: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className={`flex-[2] py-3 rounded-xl font-black text-sm text-white flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 ${
+                    aria-label={selectedRole === 'admin' ? 'Complete admin registration' : 'Complete student registration'}
+                    className={`flex-[2] py-3.5 min-h-[48px] rounded-xl font-black text-sm text-white flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 ${
                       selectedRole === 'admin'
-                        ? 'bg-gradient-to-r from-rose-600 to-orange-500 shadow-rose-500/20 hover:brightness-110'
-                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 shadow-indigo-500/20 hover:brightness-110'
+                        ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-500/20'
+                        : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'
                     }`}
                   >
                     {isLoading ? (

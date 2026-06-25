@@ -2152,7 +2152,7 @@ export const Feed: React.FC = () => {
                 </div>
                 <button
                   onClick={() => openPdfDocument(activeAiNote.pdfUrl || 'db-base64-fetch', activeAiNote.pdfPath || '', activeAiNote.id)}
-                  className="w-full h-11 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 text-white flex items-center justify-center font-extrabold text-xs gap-1.5 shadow-lg shadow-indigo-600/10 active:scale-[0.98] transition-all"
+                  className="w-full h-11 min-h-[44px] rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center font-extrabold text-xs gap-1.5 shadow-lg shadow-indigo-600/15 active:scale-[0.98] transition-all"
                 >
                   {activeAiNote.pdfPath === 'external-link' ? (
                     <>
