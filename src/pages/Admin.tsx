@@ -1311,7 +1311,7 @@ export const Admin: React.FC = () => {
 
                     <div className="flex items-center gap-2 self-start md:self-auto ml-[60px] md:ml-0">
                       <button
-                        onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
+                        onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject)}
                         className="px-4 py-2 rounded-lg border border-white/[0.08] text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 light-mode:text-slate-600 light-mode:hover:text-slate-900 cursor-pointer"
                       >
                         {note.pdfPath === 'external-link' ? 'Open Shared Link' : 'Preview PDF'}
@@ -1389,7 +1389,7 @@ export const Admin: React.FC = () => {
 
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
+                          onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject)}
                           className="px-3 py-1.5 rounded-lg border border-white/[0.08] text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 cursor-pointer"
                         >
                           {note.pdfPath === 'external-link' ? 'Open Link' : 'Preview'}

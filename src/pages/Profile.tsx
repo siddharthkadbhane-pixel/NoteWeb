@@ -14,6 +14,7 @@ import {
   FileText, 
   BookOpen, 
   ShieldCheck,
+  Shield,
   CheckCircle,
   Trophy,
   Award,
@@ -21,6 +22,7 @@ import {
   ExternalLink,
   MessageSquare
 } from 'lucide-react';
+import { getBadges } from '../utils/achievements';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { GlassPanel } from '../components/ui/GlassPanel';
@@ -166,6 +168,16 @@ const GRADIENTS = [
   { name: 'Cyber Abyss', class: 'from-gray-800 via-slate-900 to-zinc-950' }
 ];
 
+const BadgeIcon = ({ name, className }: { name: string; className?: string }) => {
+  switch (name) {
+    case 'Trophy': return <Trophy className={className} />;
+    case 'Shield': return <Shield className={className} />;
+    case 'MessageSquare': return <MessageSquare className={className} />;
+    case 'BookOpen': return <BookOpen className={className} />;
+    default: return <Award className={className} />;
+  }
+};
+
 export const Profile: React.FC = () => {
   const { user, userProfile, toggleBookmark, updatePoints, updateFullProfile } = useAuth();
   const { success, error } = useToast();
@@ -180,6 +192,8 @@ export const Profile: React.FC = () => {
   const [myUploads, setMyUploads] = useState<NoteDocument[]>([]);
   const [myBookmarks, setMyBookmarks] = useState<NoteDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [chatsCount, setChatsCount] = useState(0);
+  const [readsCount, setReadsCount] = useState(0);
 
   // Profile Edit states
   const [isEditing, setIsEditing] = useState(false);
@@ -426,6 +440,27 @@ export const Profile: React.FC = () => {
       } else {
         setMyBookmarks([]);
       }
+
+      // 3. Fetch Chats Count for achievements
+      let targetChatsCount = 0;
+      try {
+        const { count, error: countErr } = await supabase
+          .from('chats')
+          .select('*', { count: 'exact', head: true })
+          .eq('sender_id', targetUid);
+        if (!countErr && count !== null) {
+          targetChatsCount = count;
+        }
+      } catch (err) {
+        console.warn("Failed to fetch target chats count:", err);
+      }
+      setChatsCount(targetChatsCount);
+
+      // 4. Fetch PDF reads count for achievements from localStorage
+      const readCountKey = `noteweb-pdf-reads-${targetUid}`;
+      const targetReadsCount = Number(localStorage.getItem(readCountKey) || '0');
+      setReadsCount(targetReadsCount);
+
     } catch (e: any) {
       console.error(e);
       error("Failed to load user dashboard data: " + e.message);
@@ -1090,6 +1125,61 @@ export const Profile: React.FC = () => {
           </GlassPanel>
         </div>
 
+        {/* Achievements & Badges Showcase */}
+        <div className="space-y-4 text-left mt-4">
+          <h3 className="text-xl font-extrabold text-white light-mode:text-slate-800 tracking-tight flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-amber-400" /> Study Achievements & Badges
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {getBadges(
+              viewedProfile?.points || 0,
+              myUploads.length,
+              viewedProfile?.bookmarks?.length || 0,
+              chatsCount,
+              readsCount
+            ).map((badge) => (
+              <GlassPanel
+                key={badge.id}
+                className={`p-5 flex flex-col justify-between border relative overflow-hidden transition-all duration-300 ${
+                  badge.unlocked
+                    ? 'bg-[#121218]/45 light-mode:bg-white/70 border-indigo-500/20 shadow-lg shadow-indigo-500/5'
+                    : 'bg-[#121218]/10 light-mode:bg-slate-100/30 border-white/[0.04] opacity-50'
+                }`}
+              >
+                <div className="space-y-3 z-10 relative">
+                  <div className="flex items-center justify-between">
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${badge.color} flex items-center justify-center text-white shadow-md`}>
+                      <BadgeIcon name={badge.iconName} className="w-5 h-5" />
+                    </div>
+                    {badge.unlocked ? (
+                      <span className="text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md">UNLOCKED</span>
+                    ) : (
+                      <span className="text-[9px] font-black uppercase tracking-widest bg-slate-500/10 text-slate-400 border border-slate-500/20 px-2 py-0.5 rounded-md">LOCKED</span>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white light-mode:text-slate-800">{badge.name}</h4>
+                    <p className="text-[10px] text-slate-400 light-mode:text-slate-500 mt-1 leading-relaxed">{badge.description}</p>
+                  </div>
+                </div>
+                
+                <div className="mt-4 pt-3 border-t border-white/[0.04] z-10 relative space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-bold">
+                    <span className="text-slate-500">Progress</span>
+                    <span className={badge.unlocked ? 'text-indigo-400' : 'text-slate-400'}>{badge.reqText}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-white/[0.03] rounded-full overflow-hidden border border-white/[0.04]">
+                    <div
+                      className={`h-full rounded-full bg-gradient-to-r ${badge.color}`}
+                      style={{ width: `${badge.progress}%` }}
+                    />
+                  </div>
+                </div>
+              </GlassPanel>
+            ))}
+          </div>
+        </div>
+
         {/* Contributions and Bookmarks section */}
         <div className="flex items-center gap-3 border-b border-white/[0.05] light-mode:border-slate-200 pb-1 mt-4">
           <button
@@ -1162,7 +1252,7 @@ export const Profile: React.FC = () => {
 
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
+                          onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject)}
                           className="p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer active:scale-95 flex items-center justify-center"
                           title={note.pdfPath === 'external-link' ? "Open Cloud Link" : "View PDF"}
                         >
@@ -1229,7 +1319,7 @@ export const Profile: React.FC = () => {
 
                     <div className="flex items-center gap-2 self-start md:self-auto ml-[60px] md:ml-0">
                       <button
-                        onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
+                        onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject)}
                         className="p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer active:scale-95 flex items-center justify-center"
                         title={note.pdfPath === 'external-link' ? "Open Cloud Link" : "View PDF"}
                       >

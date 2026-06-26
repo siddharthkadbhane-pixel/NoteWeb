@@ -1049,10 +1049,112 @@ const safeStorage = {
   }
 };
 
+const mockRpc = async (fn: string, params?: any): Promise<any> => {
+  await new Promise((r) => setTimeout(r, 400));
+  if (fn === 'claim_daily_checkin') {
+    const profileId = params?.profile_id;
+    if (!profileId) return { data: { success: false, message: 'profile_id required.' }, error: null };
+
+    const profilesStr = localStorage.getItem('noteweb-db-profiles');
+    if (!profilesStr) return { data: { success: false, message: 'Profile not found.' }, error: null };
+
+    try {
+      const profiles = JSON.parse(profilesStr);
+      if (!Array.isArray(profiles)) return { data: { success: false, message: 'Invalid profile DB.' }, error: null };
+
+      const profileIdx = profiles.findIndex((p: any) => p.id === profileId);
+      if (profileIdx === -1) return { data: { success: false, message: 'Profile not found.' }, error: null };
+
+      const profile = profiles[profileIdx];
+      const todayStr = new Date().toDateString();
+
+      // Check if already checked in today
+      const lastCheckin = localStorage.getItem(`noteweb-mock-checkin-${profileId}`);
+      if (lastCheckin === todayStr) {
+        return { data: { success: false, message: 'Already checked in today.', points: profile.points || 0 }, error: null };
+      }
+
+      // Update checkin date and add 10 points
+      localStorage.setItem(`noteweb-mock-checkin-${profileId}`, todayStr);
+      profile.points = (profile.points || 0) + 10;
+      profiles[profileIdx] = profile;
+      localStorage.setItem('noteweb-db-profiles', JSON.stringify(profiles));
+
+      // Also update the cached auth profile if it's the current user
+      const currentMockUid = localStorage.getItem('noteweb-mock-uid');
+      if (currentMockUid === profileId) {
+        const cachedProfileStr = localStorage.getItem(`noteweb-profile-${profileId}`);
+        if (cachedProfileStr) {
+          const cached = JSON.parse(cachedProfileStr);
+          cached.points = profile.points;
+          localStorage.setItem(`noteweb-profile-${profileId}`, JSON.stringify(cached));
+        }
+      }
+
+      return {
+        data: {
+          success: true,
+          message: 'Daily check-in successful! +10 XP awarded.',
+          points: profile.points
+        },
+        error: null
+      };
+    } catch (err) {
+      return { data: { success: false, message: 'Error processing check-in.' }, error: null };
+    }
+  }
+
+  if (fn === 'increment_user_points') {
+    const userId = params?.user_id || params?.profile_id;
+    const amount = Number(params?.amount) || 0;
+    if (!userId) return { data: null, error: new Error('user_id required.') };
+
+    const profilesStr = localStorage.getItem('noteweb-db-profiles');
+    if (!profilesStr) return { data: 0, error: null };
+
+    try {
+      const profiles = JSON.parse(profilesStr);
+      if (!Array.isArray(profiles)) return { data: 0, error: null };
+
+      const profileIdx = profiles.findIndex((p: any) => p.id === userId);
+      if (profileIdx === -1) return { data: 0, error: null };
+
+      const profile = profiles[profileIdx];
+      profile.points = Math.max(0, (profile.points || 0) + amount);
+      profiles[profileIdx] = profile;
+      localStorage.setItem('noteweb-db-profiles', JSON.stringify(profiles));
+
+      // Also update the cached auth profile if it's the current user
+      const currentMockUid = localStorage.getItem('noteweb-mock-uid');
+      if (currentMockUid === userId) {
+        const cachedProfileStr = localStorage.getItem(`noteweb-profile-${userId}`);
+        if (cachedProfileStr) {
+          const cached = JSON.parse(cachedProfileStr);
+          cached.points = profile.points;
+          localStorage.setItem(`noteweb-profile-${userId}`, JSON.stringify(cached));
+        }
+      }
+
+      return { data: profile.points, error: null };
+    } catch (err) {
+      return { data: 0, error: null };
+    }
+  }
+
+  return { data: null, error: new Error(`RPC function ${fn} not supported in mock mode.`) };
+};
+
 // Export active Supabase client instance wrapped in safe fallbacks (or raw instance if mock fallbacks are disabled)
 export const supabase = (enableMockFallbacks
   ? {
       auth: safeAuth,
+      rpc(fn: string, params?: any) {
+        const isMockUser = !!localStorage.getItem('noteweb-mock-uid');
+        if (isMockMode || !realSupabase || isMockUser || typeof realSupabase.rpc !== 'function') {
+          return mockRpc(fn, params);
+        }
+        return realSupabase.rpc(fn, params);
+      },
       from(table: string) {
         const isMockUser = !!localStorage.getItem('noteweb-mock-uid');
         if (isMockMode || !realSupabase || isMockUser) {

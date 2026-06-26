@@ -28,7 +28,10 @@ import { Chat } from './pages/Chat';
 import { Leaderboard } from './pages/Leaderboard';
 import { Feedback } from './pages/Feedback';
 import { Quests } from './pages/Quests';
+import { ResetPassword } from './pages/ResetPassword';
 import { FloatingThemeToggle } from './components/Navigation/FloatingThemeToggle';
+import { AnimatePresence } from 'framer-motion';
+import { PdfViewerModal } from './components/ui/PdfViewerModal';
 import { InteractiveBackground } from './components/ui/InteractiveBackground';
 import { ScreenshotProtection } from './components/ScreenshotProtection';
 import { PageWrapper } from './components/ui/PageWrapper';
@@ -714,6 +717,20 @@ export const GlobalDesktopControls: React.FC<{ children: React.ReactNode }> = ({
 
 function App() {
   const [isLargeScreen, setIsLargeScreen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
+  const [activePdfUrl, setActivePdfUrl] = useState<string | null>(null);
+  const [activePdfTitle, setActivePdfTitle] = useState<string>('');
+
+  useEffect(() => {
+    const handleOpenPdf = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.url) {
+        setActivePdfUrl(customEvent.detail.url);
+        setActivePdfTitle(customEvent.detail.title || 'Study Document');
+      }
+    };
+    window.addEventListener('noteweb-open-pdf', handleOpenPdf);
+    return () => window.removeEventListener('noteweb-open-pdf', handleOpenPdf);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -751,7 +768,7 @@ function App() {
 
                 {/* Main Content: pt-14/safe-area for mobile top bar, pb-24 for bottom nav, lg:pl-20 for desktop dock */}
                 <main 
-                  className={`flex-1 min-w-0 px-0 transition-all duration-300 z-10 relative w-full ${showMobileUI ? 'pb-24' : 'pt-0 pb-6 pl-20'}`}
+                  className={`flex-1 min-w-0 px-0 transition-all duration-300 z-10 relative w-full ${showMobileUI ? 'pb-28' : 'pt-0 pb-6 pl-20'}`}
                   style={{
                     paddingTop: showMobileUI ? 'calc(env(safe-area-inset-top, 0px) + 3.5rem)' : undefined
                   }}
@@ -763,6 +780,7 @@ function App() {
                     <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
                     <Route path="/categories" element={<PageWrapper><Categories /></PageWrapper>} />
                     <Route path="/feed" element={<PageWrapper><Feed /></PageWrapper>} />
+                    <Route path="/reset-password" element={<PageWrapper><ResetPassword /></PageWrapper>} />
 
                     <Route
                       path="/upload"
@@ -836,6 +854,15 @@ function App() {
                 </main>
               </div>
                 </GlobalDesktopControls>
+                <AnimatePresence>
+                  {activePdfUrl && (
+                    <PdfViewerModal
+                      url={activePdfUrl}
+                      title={activePdfTitle}
+                      onClose={() => setActivePdfUrl(null)}
+                    />
+                  )}
+                </AnimatePresence>
               </Router>
             </ScreenshotProtection>
           </IpBlockGuard>

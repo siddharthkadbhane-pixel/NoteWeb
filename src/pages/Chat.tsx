@@ -582,6 +582,7 @@ export const Chat: React.FC = () => {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [partnerIsTyping, setPartnerIsTyping] = useState(false);
   const [myTypingState, setMyTypingState] = useState(false);
+  const [loungeTypingUsers, setLoungeTypingUsers] = useState<Record<string, string>>({}); // uid -> name
   const typingTimeoutRef = useRef<any>(null);
 
   // Touch swipe gesture for chat navigation
@@ -982,6 +983,24 @@ export const Chat: React.FC = () => {
                       : m
                   )
                 );
+              }
+            }
+          )
+          .on(
+            'broadcast',
+            { event: 'typing' },
+            (response: any) => {
+              const { sender_id, sender_name, is_typing } = response.payload || {};
+              if (sender_id !== user?.uid) {
+                setLoungeTypingUsers((prev) => {
+                  const next = { ...prev };
+                  if (is_typing) {
+                    next[sender_id] = sender_name || 'Classmate';
+                  } else {
+                    delete next[sender_id];
+                  }
+                  return next;
+                });
               }
             }
           )
@@ -1770,17 +1789,29 @@ export const Chat: React.FC = () => {
   };
 
   const emitTypingStatus = (isTyping: boolean) => {
-    if (!channelDmRef.current || !user || !selectedDmUser) return;
+    if (!user) return;
     try {
-      channelDmRef.current.send({
-        type: 'broadcast',
-        event: 'typing',
-        payload: {
-          sender_id: user.uid,
-          recipient_id: selectedDmUser.id,
-          is_typing: isTyping
-        }
-      });
+      if (activeTab === 'dm' && selectedDmUser && channelDmRef.current) {
+        channelDmRef.current.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: {
+            sender_id: user.uid,
+            recipient_id: selectedDmUser.id,
+            is_typing: isTyping
+          }
+        });
+      } else if (activeTab === 'global' && channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: {
+            sender_id: user.uid,
+            sender_name: userProfile?.displayName || user.email?.split('@')[0] || 'Classmate',
+            is_typing: isTyping
+          }
+        });
+      }
     } catch (err) {
       console.warn("Failed to broadcast typing status:", err);
     }
@@ -1789,19 +1820,17 @@ export const Chat: React.FC = () => {
   const handleInputChange = (val: string) => {
     setInputText(val);
     
-    if (activeTab === 'dm' && selectedDmUser) {
-      if (!myTypingState) {
-        setMyTypingState(true);
-        emitTypingStatus(true);
-      }
-      
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      
-      typingTimeoutRef.current = setTimeout(() => {
-        setMyTypingState(false);
-        emitTypingStatus(false);
-      }, 2500);
+    if (!myTypingState) {
+      setMyTypingState(true);
+      emitTypingStatus(true);
     }
+    
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    
+    typingTimeoutRef.current = setTimeout(() => {
+      setMyTypingState(false);
+      emitTypingStatus(false);
+    }, 2500);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -3832,6 +3861,41 @@ export const Chat: React.FC = () => {
                     );
                   })
                 )}
+
+                {/* Global Lounge Typing Indicators */}
+                {activeTab === 'global' && Object.keys(loungeTypingUsers).length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-wider pl-12 py-1"
+                  >
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <span>
+                      {Object.values(loungeTypingUsers).join(', ')} {Object.keys(loungeTypingUsers).length === 1 ? 'is' : 'are'} typing...
+                    </span>
+                  </motion.div>
+                )}
+
+                {/* DM Chat Typing Indicators */}
+                {activeTab === 'dm' && partnerIsTyping && selectedDmUser && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-wider pl-12 py-1"
+                  >
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <span>{selectedDmUser.displayName} is typing...</span>
+                  </motion.div>
+                )}
+
                 <div ref={messagesEndRef} />
               </div>
             )}

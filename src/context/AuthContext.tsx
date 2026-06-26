@@ -1132,16 +1132,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isGuest) return;
     if (!user || !userProfile) throw new Error('User not logged in');
 
-    const nextPoints = Math.max(0, (userProfile.points || 0) + additionalPoints);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          points: nextPoints
-        })
-        .eq('id', user.uid);
+      // Securely update user points via database RPC transaction instead of client-side override
+      const { data: updatedPoints, error } = await supabase.rpc('increment_user_points', {
+        user_id: user.uid,
+        amount: additionalPoints
+      });
 
       if (error) throw error;
+
+      // Ensure points is correctly synced on client side
+      const nextPoints = updatedPoints !== undefined && updatedPoints !== null 
+        ? Number(updatedPoints) 
+        : Math.max(0, (userProfile.points || 0) + additionalPoints);
 
       const updatedProfile = {
         ...userProfile,
@@ -1150,8 +1153,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem(`noteweb-profile-${user.uid}`, JSON.stringify(updatedProfile));
       setUserProfile(updatedProfile);
     } catch (error) {
-      console.error('Error updating points:', error);
-      throw error;
+      console.error('Error updating points securely:', error);
+      // Fallback update in case of RPC schema caching or legacy database issues
+      try {
+        const nextPoints = Math.max(0, (userProfile.points || 0) + additionalPoints);
+        await supabase.from('profiles').update({ points: nextPoints }).eq('id', user.uid);
+        const updatedProfile = { ...userProfile, points: nextPoints };
+        localStorage.setItem(`noteweb-profile-${user.uid}`, JSON.stringify(updatedProfile));
+        setUserProfile(updatedProfile);
+      } catch (fallbackErr) {
+        console.error('Points fallback sync also failed:', fallbackErr);
+        throw error;
+      }
     }
   };
 

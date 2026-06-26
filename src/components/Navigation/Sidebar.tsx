@@ -139,11 +139,11 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     { to: '/', label: 'Home', icon: <HomeIcon className="w-4 h-4" />, ariaLabel: 'Go to Home dashboard' },
     { to: '/feed', label: 'Notes Library', icon: <BookOpen className="w-4 h-4" />, ariaLabel: 'Browse the Notes Library feed' },
-    { to: '/categories', label: 'Departments', icon: <Grid className="w-4 h-4" />, ariaLabel: 'View all academic departments' },
+    { to: '/categories', label: 'Browse Departments', icon: <Grid className="w-4 h-4" />, ariaLabel: 'View all academic departments' },
     { to: '/upload', label: 'Upload Notes', icon: <UploadCloud className="w-4 h-4" />, ariaLabel: 'Upload your notes' },
     { to: '/chat', label: 'Campus Chat', icon: <MessageSquare className="w-4 h-4 text-indigo-400" />, ariaLabel: 'Open Campus Chat', protected: true },
     { to: '/quests', label: 'Daily Quests', icon: <Target className="w-4 h-4 text-[#00F2FE]" />, ariaLabel: 'View daily quests and rewards', protected: true },
-    { to: '/leaderboard', label: 'Rankings', icon: <Trophy className="w-4 h-4 text-amber-400" />, ariaLabel: 'View student rankings leaderboard', protected: true },
+    { to: '/leaderboard', label: 'Student Rankings', icon: <Trophy className="w-4 h-4 text-amber-400" />, ariaLabel: 'View student rankings leaderboard', protected: true },
     { to: '/profile', label: 'My Profile', icon: <User className="w-4 h-4" />, ariaLabel: 'Open your profile and dashboard', protected: true },
     { to: '/feedback', label: 'Feedback', icon: <Star className="w-4 h-4 text-amber-400" />, ariaLabel: 'Submit feedback', protected: true },
     { to: '/admin', label: 'Admin Panel', icon: <ShieldAlert className="w-4 h-4 text-rose-400" />, ariaLabel: 'Open admin panel', protected: true, adminOnly: true },
@@ -394,31 +394,34 @@ export const Sidebar: React.FC = () => {
 
       {/* Mobile Floating Bottom Nav Pill */}
       {showMobileUI && location.pathname !== '/chat' && (
-        <nav className={`
-          fixed bottom-4 left-3 right-3 h-16 rounded-2xl border z-50
-          flex items-center justify-around px-2
-          shadow-[0_12px_30px_rgba(0,0,0,0.4)]
-          ${isDark
-            ? 'bg-[#07070F]/90 border-white/[0.08] backdrop-blur-2xl'
-            : 'bg-white/45 border-white/60 backdrop-blur-3xl shadow-[0_12px_30px_rgba(15,23,42,0.06)]'
-          }
-        `}>
+        <nav 
+          className={`
+            fixed bottom-4 left-3 right-3 h-[4.5rem] rounded-2xl border z-50
+            flex items-center justify-around px-2
+            shadow-[0_12px_30px_rgba(0,0,0,0.4)]
+            ${isDark
+              ? 'bg-[#07070F]/90 border-white/[0.08] backdrop-blur-2xl'
+              : 'bg-white/45 border-white/60 backdrop-blur-3xl shadow-[0_12px_30px_rgba(15,23,42,0.06)]'
+            }
+          `}
+          aria-label="Main navigation"
+        >
           {/* Home */}
-          <NavLink to="/" end onClick={playTapSound} className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+          <NavLink to="/" end onClick={playTapSound} title="Home Dashboard" className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-14 h-14 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
             <HomeIcon className="w-5 h-5" />
             <span className="text-[8px] font-black tracking-wide">Home</span>
             {location.pathname === '/' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
           </NavLink>
 
           {/* Library */}
-          <NavLink to="/feed" onClick={playTapSound} className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+          <NavLink to="/feed" onClick={playTapSound} title="Browse Notes Library" className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-14 h-14 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
             <BookOpen className="w-5 h-5" />
             <span className="text-[8px] font-black tracking-wide">Library</span>
             {location.pathname === '/feed' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
           </NavLink>
 
           {/* Upload */}
-          <NavLink to="/upload" onClick={playTapSound} className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+          <NavLink to="/upload" onClick={playTapSound} title="Upload Your Notes" className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-14 h-14 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
             <UploadCloud className="w-5 h-5" />
             <span className="text-[8px] font-black tracking-wide">Upload</span>
             {location.pathname === '/upload' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
@@ -426,7 +429,7 @@ export const Sidebar: React.FC = () => {
 
           {/* Lounge */}
           {user && !isGuest && (
-            <NavLink to="/chat" onClick={playTapSound} className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+            <NavLink to="/chat" onClick={playTapSound} title="Campus Chat Lounge" className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 w-14 h-14 rounded-xl transition-all ${isActive ? 'scale-110' : 'active:scale-90'} ${isActive ? (isDark ? 'text-[#00F2FE]' : 'text-indigo-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
               <MessageSquare className="w-5 h-5 text-indigo-400" />
               <span className="text-[8px] font-black tracking-wide">Lounge</span>
               {location.pathname === '/chat' && <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-[#00F2FE]' : 'bg-indigo-500'}`} />}
@@ -436,7 +439,8 @@ export const Sidebar: React.FC = () => {
           {/* More launcher */}
           <button
             onClick={() => { playTapSound(); setIsLauncherOpen(!isLauncherOpen); }}
-            className={`flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl transition-all cursor-pointer ${isLauncherOpen ? 'scale-110 text-[#FF007F]' : (isDark ? 'text-slate-400 active:scale-90' : 'text-slate-500 active:scale-90')}`}
+            title="More Options"
+            className={`flex flex-col items-center justify-center gap-0.5 w-14 h-14 rounded-xl transition-all cursor-pointer ${isLauncherOpen ? 'scale-110 text-[#FF007F]' : (isDark ? 'text-slate-400 active:scale-90' : 'text-slate-500 active:scale-90')}`}
           >
             {isLauncherOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             <span className="text-[8px] font-black tracking-wide">More</span>

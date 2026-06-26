@@ -134,6 +134,7 @@ export const Feed: React.FC = () => {
   const [notes, setNotes] = useState<NoteDocument[]>([]);
   const [filteredNotes, setFilteredNotes] = useState<NoteDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   // Track optimistically-injected note IDs so we can merge them properly on real fetch
   const optimisticIdsRef = useRef<Set<string>>(new Set());
@@ -189,12 +190,42 @@ export const Feed: React.FC = () => {
     }
   }, [location.state]);
 
-  // Fetch branches and categories dynamically
+  // Fetch branches and categories dynamically with offline caching fallback
   useEffect(() => {
     const fetchFiltersData = async () => {
       try {
-        const { data: branchesData } = await supabase.from('branches').select('*');
-        const { data: categoriesData } = await supabase.from('categories').select('*');
+        let branchesData: any[] = [];
+        let categoriesData: any[] = [];
+
+        try {
+          const { data: bData, error: bErr } = await supabase.from('branches').select('*');
+          if (bErr) throw bErr;
+          if (bData) {
+            branchesData = bData;
+            localStorage.setItem('noteweb-cached-branches', JSON.stringify(bData));
+          }
+        } catch (bErr) {
+          console.warn('[Offline Mode] Failed to fetch branches, loading from cache...');
+          const cached = localStorage.getItem('noteweb-cached-branches');
+          if (cached) {
+            try { branchesData = JSON.parse(cached); } catch {}
+          }
+        }
+
+        try {
+          const { data: cData, error: cErr } = await supabase.from('categories').select('*');
+          if (cErr) throw cErr;
+          if (cData) {
+            categoriesData = cData;
+            localStorage.setItem('noteweb-cached-categories', JSON.stringify(cData));
+          }
+        } catch (cErr) {
+          console.warn('[Offline Mode] Failed to fetch categories, loading from cache...');
+          const cached = localStorage.getItem('noteweb-cached-categories');
+          if (cached) {
+            try { categoriesData = JSON.parse(cached); } catch {}
+          }
+        }
 
         const blacklistIds = ['bse', 'cs', 'mgt', 'm', 'math', 'mathematics', 'basic-science', 'computer-science'];
         const blacklistNames = [
@@ -463,6 +494,9 @@ export const Feed: React.FC = () => {
         }
 
         sortNotes(deduped, sortBy);
+        if (deduped.length > 0) {
+          localStorage.setItem('noteweb-cached-notes-feed', JSON.stringify(deduped));
+        }
         return deduped;
       });
 
@@ -470,16 +504,43 @@ export const Feed: React.FC = () => {
     } catch (e: any) {
       console.error('[NoteWeb Feed] fetchNotes threw:', e);
       setFetchError(e.message || 'Unknown fetch error');
-      // Always show error — even on silent polls — so user can diagnose
-      error('Could not load notes: ' + (e.message || 'Check console for details'));
+      
+      const cached = localStorage.getItem('noteweb-cached-notes-feed');
+      if (cached) {
+        try {
+          const cachedNotes = JSON.parse(cached);
+          setNotes(cachedNotes);
+          if (!silent) {
+            info('Using cached notes library (Offline mode).');
+          }
+        } catch (jsonErr) {
+          console.error('Failed to parse cached feed:', jsonErr);
+        }
+      } else {
+        error('Could not load notes: ' + (e.message || 'Check console for details'));
+      }
     } finally {
       if (!silent) setIsLoading(false);
       hasOptimisticRef.current = false;
     }
-  }, [sortBy]);
+  }, [sortBy]);  // Online/Offline status listeners
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      fetchNotes();
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+    };
 
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
-
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [fetchNotes]);
   useEffect(() => {
     fetchNotes();
 
@@ -1243,6 +1304,33 @@ export const Feed: React.FC = () => {
 
       <div className="max-w-7xl mx-auto z-10 relative flex flex-col gap-8">
 
+        {/* Offline Mode Banner */}
+        <AnimatePresence>
+          {isOffline && (
+            <motion.div
+              initial={{ height: 0, opacity: 0, y: -20 }}
+              animate={{ height: 'auto', opacity: 1, y: 0 }}
+              exit={{ height: 0, opacity: 0, y: -20 }}
+              className="w-full mb-2"
+            >
+              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center justify-between gap-3 text-red-200 backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center text-red-400">
+                    <WifiOff className="w-4 h-4 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold">Offline Mode Active</h4>
+                    <p className="text-xs text-red-300/80">You are browsing a cached snapshot of the study library. Some functions might be limited.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold tracking-widest bg-red-500/20 px-2 py-0.5 rounded-full">CACHED</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Title */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.05] pb-6">
           <div className="text-left">
@@ -1320,9 +1408,9 @@ export const Feed: React.FC = () => {
           <div className="lg:col-span-1 flex flex-col gap-6 text-left">
             <GlassPanel className="p-5 flex flex-col gap-6">
               <div className="flex items-center justify-between border-b border-white/[0.05] pb-3">
-                <h3 className="font-bold text-slate-200 light-mode:text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wider">
+                <h2 className="font-bold text-slate-200 light-mode:text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wider">
                   <Filter className="w-4 h-4 text-indigo-400" /> Filters
-                </h3>
+                </h2>
               </div>
 
               {/* Search input */}
@@ -1336,10 +1424,15 @@ export const Feed: React.FC = () => {
 
               {/* Branch Filter */}
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 pl-1">
+                <label
+                  htmlFor="branch-filter"
+                  className="text-xs font-semibold uppercase tracking-wider text-slate-400 pl-1"
+                >
                   Curriculum Branch
-                </span>
+                </label>
                 <select
+                  id="branch-filter"
+                  aria-label="Filter by Curriculum Branch"
                   value={selectedBranch}
                   onChange={(e) => handleBranchChange(e.target.value)}
                   className="w-full py-2.5 px-3.5 glass-input text-xs bg-[#16161D]/50 text-slate-200 light-mode:bg-white light-mode:text-slate-800 rounded-xl border border-white/[0.08] font-semibold"
@@ -1595,7 +1688,7 @@ export const Feed: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 {/* View PDF download */}
                                 <button
-                                  onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id)}
+                                  onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject)}
                                   className="inline-flex items-center justify-center p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 light-mode:text-slate-600 light-mode:hover:text-slate-900 transition-all duration-200 cursor-pointer active:scale-95"
                                   title={note.pdfPath === 'external-link' ? "Open Cloud Shared Document" : "Open PDF Document"}
                                 >
@@ -1700,7 +1793,7 @@ export const Feed: React.FC = () => {
                       </Button>
                     </Link>
                     <Link to="/" className="w-full mt-2">
-                      <button className="text-xs font-extrabold text-slate-400 hover:text-white light-mode:text-slate-600 light-mode:hover:text-slate-900 transition-colors">
+                      <button className="w-full py-2.5 text-xs font-extrabold text-slate-400 hover:text-white light-mode:text-slate-600 light-mode:hover:text-slate-900 transition-colors">
                         Go Back to Home
                       </button>
                     </Link>
@@ -2151,7 +2244,7 @@ export const Feed: React.FC = () => {
                   <Award className="w-4 h-4 text-yellow-500" />
                 </div>
                 <button
-                  onClick={() => openPdfDocument(activeAiNote.pdfUrl || 'db-base64-fetch', activeAiNote.pdfPath || '', activeAiNote.id)}
+                  onClick={() => openPdfDocument(activeAiNote.pdfUrl || 'db-base64-fetch', activeAiNote.pdfPath || '', activeAiNote.id, activeAiNote.subject)}
                   className="w-full h-11 min-h-[44px] rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center font-extrabold text-xs gap-1.5 shadow-lg shadow-indigo-600/15 active:scale-[0.98] transition-all"
                 >
                   {activeAiNote.pdfPath === 'external-link' ? (

@@ -268,3 +268,88 @@ CREATE POLICY "Allow recipients to mark messages as read" ON public.direct_messa
 -- 5. Click "Save"
 -- 6. Click on the "notes" bucket -> "Policies" tab -> "New Policy"
 -- 7. Add SELECT, INSERT, UPDATE, and DELETE policies with "Allowed to everyone" or "true" to enable cloud PDF sharing.
+
+-- ════════════════════════════════════════════════════════════
+-- 7. SECURE SECURITY APIs (XP TRIGGERS & DAILY CHECK-IN RPC)
+-- ════════════════════════════════════════════════════════════
+
+-- A. Table modification: Add last_checkin column to profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_checkin TIMESTAMP WITH TIME ZONE;
+
+-- B. Trigger function for note approval XP awards
+CREATE OR REPLACE FUNCTION public.handle_note_approval_xp()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    -- If the status changes to approved, award +100 XP
+    IF (OLD.status IS DISTINCT FROM NEW.status AND NEW.status = 'approved' AND NEW.uploaded_by IS NOT NULL) THEN
+        UPDATE public.profiles
+        SET points = points + 100
+        WHERE id = NEW.uploaded_by;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+-- Trigger definition
+CREATE OR REPLACE TRIGGER trigger_award_upload_xp
+    AFTER UPDATE OF status ON public.notes
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_note_approval_xp();
+
+-- C. Secure Daily Check-in RPC function
+CREATE OR REPLACE FUNCTION public.claim_daily_checkin(profile_id TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    today_utc DATE := timezone('utc'::text, now())::date;
+    last_checkin_date DATE;
+    current_points INTEGER;
+BEGIN
+    -- Get last checkin date and current points
+    SELECT (last_checkin AT TIME ZONE 'UTC')::date, points
+    INTO last_checkin_date, current_points
+    FROM public.profiles
+    WHERE id = profile_id;
+
+    -- If profile not found
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'message', 'Profile not found.');
+    END IF;
+
+    -- Check if already checked in today
+    IF last_checkin_date IS NOT NULL AND last_checkin_date = today_utc THEN
+        RETURN jsonb_build_object('success', false, 'message', 'Already checked in today.', 'points', current_points);
+    END IF;
+
+    -- Update checkin time and add 10 XP points
+    UPDATE public.profiles
+    SET last_checkin = now(),
+        points = points + 10
+    WHERE id = profile_id
+    RETURNING points INTO current_points;
+
+    RETURN jsonb_build_object('success', true, 'message', 'Daily check-in successful! +10 XP awarded.', 'points', current_points);
+END;
+$$;
+
+-- D. Secure increment user points function
+CREATE OR REPLACE FUNCTION public.increment_user_points(user_id TEXT, amount INTEGER)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    new_points INTEGER;
+BEGIN
+    UPDATE public.profiles
+    SET points = GREATEST(0, points + amount)
+    WHERE id = user_id
+    RETURNING points INTO new_points;
+    RETURN new_points;
+END;
+$$;

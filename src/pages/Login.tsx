@@ -26,7 +26,7 @@ const GRADIENTS = [
 // Admin registration setup token (configurable via environment, defaults to secure backup)
 const ADMIN_REGISTRATION_TOKEN = import.meta.env.VITE_ADMIN_REGISTRATION_TOKEN || 'Whitephantom';
 
-type Step = 'login' | 'register';
+type Step = 'login' | 'register' | 'forgot';
 type Role = 'student' | 'admin';
 
 export const Login: React.FC = () => {
@@ -42,6 +42,7 @@ export const Login: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<Role>('student');
   const [isLoading, setIsLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [forgotEmail, setForgotEmail] = useState('');
 
   /* ── Admin verify ── */
   const [adminPass, setAdminPass] = useState('');
@@ -226,14 +227,7 @@ export const Login: React.FC = () => {
     setSelectedRole('admin');
     setUsername(cleanUsername);
 
-    // Enforce admin username whitelist check
-    const whitelistStr = import.meta.env.VITE_ADMIN_EMAILS || 'admin@college.edu,sid_phantom,siddharth';
-    const whitelist = whitelistStr.split(',').map((u: string) => u.trim().toLowerCase());
-    if (!whitelist.includes(cleanUsername)) {
-      setAdminPassError('This username is not authorized to access the Admin Gate.');
-      setIsLoading(false);
-      return;
-    }
+
 
     try {
       // Attempt login with username and passcode as password
@@ -325,22 +319,7 @@ export const Login: React.FC = () => {
     if (!validateRegForm()) return;
     setIsLoading(true);
 
-    // Enforce admin username/email whitelist check during registration
-    if (selectedRole === 'admin') {
-      const whitelistStr = import.meta.env.VITE_ADMIN_EMAILS || 'admin@college.edu,sid_phantom,siddharth';
-      const whitelist = whitelistStr.split(',').map((u: string) => u.trim().toLowerCase());
-      const cleanUsername = username.trim().toLowerCase();
-      const cleanEmail = regEmail.trim().toLowerCase();
 
-      const isUsernameWhitelisted = whitelist.includes(cleanUsername);
-      const isEmailWhitelisted = cleanEmail ? whitelist.includes(cleanEmail) : false;
-
-      if (!isUsernameWhitelisted && !isEmailWhitelisted) {
-        toastError('This account (username/email) is not authorized for Administrator registration.');
-        setIsLoading(false);
-        return;
-      }
-    }
 
     try {
       await registerUser({
@@ -370,6 +349,41 @@ export const Login: React.FC = () => {
     success('Browsing as Guest 👤');
     navigate('/');
   };
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailVal = forgotEmail.trim();
+    if (!emailVal) {
+      toastError('Please enter your email address.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // Security Validation check: ensures the email exists in NoteWeb profiles
+      const { data: profiles, error: checkErr } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', emailVal.toLowerCase());
+
+      if (checkErr) {
+        console.warn('Profile search check during password reset failed:', checkErr);
+      } else if (!profiles || profiles.length === 0) {
+        throw new Error('This email is not registered with any student profile. Please sign up first.');
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(emailVal, {
+        redirectTo: window.location.origin + '/#/reset-password',
+      });
+      if (error) throw error;
+      success('Password reset link sent! Check your inbox.');
+      setStep('login');
+    } catch (err: any) {
+      toastError(err.message || 'Failed to send reset link.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   /* ─────────────────────────────────────────── Avatar preview */
   const AvatarPreview = () => {
@@ -561,9 +575,18 @@ export const Login: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => setShowStudentPassword(!showStudentPassword)}
-                                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors tap-target-compact tap-target-expanded ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}`}
+                                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors tap-target-compact tap-target-expanded ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-750'}`}
                               >
                                 {showStudentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                            </div>
+                            <div className="text-right mt-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setStep('forgot')}
+                                className={`text-xs font-black hover:underline cursor-pointer ${isDark ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-650 hover:text-indigo-850'}`}
+                              >
+                                Forgot Password?
                               </button>
                             </div>
                             {formErrors.studentPassword && (
@@ -633,9 +656,18 @@ export const Login: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => setShowAdminPass(!showAdminPass)}
-                                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors tap-target-compact tap-target-expanded ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}`}
+                                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors tap-target-compact tap-target-expanded ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-750'}`}
                               >
                                 {showAdminPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                            </div>
+                            <div className="text-right mt-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setStep('forgot')}
+                                className={`text-xs font-black hover:underline cursor-pointer ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-850'}`}
+                              >
+                                Forgot Password?
                               </button>
                             </div>
                             {adminPassError && (
@@ -976,6 +1008,61 @@ export const Login: React.FC = () => {
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                       <><Check className="w-4 h-4" /> Complete Registration</>
+                    )}
+                  </button>
+                </div>
+              </motion.form>
+            )}
+
+            {/* ══════ STEP 3: FORGOT PASSWORD ══════ */}
+            {step === 'forgot' && (
+              <motion.form
+                key="forgot"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                onSubmit={handleForgotSubmit}
+                className="space-y-5 text-left max-w-md mx-auto"
+              >
+                <button
+                  type="button"
+                  onClick={() => setStep('login')}
+                  className={`flex items-center gap-1.5 text-xs font-bold mb-2 cursor-pointer ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'} transition-colors`}
+                >
+                  <ChevronLeft className="w-4 h-4" /> Back to Login
+                </button>
+
+                <div className="space-y-2">
+                  <h3 className={`text-base font-black ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                    Reset Your Password
+                  </h3>
+                  <p className={`text-xs ${isDark ? 'text-slate-450' : 'text-slate-500'} leading-relaxed`}>
+                    Enter your registered email address below. If a matching account is found, we will send you a secure link to reset your password.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className={labelCls}>Email Address</label>
+                    <input
+                      type="email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="e.g. your_email@college.edu"
+                      className={inputCls}
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-3.5 rounded-xl font-black text-sm text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  >
+                    {isLoading ? (
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <><ArrowRight className="w-4 h-4" /> Send Reset Link</>
                     )}
                   </button>
                 </div>

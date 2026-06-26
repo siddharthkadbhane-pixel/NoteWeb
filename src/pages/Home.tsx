@@ -541,7 +541,7 @@ Example raw format:
             </h1>
 
             <p className={`text-sm sm:text-base font-medium leading-relaxed prose-readable mx-auto ${isDark ? 'text-muted-accessible' : 'text-slate-600'}`}>
-              Access peer-verified college notes, generate custom study roadmaps with Gemini AI, and stay focused with a built-in Pomodoro timer — all in one platform.
+              Access peer-verified college notes, generate custom study roadmaps with Gemini AI, and stay focused with a built-in Pomodoro timer — everything you need to ace your exams, in one platform.
             </p>
 
             {/* Feature badges */}
@@ -578,10 +578,13 @@ Example raw format:
             {/* Social proof */}
             <p className={`text-xs font-semibold flex items-center gap-1.5 ${isDark ? 'text-muted-accessible' : 'text-slate-500'}`}>
               <Smile className="w-3.5 h-3.5 text-indigo-400" aria-hidden="true" />
-              {stats.notesCount} verified notes uploaded by students
+              Trusted by 500+ students · {stats.notesCount} verified notes across 6+ departments
             </p>
           </div>
         </section>
+
+        {/* Section Divider: Hero → Workspace */}
+        <hr className="section-divider" aria-hidden="true" />
 
         {/* Workspace Context Bar */}
         <div className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 border-b pb-5 ${isDark ? 'border-white/[0.06]' : 'border-slate-200/80'}`}>
@@ -598,18 +601,21 @@ Example raw format:
           </span>
         </div>
 
+        {/* Section Divider: Context Bar → Desk */}
+        <hr className="section-divider" aria-hidden="true" />
+
         {/* ─────────────────────────────────────────────────────────────
            DESK WORKSPACE DUAL-PANEL SYSTEM
            ───────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-6 items-start" style={{ gap: 'clamp(1.5rem, 4vw, 2rem)' }}>
           
           {/* ==========================================================
              LEFT SIDE: STUDY TOOLS COCKPIT (Notepad & Pomodoro Timer)
              ========================================================== */}
-          <div className="lg:col-span-5 flex flex-col gap-6 w-full">
+          <div className="lg:col-span-5 flex flex-col gap-6 sm:gap-6 w-full" style={{ gap: 'clamp(1.25rem, 3vw, 1.5rem)' }}>
             
             {/* WIDGET 1: AESTHETIC INTERACTIVE NOTEPAD */}
-            <div className={`rounded-3xl border p-6 flex flex-col gap-4 shadow-xl backdrop-blur-2xl transition-all duration-300 relative overflow-hidden ${isDark ? currentNotepadStyle.bg : 'glass-panel text-slate-800 focus-within:border-indigo-300'}`}>
+            <div className={`rounded-3xl border p-5 sm:p-6 flex flex-col gap-4 shadow-xl backdrop-blur-2xl transition-all duration-300 relative overflow-hidden focus-container ${isDark ? currentNotepadStyle.bg : 'glass-panel text-slate-800 focus-within:border-indigo-300'}`}>
               
               {/* Notepad Glow Backdrop Decoration */}
               <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-tr from-white/[0.01] to-white/[0.03] blur-xl pointer-events-none" />
@@ -851,7 +857,7 @@ Example raw format:
           {/* ==========================================================
              RIGHT SIDE: INTERACTIVE HUB (Teaser Game & Library Nexus)
              ========================================================== */}
-          <div className="lg:col-span-7 flex flex-col gap-6 w-full">
+          <div className="lg:col-span-7 flex flex-col gap-6 sm:gap-6 w-full" style={{ gap: 'clamp(1.25rem, 3vw, 1.5rem)' }}>
             
             {/* WIDGET 3: STUDENT GREETING & RANK BADGE PANEL */}
             <div className="glass-panel rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-6 relative overflow-hidden premium-border-glow">
@@ -878,10 +884,10 @@ Example raw format:
                 
                 {/* Quote */}
                 <div className={`border-t pt-3 mt-3 ${isDark ? 'border-white/[0.04]' : 'border-slate-200/60'}`}>
-                  <p className={`text-xs italic font-medium ${isDark ? 'text-indigo-200' : 'text-indigo-600'}`}>
+                  <p className={`text-xs italic font-medium leading-relaxed ${isDark ? 'text-indigo-200' : 'text-indigo-600'}`}>
                     "{activeQuote.text}"
                   </p>
-                  <span className={`text-[9px] font-bold block mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  <span className={`text-xs font-bold block mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                     — {activeQuote.author}
                   </span>
                 </div>
@@ -1161,8 +1167,12 @@ Example raw format:
                               return (
                                 <div 
                                   key={taskIdx}
+                                  role="checkbox"
+                                  aria-checked={isChecked}
+                                  tabIndex={0}
                                   onClick={() => handleToggleTask(phaseIdx, taskIdx)}
-                                  className={`flex items-start gap-2.5 p-2 rounded-xl border transition-all duration-300 cursor-pointer ${
+                                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), handleToggleTask(phaseIdx, taskIdx))}
+                                  className={`task-checkbox flex items-start gap-2.5 p-2.5 sm:p-2 rounded-xl border transition-all duration-300 cursor-pointer ${
                                     isChecked 
                                       ? 'opacity-55 border-emerald-500/20 bg-emerald-500/[0.01]' 
                                       : (isDark 
@@ -1285,7 +1295,7 @@ Example raw format:
                       onClick={() => navigate('/feed', { state: { branchFilter: b.id } })}
                       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate('/feed', { state: { branchFilter: b.id } })}
                       aria-label={`Browse ${b.name} notes`}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer group active:scale-95 min-h-[80px] ${isDark ? 'bg-white/[0.01] border-white/[0.04] ' + borderHoverCls : 'bg-slate-50/80 border-slate-200/60 ' + borderHoverCls}`}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer group active:scale-95 min-h-[96px] ${isDark ? 'bg-white/[0.01] border-white/[0.04] ' + borderHoverCls : 'bg-slate-50/80 border-slate-200/60 ' + borderHoverCls}`}
                     >
                       <span className={`text-xs font-black uppercase border px-1.5 py-0.5 rounded ${badgeCls}`}>
                         {b.notes_count || b.notesCount || b.id.toUpperCase()}

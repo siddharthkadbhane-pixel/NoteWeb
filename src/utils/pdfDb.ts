@@ -159,12 +159,13 @@ export const getLocalPdfUrl = async (pdfUrl: string, pdfPath: string): Promise<s
  *   4. Remote HTTP URL directly
  *   5. DB on-demand fetch as ultimate fallback
  */
-export const openPdfDocument = async (pdfUrl: string, pdfPath: string, noteId?: string): Promise<void> => {
+export const openPdfDocument = async (pdfUrl: string, pdfPath: string, noteId?: string, title?: string): Promise<void> => {
   // ─── DEBUG LOG: Always print exactly what data arrived at the viewer ───
   console.group('[NoteWeb PDF Debug] openPdfDocument called');
   console.log('pdfUrl:', pdfUrl);
   console.log('pdfPath:', pdfPath);
   console.log('noteId:', noteId);
+  console.log('title:', title);
   console.groupEnd();
 
   if (noteId) {
@@ -174,6 +175,25 @@ export const openPdfDocument = async (pdfUrl: string, pdfPath: string, noteId?: 
       console.warn('Failed to increment read-notes quest progress:', e);
     }
   }
+
+  // Increment local PDF read counter for achievements
+  try {
+    const currentUid = localStorage.getItem('noteweb-mock-uid') || 'anonymous';
+    const readCountKey = `noteweb-pdf-reads-${currentUid}`;
+    const currentCount = Number(localStorage.getItem(readCountKey) || '0');
+    localStorage.setItem(readCountKey, String(currentCount + 1));
+    console.log(`[Achievements] PDF Read count incremented to ${currentCount + 1} for user ${currentUid}`);
+  } catch (err) {
+    console.warn('Failed to increment PDF reads counter:', err);
+  }
+
+  const triggerPdfOpen = (url: string) => {
+    const documentTitle = title || (pdfPath ? pdfPath.split('/').pop()?.replace(/^[0-9]+-/, '') : '') || 'Study Document';
+    const event = new CustomEvent('noteweb-open-pdf', {
+      detail: { url, title: documentTitle }
+    });
+    window.dispatchEvent(event);
+  };
 
   try {
     let resolvedUrl = pdfUrl;
@@ -260,7 +280,7 @@ export const openPdfDocument = async (pdfUrl: string, pdfPath: string, noteId?: 
         const blob = base64ToBlob(base64Data);
         if (pdfPath) await storeOfflinePdf(pdfPath, blob);
         if (noteId) await storeOfflinePdf(noteId, blob);
-        window.open(URL.createObjectURL(blob), '_blank');
+        triggerPdfOpen(URL.createObjectURL(blob));
         return;
       }
     }
@@ -276,24 +296,24 @@ export const openPdfDocument = async (pdfUrl: string, pdfPath: string, noteId?: 
 
     if (localUrl) {
       console.log('[NoteWeb PDF Debug] Opening from IndexedDB cache:', localUrl.substring(0, 60));
-      window.open(localUrl, '_blank');
+      triggerPdfOpen(localUrl);
       return;
     }
 
     // STEP 3: Open the resolved remote URL
     if (resolvedUrl && resolvedUrl.startsWith('http') && !resolvedUrl.includes('dummy.pdf')) {
       console.log('[NoteWeb PDF Debug] Opening remote URL:', resolvedUrl);
-      window.open(resolvedUrl, '_blank');
+      triggerPdfOpen(resolvedUrl);
       return;
     }
 
-    // STEP 4: Ultimate fallback \u2014 try pdfPath to generate fresh storage URL
+    // STEP 4: Ultimate fallback — try pdfPath to generate fresh storage URL
     if (pdfPath && pdfPath !== '' && !pdfPath.startsWith('notes/mock') && !pdfPath.startsWith('notes/base64')) {
       console.log('[NoteWeb PDF Debug] Trying to generate public URL from pdfPath:', pdfPath);
       const { data: freshUrlData } = supabase.storage.from('notes').getPublicUrl(pdfPath);
       if (freshUrlData?.publicUrl && freshUrlData.publicUrl.startsWith('http') && !freshUrlData.publicUrl.includes('dummy.pdf')) {
         console.log('[NoteWeb PDF Debug] Got fresh URL from pdfPath:', freshUrlData.publicUrl);
-        window.open(freshUrlData.publicUrl, '_blank');
+        triggerPdfOpen(freshUrlData.publicUrl);
         return;
       }
     }
@@ -301,25 +321,25 @@ export const openPdfDocument = async (pdfUrl: string, pdfPath: string, noteId?: 
     // All resolution methods exhausted
     console.error(
       '[NoteWeb PDF Debug] Could not resolve a valid PDF URL.',
-      'Final state \u2014 resolvedUrl:', resolvedUrl,
+      'Final state — resolvedUrl:', resolvedUrl,
       '| pdfPath:', pdfPath,
       '| noteId:', noteId,
       '\nThis note may have been uploaded in a different browser/device without a public storage URL.',
       '\nFIX: Ensure your Supabase Storage bucket "notes" is public and has correct RLS policies.'
     );
 
-    // Last-resort open \u2014 if somehow resolvedUrl is a valid URL, try it anyway
+    // Last-resort open — if somehow resolvedUrl is a valid URL, try it anyway
     if (resolvedUrl && resolvedUrl.startsWith('http')) {
-      window.open(resolvedUrl, '_blank');
+      triggerPdfOpen(resolvedUrl);
     } else {
-      alert('Could not open PDF: the file URL could not be resolved. Please check the browser console for details (F12 \u2192 Console).');
+      alert('Could not open PDF: the file URL could not be resolved. Please check the browser console for details (F12 → Console).');
     }
 
   } catch (err) {
     console.error('[NoteWeb PDF Debug] Unexpected error in openPdfDocument:', err);
     // Attempt raw open as last resort
     if (pdfUrl && pdfUrl.startsWith('http') && !pdfUrl.includes('dummy.pdf')) {
-      window.open(pdfUrl, '_blank');
+      triggerPdfOpen(pdfUrl);
     }
   }
 };
