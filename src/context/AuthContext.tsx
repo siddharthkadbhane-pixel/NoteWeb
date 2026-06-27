@@ -845,6 +845,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn("Failed to clear profile cache from localStorage:", e);
     }
 
+    // Clear registration token from Supabase user_device_tokens to prevent notification spam
+    try {
+      const deviceToken = localStorage.getItem('noteweb-device-token');
+      if (deviceToken) {
+        await supabase.from('user_device_tokens').delete().eq('token', deviceToken);
+        localStorage.removeItem('noteweb-device-token');
+      }
+    } catch (e) {
+      console.warn("Failed to remove push token from database:", e);
+    }
+
     try {
       await supabase.auth.signOut();
     } catch (e) {
@@ -1058,20 +1069,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Enforce admin whitelist check at context/wrapper level
-      if (profileData.role === 'admin') {
-        const whitelistStr = import.meta.env.VITE_ADMIN_EMAILS || 'admin@college.edu,sid_phantom,siddharth';
-        const whitelist = whitelistStr.split(',').map((u: string) => u.trim().toLowerCase());
-        const cleanUsername = sanitizedUsername.trim().toLowerCase();
-        const cleanEmail = regEmail.trim().toLowerCase();
-
-        const isUsernameWhitelisted = whitelist.includes(cleanUsername);
-        const isEmailWhitelisted = cleanEmail ? whitelist.includes(cleanEmail) : false;
-
-        if (!isUsernameWhitelisted && !isEmailWhitelisted) {
-          throw new Error('This account (username/email) is not authorized for Administrator registration.');
-        }
-      }
+      // Whitelist check bypassed: Any username can register as an admin as long as they provide the correct passcode in the login flow
 
       const role: 'student' | 'admin' = profileData.role === 'admin' ? 'admin' : 'student';
 

@@ -18,17 +18,25 @@ function createWindow() {
     }
   });
 
-  // Load the live GitHub Pages version in production for instant auto-updates on Git push,
-  // falling back to local static files if offline. In development, load local dist files.
-  const liveUrl = 'https://siddharthkadbhane-pixel.github.io/NoteWeb/';
+  // Always load from local dist files so desktop always shows the latest built version.
+  // Falls back to GitHub Pages only if local file is missing.
+  const localFile = path.join(__dirname, '../dist/index.html');
   
   if (app.isPackaged) {
-    win.loadURL(liveUrl).catch(() => {
-      win.loadFile(path.join(__dirname, '../dist/index.html'));
+    win.loadFile(localFile).catch(() => {
+      // Fallback to GitHub Pages if local dist is missing
+      const liveUrl = 'https://siddharthkadbhane-pixel.github.io/NoteWeb/';
+      win.webContents.session.clearCache().then(() => {
+        win.loadURL(liveUrl, {
+          extraHeaders: 'pragma: no-cache\ncache-control: no-cache\n'
+        });
+      });
     });
   } else {
-    win.loadFile(path.join(__dirname, '../dist/index.html'));
+    win.loadFile(localFile);
   }
+
+  const liveUrl = 'https://siddharthkadbhane-pixel.github.io/NoteWeb/';
 
   // Open external links (e.g. Supabase auth, PDF downloads) in the user's default browser
   win.webContents.on('will-navigate', (event, url) => {

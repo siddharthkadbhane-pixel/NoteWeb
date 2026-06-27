@@ -39,13 +39,15 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TiltCard } from '../components/ui/TiltCard';
 import { SparkleBurst } from '../components/ui/SparkleBurst';
-import { openPdfDocument } from '../utils/pdfDb';
+import { openPdfDocument, resolvePdfBlob, storeOfflineSummary, getOfflineSummary } from '../utils/pdfDb';
 import { incrementQuestProgress } from '../utils/quests';
+import { extractTextFromPdf } from '../services/pdf';
 import { playSuccessSound, playErrorSound } from '../utils/sounds';
 import {
   generateFlashcards,
   generateQuiz,
-  askGeminiQna
+  askGeminiQna,
+  summarizeNotes
 } from '../services/gemini';
 import type { Flashcard, QuizQuestion } from '../services/gemini';
 
@@ -162,6 +164,23 @@ export const Feed: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
   const [realtimeSynced, setRealtimeSynced] = useState(false);
+
+  // Double-tap/double-click heart burst animation states
+  const [hearts, setHearts] = useState<{ id: string; noteId: string; x: number; y: number }[]>([]);
+  const lastTapRef = useRef<{ [key: string]: number }>({});
+
+  const triggerHeartBurst = (noteId: string, x: number, y: number) => {
+    const newHearts = Array.from({ length: 6 }).map((_, i) => ({
+      id: `${noteId}-${Date.now()}-${i}-${Math.random()}`,
+      noteId,
+      x,
+      y
+    }));
+    setHearts(prev => [...prev, ...newHearts]);
+    setTimeout(() => {
+      setHearts(prev => prev.filter(h => !newHearts.some(nh => nh.id === h.id)));
+    }, 1000);
+  };
 
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [categories, setCategories] = useState<{ id: string; branchId: string; name: string; description?: string }[]>([]);
@@ -335,7 +354,7 @@ export const Feed: React.FC = () => {
           { id: 'ece-iot', branchId: 'ece', name: 'Internet of Things (IoT)' }
         ];
 
-        let categoriesList = (categoriesData || []).map((c: any) => ({
+        let categoriesList: any[] = (categoriesData || []).map((c: any) => ({
           id: c.id,
           branchId: c.branch_id || c.branchId,
           name: c.name,
@@ -967,6 +986,29 @@ export const Feed: React.FC = () => {
     } catch (e) {
       console.warn('[NoteWeb Feed] DB update failed. Synced via P2P Broadcast:', e);
     }
+
+    // Dispatch Push Notification to note uploader
+    const matchedNote = notes.find(n => n.id === noteId);
+    if (!hasLiked && matchedNote && matchedNote.uploadedBy && matchedNote.uploadedBy !== user.uid) {
+      try {
+        const apiBase = import.meta.env.VITE_AI_API_URL || 'http://localhost:5000/api/summarize';
+        const notificationUrl = apiBase.replace('/api/summarize', '/api/send-notification');
+        
+        fetch(notificationUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sender_id: user.uid,
+            sender_name: userProfile?.displayName || 'Someone',
+            message: `liked your note "${matchedNote.subject}"!`,
+            recipient_id: matchedNote.uploadedBy,
+            is_global: false
+          })
+        }).catch(e => console.warn('[Push Dispatch] Error calling notification service:', e));
+      } catch (pushErr) {
+        console.warn('[Push Dispatch] Failed to trigger push notification:', pushErr);
+      }
+    }
   };
 
   // Global bookmark syncer toggle wrapper
@@ -986,6 +1028,9 @@ export const Feed: React.FC = () => {
   // AI Note Companion modal state
   const [activeAiNote, setActiveAiNote] = useState<NoteDocument | null>(null);
   const [aiCompanionTab, setAiCompanionTab] = useState<'podcast' | 'flashcards' | 'quiz' | 'qna'>('podcast');
+  const [extractedPdfText, setExtractedPdfText] = useState<string | null>(null);
+  const [isExtractingText, setIsExtractingText] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   // Speech Synthesis state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1008,6 +1053,7 @@ export const Feed: React.FC = () => {
     }
     setIsPlaying(false);
     setIsPaused(false);
+    setIsGeneratingSummary(false);
     setActiveAiNote(null);
   };
 
@@ -1076,7 +1122,11 @@ export const Feed: React.FC = () => {
     setSpeechRate(rate);
     if (isPlaying) {
       // Restart speech with new rate if currently playing
-      startSpeech(activeAiNote?.summary || `${activeAiNote?.subject}. ${activeAiNote?.description}`);
+      if (activeAiNote?.summary) {
+        startSpeech(activeAiNote.summary);
+      } else {
+        info("Summary is generating or not available yet.");
+      }
     }
   };
   const [aiLoading, setAiLoading] = useState(false);
@@ -1095,8 +1145,128 @@ export const Feed: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'model'; text: string }>>([]);
   const [chatInput, setChatInput] = useState('');
 
-  const handleOpenAiCompanion = (note: NoteDocument) => {
-    setActiveAiNote(note);
+  const autoGenerateSummary = async (note: NoteDocument, text: string) => {
+    if (!text || text.startsWith('Could not') || text.startsWith('Error')) return;
+    setIsGeneratingSummary(true);
+    setAiLoading(true);
+    try {
+      const generated = await summarizeNotes(text);
+      
+      // Update local active note summary
+      setActiveAiNote(prev => {
+        if (prev && prev.id === note.id) {
+          return { ...prev, summary: generated };
+        }
+        return prev;
+      });
+      
+      // Update in local lists of notes
+      setNotes(prev => prev.map(n => n.id === note.id ? { ...n, summary: generated } : n));
+      setFilteredNotes(prev => prev.map(n => n.id === note.id ? { ...n, summary: generated } : n));
+
+      // Cache locally in IndexedDB (avoiding Supabase write)
+      try {
+        await storeOfflineSummary(note.id, generated);
+      } catch (dbErr) {
+        console.warn("Failed to store summary in IndexedDB:", dbErr);
+      }
+    } catch (err: any) {
+      console.error("Auto summary generation failed:", err);
+    } finally {
+      setIsGeneratingSummary(false);
+      setAiLoading(false);
+    }
+  };
+
+  const handlePlayPodcast = async () => {
+    if (!activeAiNote) return;
+
+    if (activeAiNote.summary && activeAiNote.summary.trim() !== "") {
+      startSpeech(activeAiNote.summary);
+      return;
+    }
+
+    if (isExtractingText) {
+      info("Extracting text from PDF... Please wait.");
+      return;
+    }
+
+    if (isGeneratingSummary || aiLoading) {
+      info("AI is compiling your PDF podcast summary... Please wait.");
+      return;
+    }
+
+    if (extractedPdfText && !extractedPdfText.startsWith('Could not') && !extractedPdfText.startsWith('Error')) {
+      setIsGeneratingSummary(true);
+      setAiLoading(true);
+      try {
+        const generated = await summarizeNotes(extractedPdfText);
+        
+        const updated = { ...activeAiNote, summary: generated };
+        setActiveAiNote(updated);
+        setNotes(prev => prev.map(n => n.id === activeAiNote.id ? { ...n, summary: generated } : n));
+        setFilteredNotes(prev => prev.map(n => n.id === activeAiNote.id ? { ...n, summary: generated } : n));
+
+        startSpeech(generated);
+
+        // Cache locally in IndexedDB (avoiding Supabase write)
+        try {
+          await storeOfflineSummary(activeAiNote.id, generated);
+        } catch (dbErr) {
+          console.warn("Failed to store summary in IndexedDB:", dbErr);
+        }
+      } catch (err: any) {
+        error("Failed to generate summary from PDF text: " + (err.message || err));
+      } finally {
+        setIsGeneratingSummary(false);
+        setAiLoading(false);
+      }
+    } else {
+      error("Could not read PDF contents to generate a summary. Please upload a searchable PDF note.");
+    }
+  };
+
+  const extractTextFromActiveNote = async (note: NoteDocument) => {
+    try {
+      let pdfBlob: Blob | null = await resolvePdfBlob(note.pdfUrl, note.pdfPath, note.id);
+      
+      // 3. Extract text
+      if (pdfBlob) {
+        const file = new File([pdfBlob], note.fileName || 'notes.pdf', { type: 'application/pdf' });
+        const text = await extractTextFromPdf(file, 5); // Read first 5 pages
+        setExtractedPdfText(text);
+
+        // Auto-generate summary if missing
+        if (!note.summary && text && !text.startsWith('Could not') && !text.startsWith('Error')) {
+          autoGenerateSummary(note, text);
+        }
+      } else {
+        setExtractedPdfText("Could not fetch the PDF document contents. Using note details instead.");
+      }
+    } catch (err) {
+      console.warn("Failed to extract PDF text for AI Companion:", err);
+      setExtractedPdfText("Error loading PDF text layers. Fallback details will be used.");
+    } finally {
+      setIsExtractingText(false);
+    }
+  };
+
+  const handleOpenAiCompanion = async (note: NoteDocument) => {
+    let noteWithSummary = { ...note };
+
+    // Check if we have a locally cached summary in IndexedDB
+    if (!note.summary) {
+      try {
+        const cached = await getOfflineSummary(note.id);
+        if (cached) {
+          noteWithSummary.summary = cached;
+        }
+      } catch (err) {
+        console.warn("Error reading cached summary from IndexedDB:", err);
+      }
+    }
+
+    setActiveAiNote(noteWithSummary);
     setAiCompanionTab('podcast');
     setAiError(null);
     setFlashcards([]);
@@ -1106,6 +1276,12 @@ export const Feed: React.FC = () => {
     setSubmittedQuiz(false);
     setChatHistory([]);
     setChatInput('');
+    setIsGeneratingSummary(false);
+
+    // Start background PDF text extraction
+    setExtractedPdfText(null);
+    setIsExtractingText(true);
+    extractTextFromActiveNote(noteWithSummary);
   };
 
   const handleTabChange = async (tab: 'podcast' | 'flashcards' | 'quiz' | 'qna') => {
@@ -1117,7 +1293,10 @@ export const Feed: React.FC = () => {
     if (tab === 'flashcards' && flashcards.length === 0) {
       setAiLoading(true);
       try {
-        const data = await generateFlashcards(activeAiNote.subject, activeAiNote.description, activeAiNote.summary);
+        const textForAi = extractedPdfText && !extractedPdfText.startsWith('Could not') && !extractedPdfText.startsWith('Error')
+          ? extractedPdfText
+          : activeAiNote.summary || activeAiNote.description;
+        const data = await generateFlashcards(activeAiNote.subject, activeAiNote.description, textForAi);
         setFlashcards(data);
       } catch (err: any) {
         setAiError(err.message || 'Failed to load study flashcards.');
@@ -1127,7 +1306,10 @@ export const Feed: React.FC = () => {
     } else if (tab === 'quiz' && quizQuestions.length === 0) {
       setAiLoading(true);
       try {
-        const data = await generateQuiz(activeAiNote.subject, activeAiNote.description, activeAiNote.summary);
+        const textForAi = extractedPdfText && !extractedPdfText.startsWith('Could not') && !extractedPdfText.startsWith('Error')
+          ? extractedPdfText
+          : activeAiNote.summary || activeAiNote.description;
+        const data = await generateQuiz(activeAiNote.subject, activeAiNote.description, textForAi);
         setQuizQuestions(data);
         setSelectedAnswers({});
         setSubmittedQuiz(false);
@@ -1181,10 +1363,14 @@ export const Feed: React.FC = () => {
     }
 
     try {
+      const textForAi = extractedPdfText && !extractedPdfText.startsWith('Could not') && !extractedPdfText.startsWith('Error') 
+        ? extractedPdfText 
+        : activeAiNote.summary || activeAiNote.description || '';
+
       const reply = await askGeminiQna(
         activeAiNote.subject,
         activeAiNote.description,
-        activeAiNote.summary || '',
+        textForAi,
         userMsg,
         chatHistory
       );
@@ -1574,7 +1760,56 @@ export const Feed: React.FC = () => {
                           transition={{ duration: 0.3 }}
                           className="w-full h-full"
                         >
-                          <TiltCard className="glass-card premium-border-glow hover:shadow-xl flex flex-col justify-between text-left min-h-[290px] h-full p-5 group relative w-full">
+                          <div
+                            onClick={() => {
+                              openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject);
+                            }}
+                            onDoubleClick={(e: React.MouseEvent<HTMLDivElement>) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const x = e.clientX - rect.left;
+                              const y = e.clientY - rect.top;
+                              triggerHeartBurst(note.id, x, y);
+                              handleLikeToggle(note.id, note.likes);
+                            }}
+                            onTouchStart={(e: React.TouchEvent<HTMLDivElement>) => {
+                              const now = Date.now();
+                              const DOUBLE_PRESS_DELAY = 300;
+                              const lastTap = lastTapRef.current[note.id] || 0;
+                              if (now - lastTap < DOUBLE_PRESS_DELAY) {
+                                if (e.cancelable) e.preventDefault();
+                                const touch = e.touches[0];
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const x = touch.clientX - rect.left;
+                                const y = touch.clientY - rect.top;
+                                triggerHeartBurst(note.id, x, y);
+                                handleLikeToggle(note.id, note.likes);
+                              }
+                              lastTapRef.current[note.id] = now;
+                            }}
+                            className="w-full h-full relative"
+                          >
+                            <TiltCard 
+                              className="glass-card premium-border-glow hover:shadow-xl flex flex-col justify-between text-left min-h-[290px] h-full p-5 group relative w-full cursor-pointer"
+                            >
+                            {/* Double-tap Heart Burst Particles */}
+                            {hearts.filter(h => h.noteId === note.id).map((h) => (
+                              <motion.div
+                                key={h.id}
+                                initial={{ opacity: 1, scale: 0.2, x: h.x - 12, y: h.y - 12 }}
+                                animate={{ 
+                                  opacity: 0, 
+                                  scale: 1.6, 
+                                  y: h.y - 120 - Math.random() * 45,
+                                  x: h.x - 12 + (Math.random() - 0.5) * 70,
+                                  rotate: (Math.random() - 0.5) * 50
+                                }}
+                                transition={{ duration: 0.9, ease: 'easeOut' }}
+                                className="absolute pointer-events-none text-rose-500 z-[99] text-xl font-bold select-none"
+                                style={{ textShadow: '0 0 12px rgba(244,63,94,0.75)' }}
+                              >
+                                ❤️
+                              </motion.div>
+                            ))}
                             {/* Shimmer hovering glow border effect */}
                             <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-indigo-500/5 via-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                             {/* Top row */}
@@ -1628,7 +1863,10 @@ export const Feed: React.FC = () => {
                             {/* Middle metadata details */}
                             <div className="flex items-center justify-between border-t border-white/[0.04] pt-3 text-[10px] font-medium text-slate-500 z-10 relative mt-4">
                               <span
-                                onClick={() => note.uploadedBy && navigate(`/profile/${note.uploadedBy}`)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  note.uploadedBy && navigate(`/profile/${note.uploadedBy}`);
+                                }}
                                 className="flex items-center gap-1 truncate max-w-[130px] hover:text-indigo-400 cursor-pointer transition-colors duration-200"
                               >
                                 <User className="w-3 h-3 flex-shrink-0 text-indigo-500" /> {note.uploaderName}
@@ -1644,7 +1882,10 @@ export const Feed: React.FC = () => {
                                 {/* Like toggle */}
                                 <SparkleBurst>
                                   <button
-                                    onClick={() => handleLikeToggle(note.id, note.likes)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleLikeToggle(note.id, note.likes);
+                                    }}
                                     className={`
                                       p-2 rounded-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-90 cursor-pointer
                                       ${isLiked
@@ -1661,7 +1902,10 @@ export const Feed: React.FC = () => {
                                 {/* Bookmark toggle */}
                                 <SparkleBurst>
                                   <button
-                                    onClick={() => handleBookmarkToggle(note.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleBookmarkToggle(note.id);
+                                    }}
                                     className={`
                                       p-2 rounded-lg flex items-center text-xs font-bold transition-all active:scale-90 cursor-pointer
                                       ${isBookmarked
@@ -1676,7 +1920,10 @@ export const Feed: React.FC = () => {
 
                                 {/* AI Companion button */}
                                 <button
-                                  onClick={() => handleOpenAiCompanion(note)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenAiCompanion(note);
+                                  }}
                                   className="p-2 rounded-lg flex items-center gap-1 text-xs font-extrabold bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 transition-all duration-200 cursor-pointer active:scale-90 shadow-sm shadow-indigo-600/10"
                                   title="AI Note Companion"
                                 >
@@ -1688,7 +1935,10 @@ export const Feed: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 {/* View PDF download */}
                                 <button
-                                  onClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject);
+                                  }}
                                   className="inline-flex items-center justify-center p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 light-mode:text-slate-600 light-mode:hover:text-slate-900 transition-all duration-200 cursor-pointer active:scale-95"
                                   title={note.pdfPath === 'external-link' ? "Open Cloud Shared Document" : "Open PDF Document"}
                                 >
@@ -1702,7 +1952,10 @@ export const Feed: React.FC = () => {
                                 {/* Delete note button */}
                                 {user && userProfile && (note.uploadedBy === user.uid || userProfile.role === 'admin') && (
                                   <button
-                                    onClick={() => handleDeleteNote(note.id, note.pdfPath)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteNote(note.id, note.pdfPath);
+                                    }}
                                     className="inline-flex items-center justify-center p-2 rounded-lg border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-all duration-200 cursor-pointer active:scale-95"
                                     title="Delete Note"
                                   >
@@ -1711,7 +1964,8 @@ export const Feed: React.FC = () => {
                                 )}
                               </div>
                             </div>
-                          </TiltCard>
+                            </TiltCard>
+                          </div>
                         </motion.div>
                       );
                     })}
@@ -1894,6 +2148,14 @@ export const Feed: React.FC = () => {
                   </button>
                 </div>
 
+                {/* PDF Text Extraction Loader */}
+                {isExtractingText && (
+                  <div className="p-3 mx-4 mb-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 text-indigo-400 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 animate-pulse">
+                    <span className="w-2.5 h-2.5 border-2 border-indigo-500/20 border-t-indigo-400 rounded-full animate-spin" />
+                    <span>Reading full PDF text layers for study assistance...</span>
+                  </div>
+                )}
+
                 {/* Main Content Area */}
                 <div className="min-h-[400px]">
                   {aiLoading && (
@@ -1929,12 +2191,20 @@ export const Feed: React.FC = () => {
 
                             {/* Visualizer Disk */}
                             <motion.div
-                              animate={isPlaying && !isPaused ? { rotate: 360 } : {}}
-                              transition={{ repeat: Infinity, duration: 10, ease: 'linear' }}
-                              className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center relative shadow-lg shadow-indigo-500/20 mb-6"
+                              animate={isPlaying && !isPaused ? { rotate: 360 } : (isGeneratingSummary ? { scale: [1, 1.05, 1] } : {})}
+                              transition={isPlaying && !isPaused ? { repeat: Infinity, duration: 10, ease: 'linear' } : (isGeneratingSummary ? { repeat: Infinity, duration: 1.5 } : {})}
+                              className={`w-24 h-24 rounded-full flex items-center justify-center relative shadow-lg mb-6 ${
+                                isGeneratingSummary 
+                                  ? 'bg-gradient-to-tr from-slate-700 to-indigo-800 animate-pulse'
+                                  : 'bg-gradient-to-tr from-indigo-500 to-purple-600 shadow-indigo-500/20'
+                              }`}
                             >
                               <div className="w-8 h-8 rounded-full bg-[#0D0D10] border border-white/10 flex items-center justify-center text-indigo-400">
-                                <Volume2 className="w-4 h-4 animate-bounce" />
+                                {isGeneratingSummary ? (
+                                  <span className="w-4 h-4 border-2 border-indigo-500/20 border-t-indigo-400 rounded-full animate-spin" />
+                                ) : (
+                                  <Volume2 className="w-4 h-4 animate-bounce" />
+                                )}
                               </div>
 
                               {/* Audio waves */}
@@ -1944,20 +2214,35 @@ export const Feed: React.FC = () => {
                             </motion.div>
 
                             <h4 className="text-base font-extrabold text-white light-mode:text-slate-900 mb-1">
-                              {isPlaying ? (isPaused ? 'Podcast Paused' : 'Playing AI Summary Podcast...') : 'Ready to Broadcast'}
+                              {isGeneratingSummary 
+                                ? 'AI is reading PDF...' 
+                                : isPlaying 
+                                  ? (isPaused ? 'Podcast Paused' : 'Playing AI Summary Podcast...') 
+                                  : 'Ready to Broadcast'}
                             </h4>
                             <p className="text-xs text-slate-400 light-mode:text-slate-500 mb-6 max-w-sm">
-                              Generated utilizing Google Gemini 2.5. Reads aloud the core checklist and learnings.
+                              {isGeneratingSummary 
+                                ? 'Analyzing full PDF text and compiling podcast script...' 
+                                : 'Generated utilizing Google Gemini 2.5. Reads aloud the core checklist and learnings.'}
                             </p>
 
                             {/* Audio Controls */}
                             <div className="flex items-center gap-4 mb-6">
                               {!isPlaying ? (
                                 <button
-                                  onClick={() => startSpeech(activeAiNote.summary || `${activeAiNote.subject}. ${activeAiNote.description}`)}
-                                  className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all animate-bounce cursor-pointer"
+                                  onClick={handlePlayPodcast}
+                                  disabled={isGeneratingSummary || isExtractingText}
+                                  className={`w-12 h-12 rounded-full text-white flex items-center justify-center shadow-lg transition-all ${
+                                    isGeneratingSummary || isExtractingText
+                                      ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                      : 'bg-indigo-600 shadow-indigo-600/20 hover:scale-105 active:scale-95 animate-bounce cursor-pointer'
+                                  }`}
                                 >
-                                  <Play className="w-5 h-5 fill-current ml-0.5" />
+                                  {isGeneratingSummary ? (
+                                    <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                  ) : (
+                                    <Play className="w-5 h-5 fill-current ml-0.5" />
+                                  )}
                                 </button>
                               ) : (
                                 <>
@@ -2011,7 +2296,12 @@ export const Feed: React.FC = () => {
                               Written Summary Outline
                             </h5>
                             <div className="p-5 rounded-2xl border border-white/[0.06] bg-white/[0.01] light-mode:bg-slate-900/[0.01] light-mode:border-slate-200 text-slate-300 light-mode:text-slate-700 text-xs leading-relaxed space-y-4 max-h-[300px] overflow-y-auto">
-                              {activeAiNote.summary ? (
+                              {isGeneratingSummary ? (
+                                <div className="flex flex-col items-center justify-center py-8 gap-2">
+                                  <span className="w-6 h-6 border-2 border-indigo-500/20 border-t-indigo-400 rounded-full animate-spin" />
+                                  <p className="text-slate-500 text-center font-semibold animate-pulse">AI is reading the PDF and summarizing key concepts...</p>
+                                </div>
+                              ) : activeAiNote.summary ? (
                                 <div className="prose prose-invert prose-xs max-w-none text-left">
                                   {activeAiNote.summary.split('\n').map((line, lIdx) => {
                                     if (line.startsWith('###')) {
@@ -2191,7 +2481,7 @@ export const Feed: React.FC = () => {
                                 <div>
                                   <h5 className="text-xs font-bold text-white light-mode:text-slate-800">Ask anything about this note!</h5>
                                   <p className="text-[10px] text-slate-500 max-w-[280px] mt-1 mx-auto leading-relaxed">
-                                    Gemini 2.5 Flash will analyze the note title, description, and summary to answer any doubts.
+                                    Gemini 2.5 Flash will analyze the note title, description, and full PDF content to answer any doubts.
                                   </p>
                                 </div>
                               </div>

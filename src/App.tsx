@@ -9,6 +9,7 @@ import { supabase } from './supabase/config';
 import { ShieldAlert, Send, RefreshCw, UploadCloud } from 'lucide-react';
 import { leavePresence } from './services/presence';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { PushNotifications } from '@capacitor/push-notifications';
 
 const isNativePlatform = typeof window !== 'undefined' && (
   typeof (window as any).Capacitor !== 'undefined' && 
@@ -36,6 +37,7 @@ import { InteractiveBackground } from './components/ui/InteractiveBackground';
 import { ScreenshotProtection } from './components/ScreenshotProtection';
 import { PageWrapper } from './components/ui/PageWrapper';
 import { LocalErrorBoundary } from './components/LocalErrorBoundary';
+import { GestureManager } from './components/Navigation/GestureManager';
 
 // System Notifications Helper
 const showSystemNotification = async (title: string, body: string) => {
@@ -110,6 +112,51 @@ export const ChatNotificationListener: React.FC = () => {
       }).then((listener) => {
         nativeListener = listener;
       });
+
+      // Initialize Push Notifications (FCM)
+      try {
+        PushNotifications.requestPermissions().then((result) => {
+          if (result.receive === 'granted') {
+            PushNotifications.register();
+          }
+        });
+
+        PushNotifications.addListener('registration', async (token) => {
+          console.log('[NoteWeb Push] FCM Token registered:', token.value);
+          localStorage.setItem('noteweb-device-token', token.value);
+          try {
+            const { error } = await supabase
+              .from('user_device_tokens')
+              .upsert({
+                profile_id: user.uid,
+                token: token.value,
+                platform: 'android',
+              }, { onConflict: 'token' });
+            if (error) {
+              console.error('[NoteWeb Push] Error syncing token to DB:', error);
+            }
+          } catch (err) {
+            console.error('[NoteWeb Push] DB token upsert failed:', err);
+          }
+        });
+
+        PushNotifications.addListener('registrationError', (err) => {
+          console.error('[NoteWeb Push] Registration error:', err);
+        });
+
+        PushNotifications.addListener('pushNotificationReceived', (notification) => {
+          console.log('[NoteWeb Push] Push received in foreground:', notification);
+        });
+
+        PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+          console.log('[NoteWeb Push] Push action performed:', notification);
+          const data = notification.notification.data;
+          const route = data?.route || '/chat';
+          navigate(route);
+        });
+      } catch (err) {
+        console.warn('[NoteWeb Push] FCM initialization failed:', err);
+      }
     } else if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'default') {
         const handleGesture = () => {
@@ -248,6 +295,11 @@ export const ChatNotificationListener: React.FC = () => {
       if (nativeListener) {
         try {
           nativeListener.remove();
+        } catch (e) {}
+      }
+      if (isNativePlatform) {
+        try {
+          PushNotifications.removeAllListeners();
         } catch (e) {}
       }
     };
@@ -755,8 +807,9 @@ function App() {
           <IpBlockGuard>
             <ScreenshotProtection>
               <Router>
-                <GlobalDesktopControls>
-                  <ChatNotificationListener />
+                <GestureManager>
+                  <GlobalDesktopControls>
+                    <ChatNotificationListener />
                   {/* Particle Network Background */}
                   <InteractiveBackground />
                   <div className="min-h-screen min-h-[100dvh] transition-colors duration-300 flex relative z-10 overflow-x-hidden bg-transparent text-[#0F172A] dark:text-[#E2E8F0]">
@@ -853,7 +906,8 @@ function App() {
                   </Routes>
                 </main>
               </div>
-                </GlobalDesktopControls>
+                  </GlobalDesktopControls>
+                </GestureManager>
                 <AnimatePresence>
                   {activePdfUrl && (
                     <PdfViewerModal

@@ -14,7 +14,7 @@ export interface Badge {
 export const getBadges = (
   points: number,
   uploadsCount: number,
-  bookmarksCount: number,
+  _bookmarksCount: number,
   chatsCount: number,
   readsCount: number
 ): Badge[] => {

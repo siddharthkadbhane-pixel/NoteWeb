@@ -23,9 +23,6 @@ const GRADIENTS = [
   { name: 'Cyber Abyss',   cls: 'from-gray-800 via-slate-900 to-zinc-950' },
 ];
 
-// Admin registration setup token (configurable via environment, defaults to secure backup)
-const ADMIN_REGISTRATION_TOKEN = import.meta.env.VITE_ADMIN_REGISTRATION_TOKEN || 'Whitephantom';
-
 type Step = 'login' | 'register' | 'forgot';
 type Role = 'student' | 'admin';
 
@@ -42,7 +39,7 @@ export const Login: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<Role>('student');
   const [isLoading, setIsLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotInput, setForgotInput] = useState(''); // username OR email
 
   /* ── Admin verify ── */
   const [adminPass, setAdminPass] = useState('');
@@ -222,30 +219,35 @@ export const Login: React.FC = () => {
       setAdminPassError('Admin username is required');
       return;
     }
+    if (!adminPass) {
+      setAdminPassError('Admin password is required');
+      return;
+    }
     setAdminPassError('');
     setIsLoading(true);
-    setSelectedRole('admin');
     setUsername(cleanUsername);
 
-
-
     try {
-      // Attempt login with username and passcode as password
-      await loginWithUsername(cleanUsername, adminPass);
-      success(`Welcome back, Administrator ${cleanUsername}! 👑`);
+      // Step 1: Login with username & password
+      const profile = await loginWithUsername(cleanUsername, adminPass);
+
+      // Step 2: Check if the logged-in user is actually an admin
+      if (profile?.role !== 'admin') {
+        // Not an admin — log them out immediately and show error
+        await supabase.auth.signOut();
+        setAdminPassError('Access denied. This account does not have admin privileges.');
+        setIsLoading(false);
+        return;
+      }
+
+      success(`Welcome back, Administrator ${profile.displayName || cleanUsername}! 👑`);
       navigate(from, { replace: true });
     } catch (err: any) {
-      if (err.message?.includes('not found')) {
-        // If profile doesn't exist, they can register ONLY if the admin passcode matches the registration token
-        if (adminPass === ADMIN_REGISTRATION_TOKEN) {
-          setStep('register');
-          setRegPassword(adminPass); // Store it for registration submit
-          success("New Admin passcode verified! Let's build your administrator profile.");
-        } else {
-          setAdminPassError('Incorrect admin token or password. Please try again.');
-        }
+      const isNotFound = err.message?.includes('not found') || err.message?.includes('register first') || err.message?.includes('does not exist');
+      if (isNotFound) {
+        setAdminPassError('Username not found. No admin account exists with this username.');
       } else {
-        setAdminPassError(err.message || 'Login failed. Please try again.');
+        setAdminPassError(err.message || 'Login failed. Please check your credentials.');
       }
     } finally {
       setIsLoading(false);
@@ -352,30 +354,63 @@ export const Login: React.FC = () => {
 
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emailVal = forgotEmail.trim();
-    if (!emailVal) {
-      toastError('Please enter your email address.');
+    const inputVal = forgotInput.trim();
+    if (!inputVal) {
+      toastError('Please enter your username or email address.');
       return;
     }
     setIsLoading(true);
     try {
-      // Security Validation check: ensures the email exists in NoteWeb profiles
-      const { data: profiles, error: checkErr } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', emailVal.toLowerCase());
+      // Determine if input is an email or username
+      const isEmail = inputVal.includes('@');
+      let resolvedEmail: string | null = null;
 
-      if (checkErr) {
-        console.warn('Profile search check during password reset failed:', checkErr);
-      } else if (!profiles || profiles.length === 0) {
-        throw new Error('This email is not registered with any student profile. Please sign up first.');
+      if (isEmail) {
+        // Validate email exists in profiles
+        const { data: profiles, error: checkErr } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('email', inputVal.toLowerCase());
+
+        if (checkErr) {
+          console.warn('Profile search check during password reset failed:', checkErr);
+        } else if (!profiles || profiles.length === 0) {
+          throw new Error('This email is not registered with any profile. Please sign up first.');
+        }
+        resolvedEmail = inputVal.toLowerCase();
+      } else {
+        // Treat as username — look up real email from DB
+        const sanitizedUsername = inputVal.toLowerCase().replace(/[^a-zA-Z0-9_]/g, '');
+        const { data: profiles, error: checkErr } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('username', sanitizedUsername)
+          .limit(1);
+
+        if (checkErr) {
+          console.warn('Profile username lookup failed:', checkErr);
+        }
+
+        if (!profiles || profiles.length === 0) {
+          throw new Error('No account found with this username. Please check and try again.');
+        }
+
+        const profileEmail = profiles[0].email;
+        if (!profileEmail || profileEmail.endsWith('@noteweb.local')) {
+          throw new Error('This account has no email set. Please contact an admin to reset your password.');
+        }
+        resolvedEmail = profileEmail;
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(emailVal, {
+      if (!resolvedEmail) {
+        throw new Error('Could not resolve email for this account.');
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(resolvedEmail, {
         redirectTo: window.location.origin + '/#/reset-password',
       });
       if (error) throw error;
-      success('Password reset link sent! Check your inbox.');
+      success('Password reset link sent! Check your inbox (also check spam folder).');
       setStep('login');
     } catch (err: any) {
       toastError(err.message || 'Failed to send reset link.');
@@ -580,13 +615,13 @@ export const Login: React.FC = () => {
                                 {showStudentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                               </button>
                             </div>
-                            <div className="text-right mt-1.5">
+                            <div className="text-right mt-2">
                               <button
                                 type="button"
                                 onClick={() => setStep('forgot')}
-                                className={`text-xs font-black hover:underline cursor-pointer ${isDark ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-650 hover:text-indigo-850'}`}
+                                className={`text-xs font-black underline underline-offset-2 cursor-pointer transition-colors ${isDark ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-800'}`}
                               >
-                                Forgot Password?
+                                🔑 Forgot Password?
                               </button>
                             </div>
                             {formErrors.studentPassword && (
@@ -661,13 +696,13 @@ export const Login: React.FC = () => {
                                 {showAdminPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                               </button>
                             </div>
-                            <div className="text-right mt-1.5">
+                            <div className="text-right mt-2">
                               <button
                                 type="button"
                                 onClick={() => setStep('forgot')}
-                                className={`text-xs font-black hover:underline cursor-pointer ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-850'}`}
+                                className={`text-xs font-black underline underline-offset-2 cursor-pointer transition-colors ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-800'}`}
                               >
-                                Forgot Password?
+                                🔑 Forgot Password?
                               </button>
                             </div>
                             {adminPassError && (
@@ -1037,21 +1072,24 @@ export const Login: React.FC = () => {
                     Reset Your Password
                   </h3>
                   <p className={`text-xs ${isDark ? 'text-slate-450' : 'text-slate-500'} leading-relaxed`}>
-                    Enter your registered email address below. If a matching account is found, we will send you a secure link to reset your password.
+                    Enter your username or registered email. We'll send a reset link to your email.
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className={labelCls}>Email Address</label>
+                    <label className={labelCls}>Username or Email Address</label>
                     <input
-                      type="email"
-                      value={forgotEmail}
-                      onChange={(e) => setForgotEmail(e.target.value)}
-                      placeholder="e.g. your_email@college.edu"
+                      type="text"
+                      value={forgotInput}
+                      onChange={(e) => setForgotInput(e.target.value)}
+                      placeholder="Enter your username or email..."
                       className={inputCls}
                       required
                     />
+                    <p className={`mt-1.5 text-[11px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Enter your username (e.g. sid_phantom) or your registered email.
+                    </p>
                   </div>
 
                   <button

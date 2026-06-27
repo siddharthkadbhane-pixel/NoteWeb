@@ -1155,6 +1155,16 @@ export const Chat: React.FC = () => {
           .subscribe();
 
         channelDmRef.current = channelDm;
+
+        // Auto-start WebRTC call if 'call' parameter is present in URL search (?dm=uid&call=video/voice)
+        const params = new URLSearchParams(location.search);
+        const callParam = params.get('call');
+        if (callParam && (callParam === 'video' || callParam === 'voice') && callState === 'idle') {
+          console.log("[NoteWeb Call] Auto-initiating call inside subscription effect:", callParam);
+          setTimeout(() => {
+            startWebRtcCall(callParam as 'video' | 'voice');
+          }, 800);
+        }
       }
     } catch (dmErr) {
       console.warn("Direct Messages Realtime subscription failed:", dmErr);
@@ -1182,7 +1192,7 @@ export const Chat: React.FC = () => {
         } catch {}
       }
     };
-  }, [selectedDmUser?.id, user?.uid, blockedUids, mutedUids, callState]);
+  }, [selectedDmUser?.id, user?.uid, blockedUids, mutedUids, callState, location.search]);
 
   // Register Realtime Presence listener
   useEffect(() => {
@@ -1925,6 +1935,25 @@ export const Chat: React.FC = () => {
               const realId = String(data[0].id);
               setMessages((prev) => prev.map((m) => m.id === tempMsgId ? { ...m, id: realId } : m));
               runAiModeration(realId, inputContent, 'chats', 'message');
+
+              // Dispatch Push Notification to all other users
+              try {
+                const apiBase = import.meta.env.VITE_AI_API_URL || 'http://localhost:5000/api/summarize';
+                const notificationUrl = apiBase.replace('/api/summarize', '/api/send-notification');
+                
+                fetch(notificationUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    sender_id: user.uid,
+                    sender_name: userProfile.displayName || 'Classmate',
+                    message: inputContent,
+                    is_global: true
+                  })
+                }).catch(e => console.warn('[Push Dispatch] Error calling notification service:', e));
+              } catch (pushErr) {
+                console.warn('[Push Dispatch] Failed to trigger push notification:', pushErr);
+              }
             }
           } catch (dbErr) {
             console.warn("Global chat background save skipped:", dbErr);
@@ -1994,6 +2023,26 @@ export const Chat: React.FC = () => {
           
           // Trigger DM AI Moderation
           runAiModeration(realId, inputContent, 'direct_messages', 'message');
+
+          // Dispatch Push Notification to DM recipient
+          try {
+            const apiBase = import.meta.env.VITE_AI_API_URL || 'http://localhost:5000/api/summarize';
+            const notificationUrl = apiBase.replace('/api/summarize', '/api/send-notification');
+            
+            fetch(notificationUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sender_id: user.uid,
+                sender_name: userProfile.displayName || 'Classmate',
+                message: inputContent,
+                recipient_id: targetId,
+                is_global: false
+              })
+            }).catch(e => console.warn('[Push Dispatch] Error calling notification service:', e));
+          } catch (pushErr) {
+            console.warn('[Push Dispatch] Failed to trigger push notification:', pushErr);
+          }
         }
 
         // Fetch contacts again to update snippet

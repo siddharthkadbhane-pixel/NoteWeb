@@ -126,6 +126,27 @@ export const callAiChatCompletion = async (
  * @returns Promise<string> A beautifully formatted academic summary
  */
 export const summarizeNotes = async (notesText: string): Promise<string> => {
+  const customApiUrl = import.meta.env.VITE_AI_API_URL;
+  if (customApiUrl && customApiUrl !== 'mock-api-url') {
+    try {
+      console.log(`[NoteWeb AI] Routing summarization to backend server API: ${customApiUrl}`);
+      const res = await fetch(customApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: notesText })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.summary) {
+          return data.summary;
+        }
+      }
+      console.warn(`[NoteWeb AI] Backend API returned status ${res.status}, falling back to client-side Gemini.`);
+    } catch (err) {
+      console.warn("[NoteWeb AI] Failed to call backend AI API, using client-side fallback:", err);
+    }
+  }
+
   const systemInstruction = `You are NoteWeb's expert AI Academic Assistant. Your task is to analyze course notes and generate a highly professional, beautifully structured academic study summary.`;
   
   const prompt = `Analyze the following course notes:

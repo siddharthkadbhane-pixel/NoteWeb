@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase/config';
 import { useAuth } from '../context/AuthContext';
@@ -20,7 +20,9 @@ import {
   Award,
   Zap,
   ExternalLink,
-  MessageSquare
+  MessageSquare,
+  Phone,
+  Video
 } from 'lucide-react';
 import { getBadges } from '../utils/achievements';
 import { Button } from '../components/ui/Button';
@@ -212,6 +214,9 @@ export const Profile: React.FC = () => {
 
   // Daily check-in status
   const [checkinCooldown, setCheckinCooldown] = useState<string | null>(null);
+
+  // Double-tap gesture helper
+  const lastTapRef = useRef<{ [key: string]: number }>({});
 
   // Dynamic branch list state
   const [dbBranches, setDbBranches] = useState<any[]>([]);
@@ -786,13 +791,27 @@ export const Profile: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-3 z-10 relative self-start lg:self-auto">
+            <div className="flex flex-wrap items-center gap-3 z-10 relative self-start lg:self-auto">
               <Button
                 onClick={() => navigate(`/chat?dm=${targetUid}`)}
                 variant="primary"
                 leftIcon={<MessageSquare className="w-4 h-4" />}
               >
                 Send Message
+              </Button>
+              <Button
+                onClick={() => navigate(`/chat?dm=${targetUid}&call=voice`)}
+                variant="secondary"
+                leftIcon={<Phone className="w-4 h-4 text-emerald-400" />}
+              >
+                Voice Call
+              </Button>
+              <Button
+                onClick={() => navigate(`/chat?dm=${targetUid}&call=video`)}
+                variant="secondary"
+                leftIcon={<Video className="w-4 h-4 text-indigo-450" />}
+              >
+                Video Call
               </Button>
             </div>
           )}
@@ -1220,7 +1239,18 @@ export const Profile: React.FC = () => {
                 {myUploads.map((note) => (
                   <GlassPanel 
                     key={note.id} 
-                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-white/[0.05] light-mode:border-slate-200/50 bg-[#121218]/30 light-mode:bg-white/60 hover:border-white/10 light-mode:hover:border-slate-300"
+                    onDoubleClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject)}
+                    onTouchStart={(e) => {
+                      const now = Date.now();
+                      const DOUBLE_PRESS_DELAY = 300;
+                      const lastTap = lastTapRef.current[note.id] || 0;
+                      if (now - lastTap < DOUBLE_PRESS_DELAY) {
+                        if (e.cancelable) e.preventDefault();
+                        openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject);
+                      }
+                      lastTapRef.current[note.id] = now;
+                    }}
+                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-white/[0.05] light-mode:border-slate-200/50 bg-[#121218]/30 light-mode:bg-white/60 hover:border-white/10 light-mode:hover:border-slate-300 cursor-pointer select-none"
                   >
                     <div className="flex items-start gap-4 min-w-0">
                       <div className="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/10 mt-1 flex-shrink-0">
@@ -1297,7 +1327,18 @@ export const Profile: React.FC = () => {
                 {myBookmarks.map((note) => (
                   <GlassPanel 
                     key={note.id} 
-                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-white/[0.05] bg-[#121218]/30 hover:border-white/10"
+                    onDoubleClick={() => openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject)}
+                    onTouchStart={(e) => {
+                      const now = Date.now();
+                      const DOUBLE_PRESS_DELAY = 300;
+                      const lastTap = lastTapRef.current[note.id] || 0;
+                      if (now - lastTap < DOUBLE_PRESS_DELAY) {
+                        if (e.cancelable) e.preventDefault();
+                        openPdfDocument(note.pdfUrl || 'db-base64-fetch', note.pdfPath || '', note.id, note.subject);
+                      }
+                      lastTapRef.current[note.id] = now;
+                    }}
+                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-white/[0.05] bg-[#121218]/30 hover:border-white/10 cursor-pointer select-none"
                   >
                     <div className="flex items-start gap-4 min-w-0">
                       <div className="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/10 mt-1 flex-shrink-0">

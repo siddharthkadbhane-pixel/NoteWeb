@@ -353,3 +353,30 @@ BEGIN
     RETURN new_points;
 END;
 $$;
+
+-- ════════════════════════════════════════════════════════════
+-- 8. PUSH NOTIFICATION SYSTEM SUPPORT
+-- ════════════════════════════════════════════════════════════
+
+-- Create table for storing user device tokens (FCM/Web push)
+CREATE TABLE IF NOT EXISTS public.user_device_tokens (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    profile_id TEXT REFERENCES public.profiles(id) ON DELETE CASCADE,
+    token TEXT UNIQUE NOT NULL,
+    platform TEXT, -- 'android', 'ios', 'web', 'desktop'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE public.user_device_tokens ENABLE ROW LEVEL SECURITY;
+
+-- Policies for user_device_tokens
+CREATE POLICY "Allow users to view their own tokens" ON public.user_device_tokens
+    FOR SELECT USING (auth.uid()::text = profile_id);
+
+CREATE POLICY "Allow users to insert/update their own tokens" ON public.user_device_tokens
+    FOR INSERT WITH CHECK (auth.uid()::text = profile_id);
+
+CREATE POLICY "Allow users to delete their own tokens" ON public.user_device_tokens
+    FOR DELETE USING (auth.uid()::text = profile_id);
+

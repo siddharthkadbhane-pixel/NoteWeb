@@ -196,7 +196,7 @@ export const Admin: React.FC = () => {
       
       // Deduplicate users list by lowercased username or email to prevent mock/real duplicate accounts
       const uniqueUsersMap = new Map<string, UserProfile>();
-      users.forEach((usr) => {
+      users.forEach((usr: UserProfile) => {
         const key = (usr.username || usr.email || usr.displayName || usr.uid).toLowerCase();
         const existing = uniqueUsersMap.get(key);
         if (!existing) {
@@ -475,6 +475,9 @@ export const Admin: React.FC = () => {
   // Moderate Note
   const handleModerate = async (noteId: string, action: 'approved' | 'rejected') => {
     try {
+      // Find note uploader details before update
+      const targetNote = pendingNotes.find(n => n.id === noteId) || allNotes.find(n => n.id === noteId);
+
       const { error: updateErr } = await supabase
         .from('notes')
         .update({ status: action })
@@ -486,6 +489,30 @@ export const Admin: React.FC = () => {
       
       setPendingNotes((prev) => prev.filter((n) => n.id !== noteId));
       setAllNotes((prev) => prev.map((n) => n.id === noteId ? { ...n, status: action } : n));
+
+      // Trigger Push Notification for approval/rejection
+      if (targetNote && targetNote.uploadedBy) {
+        try {
+          const apiBase = import.meta.env.VITE_AI_API_URL || 'http://localhost:5000/api/summarize';
+          const notificationUrl = apiBase.replace('/api/summarize', '/api/send-notification');
+          
+          fetch(notificationUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sender_id: 'system-admin',
+              sender_name: 'NoteWeb Center',
+              message: action === 'approved' 
+                ? `Your note "${targetNote.subject}" has been approved! +100 XP awarded.`
+                : `Your note "${targetNote.subject}" has been rejected during moderation.`,
+              recipient_id: targetNote.uploadedBy,
+              is_global: false
+            })
+          }).catch(e => console.warn('[Push Dispatch] Error calling notification service:', e));
+        } catch (pushErr) {
+          console.warn('[Push Dispatch] Failed to trigger push notification:', pushErr);
+        }
+      }
     } catch (e: any) {
       console.error(e);
       error("Moderation failed: " + e.message);

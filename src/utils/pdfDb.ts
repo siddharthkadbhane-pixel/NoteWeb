@@ -100,6 +100,133 @@ export const base64ToBlob = (base64: string, type = 'application/pdf'): Blob => 
 };
 
 /**
+ * Robustly resolves the PDF binary from various sources (database base64 strings, IndexedDB cache, or remote HTTP URL).
+ */
+export const resolvePdfBlob = async (pdfUrl: string, pdfPath: string, noteId?: string): Promise<Blob | null> => {
+  let resolvedUrl = pdfUrl;
+
+  const isDeadUrl = (url: string): boolean => {
+    if (!url) return true;
+    if (url === 'db-base64-fetch') return true;
+    if (url.startsWith('blob:')) return true;
+    if (url.includes('dummy.pdf')) return true;
+    return false;
+  };
+
+  // STEP 0: Fetch from DB if url is dead/placeholder
+  if (isDeadUrl(resolvedUrl) && noteId) {
+    try {
+      let dbUrl: string | null = null;
+      let dbPath: string | null = null;
+
+      const { data: snakeData, error: snakeErr } = await supabase
+        .from('notes')
+        .select('pdf_url, pdf_path')
+        .eq('id', noteId)
+        .single();
+
+      if (snakeErr || !snakeData) {
+        const { data: camelData, error: camelErr } = await supabase
+          .from('notes')
+          .select('pdfUrl, pdfPath')
+          .eq('id', noteId)
+          .single();
+
+        if (!camelErr && camelData) {
+          dbUrl = (camelData as any).pdfUrl;
+          dbPath = (camelData as any).pdfPath;
+        }
+      } else {
+        dbUrl = snakeData.pdf_url;
+        dbPath = snakeData.pdf_path;
+      }
+
+      if (dbUrl && !isDeadUrl(dbUrl)) {
+        resolvedUrl = dbUrl;
+      } else if (dbPath) {
+        const { data: urlData } = supabase.storage.from('notes').getPublicUrl(dbPath);
+        if (urlData?.publicUrl && !isDeadUrl(urlData.publicUrl)) {
+          resolvedUrl = urlData.publicUrl;
+        }
+      }
+    } catch (e) {
+      console.warn("Error fetching PDF URL from DB:", e);
+    }
+  }
+
+  // STEP 1: Handle Base64 data URL
+  if (resolvedUrl) {
+    let isBase64 = false;
+    let base64Data = resolvedUrl;
+
+    if (resolvedUrl.startsWith('data:application/pdf;base64,')) {
+      isBase64 = true;
+    } else if (/^[a-zA-Z0-9+/=]+$/.test(resolvedUrl) && (resolvedUrl.startsWith('JVBERi') || resolvedUrl.length > 100)) {
+      isBase64 = true;
+      base64Data = 'data:application/pdf;base64,' + resolvedUrl;
+    }
+
+    if (isBase64) {
+      try {
+        const blob = base64ToBlob(base64Data);
+        if (pdfPath) await storeOfflinePdf(pdfPath, blob);
+        if (noteId) await storeOfflinePdf(noteId, blob);
+        return blob;
+      } catch (err) {
+        console.error("Failed to parse base64 PDF string:", err);
+      }
+    }
+  }
+
+  // STEP 2: Check IndexedDB local cache
+  let cachedBlob = await getOfflinePdf(resolvedUrl);
+  if (!cachedBlob && pdfPath) {
+    cachedBlob = await getOfflinePdf(pdfPath);
+  }
+  if (!cachedBlob && noteId) {
+    cachedBlob = await getOfflinePdf(noteId);
+  }
+  if (cachedBlob) {
+    return cachedBlob;
+  }
+
+  // STEP 3: Fetch remote HTTP URL
+  if (resolvedUrl && resolvedUrl.startsWith('http') && !resolvedUrl.includes('dummy.pdf')) {
+    try {
+      const response = await fetch(resolvedUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        if (pdfPath) await storeOfflinePdf(pdfPath, blob);
+        if (noteId) await storeOfflinePdf(noteId, blob);
+        return blob;
+      }
+    } catch (err) {
+      console.warn("Failed to fetch remote PDF URL:", err);
+    }
+  }
+
+  // STEP 4: Ultimate fallback from storage path
+  if (pdfPath && pdfPath !== '' && !pdfPath.startsWith('notes/mock') && !pdfPath.startsWith('notes/base64')) {
+    try {
+      const { data: freshUrlData } = supabase.storage.from('notes').getPublicUrl(pdfPath);
+      if (freshUrlData?.publicUrl && !isDeadUrl(freshUrlData.publicUrl)) {
+        const response = await fetch(freshUrlData.publicUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          if (pdfPath) await storeOfflinePdf(pdfPath, blob);
+          if (noteId) await storeOfflinePdf(noteId, blob);
+          return blob;
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch PDF URL from storage path:", err);
+    }
+  }
+
+  return null;
+};
+
+/**
  * Checks if a PDF is cached locally (by checking both url and path),
  * or is a Base64 string, and returns a local Object URL (blob:...) for the file if found.
  * If not found, returns null.
@@ -342,4 +469,21 @@ export const openPdfDocument = async (pdfUrl: string, pdfPath: string, noteId?: 
       triggerPdfOpen(pdfUrl);
     }
   }
+};
+
+/**
+ * Stores generated AI note summary locally in IndexedDB.
+ */
+export const storeOfflineSummary = async (noteId: string, summary: string): Promise<void> => {
+  const blob = new Blob([summary], { type: 'text/plain' });
+  await storeOfflinePdf(`summary-${noteId}`, blob);
+};
+
+/**
+ * Retrieves a locally cached AI note summary from IndexedDB.
+ */
+export const getOfflineSummary = async (noteId: string): Promise<string | null> => {
+  const blob = await getOfflinePdf(`summary-${noteId}`);
+  if (!blob) return null;
+  return await blob.text();
 };

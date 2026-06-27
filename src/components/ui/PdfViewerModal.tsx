@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ExternalLink } from 'lucide-react';
+import { X, ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
 import { GlassPanel } from './GlassPanel';
@@ -13,6 +13,7 @@ interface PdfViewerModalProps {
 export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ url, title, onClose }) => {
   const { isDark } = useTheme();
   const [loading, setLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Disable scrolling on body when modal is open
   useEffect(() => {
@@ -23,23 +24,25 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ url, title, onCl
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 md:p-6">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md transition-all duration-300 ${isFullscreen ? 'p-0' : 'p-4 md:p-6'}`}>
       {/* Backdrop motion wrapper */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.3 }}
-        className="w-full h-full max-w-5xl flex flex-col relative"
+        className={`w-full h-full flex flex-col relative transition-all duration-300 ${isFullscreen ? 'max-w-full' : 'max-w-5xl'}`}
       >
         <GlassPanel 
-          className={`w-full h-full flex flex-col border rounded-3xl overflow-hidden ${
+          className={`w-full h-full flex flex-col border overflow-hidden transition-all duration-300 ${
+            isFullscreen ? 'rounded-none border-none' : 'rounded-3xl'
+          } ${
             isDark ? 'bg-[#0D0D14]/95 border-white/[0.08] text-white' : 'bg-white/98 border-slate-200 text-slate-800'
           }`}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] light-mode:border-slate-200">
-            <div className="flex flex-col text-left max-w-[70%]">
+            <div className="flex flex-col text-left max-w-[60%]">
               <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-indigo-400' : 'text-indigo-650'}`}>
                 In-App PDF Reader
               </span>
@@ -49,6 +52,19 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ url, title, onCl
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Fullscreen Toggle Button */}
+              <button
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                className={`p-2 rounded-xl border transition-all active:scale-95 flex items-center justify-center ${
+                  isDark 
+                    ? 'border-white/[0.08] bg-white/[0.02] text-slate-400 hover:text-white hover:bg-white/5' 
+                    : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                }`}
+                title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+              >
+                {isFullscreen ? <Minimize2 className="w-4.5 h-4.5" /> : <Maximize2 className="w-4.5 h-4.5" />}
+              </button>
+
               {/* External open fallback */}
               <a
                 href={url}
