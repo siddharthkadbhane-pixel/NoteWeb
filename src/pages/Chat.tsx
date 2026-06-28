@@ -285,6 +285,51 @@ const CHAT_THEMES: ChatTheme[] = [
       backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 36 36'%3E%3Crect width='36' height='36' fill='%23FDFBF7'/%3E%3Cpath d='M0 36 L36 36 M36 0 L36 36' stroke='rgba(139,92,26,0.035)' stroke-width='0.8' fill='none'/%3E%3C/svg%3E")`,
       backgroundRepeat: 'repeat'
     }
+  },
+  {
+    name: 'WhatsApp Dark',
+    containerClass: 'border-emerald-500/10',
+    style: {
+      backgroundColor: '#0b141a',
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M10 15h4v4h-4zm20 30h3v3h-3zm35-25h5v5h-5zm-45 30h4v4h-4zm25-45h5v5h-5z' fill='%23ffffff' opacity='0.02'/%3E%3C/svg%3E")`,
+      backgroundRepeat: 'repeat'
+    },
+    myBubbleClass: 'bg-[#005c4b] border-none text-[#e9edef] rounded-br-none shadow shadow-black/10',
+    otherBubbleClass: 'bg-[#202c33] border-none text-[#e9edef] rounded-bl-none shadow shadow-black/10',
+    previewBg: 'bg-[#0b141a]',
+    previewStyle: {
+      backgroundColor: '#0b141a',
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 80 80'%3E%3Cpath d='M10 15h4v4h-4z' fill='%23ffffff' opacity='0.02'/%3E%3C/svg%3E")`,
+      backgroundRepeat: 'repeat'
+    }
+  },
+  {
+    name: 'WhatsApp Light',
+    containerClass: 'border-emerald-700/10 text-[#111b21]',
+    style: {
+      backgroundColor: '#efeae2',
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M10 15h4v4h-4zm20 30h3v3h-3zm35-25h5v5h-5zm-45 30h4v4h-4zm25-45h5v5h-5z' fill='%23000000' opacity='0.02'/%3E%3C/svg%3E")`,
+      backgroundRepeat: 'repeat',
+      color: '#111b21'
+    },
+    myBubbleClass: 'bg-[#d9fdd3] border-none text-[#111b21] rounded-br-none shadow shadow-black/5',
+    otherBubbleClass: 'bg-[#ffffff] border-none text-[#111b21] rounded-bl-none shadow shadow-black/5',
+    previewBg: 'bg-[#efeae2]',
+    previewStyle: {
+      backgroundColor: '#efeae2',
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 80 80'%3E%3Cpath d='M10 15h4v4h-4z' fill='%23000000' opacity='0.02'/%3E%3C/svg%3E")`,
+      backgroundRepeat: 'repeat'
+    }
+  },
+  {
+    name: 'Instagram Dark',
+    containerClass: 'border-pink-500/10',
+    style: {
+      backgroundColor: '#000000',
+    },
+    myBubbleClass: 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 border-none text-white shadow shadow-pink-600/10',
+    otherBubbleClass: 'bg-[#262626] border-none text-white rounded-bl-none',
+    previewBg: 'bg-black'
   }
 ];
 
@@ -560,6 +605,8 @@ export const Chat: React.FC = () => {
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+  const [chatWallpapers, setChatWallpapers] = useState<Record<string, string>>(() => JSON.parse(localStorage.getItem('noteweb-chat-wallpapers') || '{}'));
+  const [customWpUrl, setCustomWpUrl] = useState('');
 
   // WebRTC Calling
   const [callState, setCallState] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle');
@@ -2308,7 +2355,7 @@ export const Chat: React.FC = () => {
                        themeName === 'Cyberpunk Neon' ? 'Tokyo Neon' :
                        themeName === 'Emerald Forest' ? 'Emerald Canopy' : themeName;
     if (mappedName === 'Default') return isDark;
-    if (mappedName === 'Study Vibe') return false;
+    if (mappedName === 'Study Vibe' || mappedName === 'WhatsApp Light') return false;
     return true;
   };
 
@@ -2331,7 +2378,116 @@ export const Chat: React.FC = () => {
                        themeName === 'Cyberpunk Neon' ? 'Tokyo Neon' :
                        themeName === 'Emerald Forest' ? 'Emerald Canopy' : themeName;
     const found = CHAT_THEMES.find(t => t.name === mappedName);
-    return found ? found.style : undefined;
+    const themeStyle = found && found.style ? { ...found.style } : {};
+
+    // Apply custom wallpaper background if set
+    const wallpaperKey = chatWallpapers[roomId];
+    if (wallpaperKey) {
+      if (wallpaperKey === 'whatsapp-doodle-dark') {
+        themeStyle.backgroundColor = '#0b141a';
+        themeStyle.backgroundImage = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M10 15h4v4h-4zm20 30h3v3h-3zm35-25h5v5h-5zm-45 30h4v4h-4zm25-45h5v5h-5z' fill='%23ffffff' opacity='0.02'/%3E%3C/svg%3E")`;
+        themeStyle.backgroundRepeat = 'repeat';
+      } else if (wallpaperKey === 'whatsapp-doodle-light') {
+        themeStyle.backgroundColor = '#efeae2';
+        themeStyle.backgroundImage = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M10 15h4v4h-4zm20 30h3v3h-3zm35-25h5v5h-5zm-45 30h4v4h-4zm25-45h5v5h-5z' fill='%23000000' opacity='0.02'/%3E%3C/svg%3E")`;
+        themeStyle.backgroundRepeat = 'repeat';
+      } else if (wallpaperKey === 'instagram-black') {
+        themeStyle.backgroundColor = '#000000';
+        themeStyle.backgroundImage = 'none';
+      } else if (wallpaperKey.startsWith('http://') || wallpaperKey.startsWith('https://') || wallpaperKey.startsWith('data:')) {
+        themeStyle.backgroundImage = `url("${wallpaperKey}")`;
+        themeStyle.backgroundSize = 'cover';
+        themeStyle.backgroundPosition = 'center';
+        themeStyle.backgroundRepeat = 'no-repeat';
+      } else {
+        // Solid color hex
+        themeStyle.backgroundColor = wallpaperKey;
+        themeStyle.backgroundImage = 'none';
+      }
+    }
+    return themeStyle;
+  };
+
+  const renderWallpaperSelection = (roomId: string) => {
+    const activeWp = chatWallpapers[roomId] || 'default';
+    return (
+      <div className="space-y-3.5 border-b border-white/[0.04] pb-4 text-left">
+        <div>
+          <h4 className="text-xs font-bold text-indigo-400 mb-2 flex items-center gap-1.5"><ImageIcon className="w-3.5 h-3.5" /> Chat Wallpaper</h4>
+          <div className="flex gap-2 overflow-x-auto pb-2 pr-1 custom-scrollbar">
+            {[
+              { key: 'default', name: 'Default', bg: '#0f172a' },
+              { key: 'whatsapp-doodle-dark', name: 'WA Dark', bg: '#0b141a', style: { backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 80 80'%3E%3Cpath d='M10 15h4v4h-4z' fill='%23ffffff' opacity='0.03'/%3E%3C/svg%3E")` } },
+              { key: 'whatsapp-doodle-light', name: 'WA Light', bg: '#efeae2', style: { backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 80 80'%3E%3Cpath d='M10 15h4v4h-4z' fill='%23000000' opacity='0.03'/%3E%3C/svg%3E")` } },
+              { key: 'instagram-black', name: 'Insta Black', bg: '#000000' },
+              { key: '/wallpapers/chat_lofi_study.png', name: 'Lofi Room', bg: '#110c1c', style: { backgroundImage: `url("/wallpapers/chat_lofi_study.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_gradient_wave.png', name: 'Neon Wave', bg: '#080c14', style: { backgroundImage: `url("/wallpapers/chat_gradient_wave.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_tech_doodle.png', name: 'Tech Line', bg: '#050a12', style: { backgroundImage: `url("/wallpapers/chat_tech_doodle.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_cyberpunk_city.png', name: 'Cyberpunk', bg: '#0b0512', style: { backgroundImage: `url("/wallpapers/chat_cyberpunk_city.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_pastel_dream.png', name: 'Pastel Dream', bg: '#1c1b24', style: { backgroundImage: `url("/wallpapers/chat_pastel_dream.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_cosmic_forest.png', name: 'Cosmic Forest', bg: '#040d12', style: { backgroundImage: `url("/wallpapers/chat_cosmic_forest.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_insta_bubblegum.png', name: 'Insta Candy', bg: '#ffccd5', style: { backgroundImage: `url("/wallpapers/chat_insta_bubblegum.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_insta_rainbow.png', name: 'Insta Pride', bg: '#833ab4', style: { backgroundImage: `url("/wallpapers/chat_insta_rainbow.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_insta_autumn.png', name: 'Insta Autumn', bg: '#d4a373', style: { backgroundImage: `url("/wallpapers/chat_insta_autumn.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_synthwave_sunset.png', name: 'Retro Synth', bg: '#2b0c36', style: { backgroundImage: `url("/wallpapers/chat_synthwave_sunset.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_zen_ink.png', name: 'Zen Ink', bg: '#1c1b19', style: { backgroundImage: `url("/wallpapers/chat_zen_ink.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_matrix_code.png', name: 'Matrix', bg: '#020b05', style: { backgroundImage: `url("/wallpapers/chat_matrix_code.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_lavender_mist.png', name: 'Lavender Mist', bg: '#1c1724', style: { backgroundImage: `url("/wallpapers/chat_lavender_mist.png")`, backgroundSize: 'cover' } },
+              { key: '/wallpapers/chat_abstract_geometric.png', name: 'Neon Geo', bg: '#080814', style: { backgroundImage: `url("/wallpapers/chat_abstract_geometric.png")`, backgroundSize: 'cover' } },
+              { key: '#1a202c', name: 'Charcoal', bg: '#1a202c' },
+              { key: '#0f172a', name: 'Slate Blue', bg: '#0f172a' },
+              { key: '#2d1b4e', name: 'Dark Purple', bg: '#2d1b4e' },
+              { key: '#1c1917', name: 'Dark Stone', bg: '#1c1917' }
+            ].map(wp => {
+              const isWpSelected = activeWp === wp.key;
+              return (
+                <button
+                  key={wp.key}
+                  type="button"
+                  onClick={() => {
+                    const updated = { ...chatWallpapers, [roomId]: wp.key };
+                    setChatWallpapers(updated);
+                    localStorage.setItem('noteweb-chat-wallpapers', JSON.stringify(updated));
+                    toastSuccess(`Wallpaper ${wp.name} applied!`);
+                  }}
+                  className={`flex-shrink-0 w-16 h-12 rounded-xl border flex flex-col items-center justify-center relative overflow-hidden cursor-pointer active:scale-95 transition-all ${isWpSelected ? 'border-indigo-500 ring-1 ring-indigo-500/30' : 'border-white/5 bg-white/[0.02]'}`}
+                  style={{ backgroundColor: wp.bg, ...wp.style }}
+                >
+                  <span className="text-[8px] bg-black/40 px-1 py-0.5 rounded text-white font-extrabold">{wp.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] text-slate-400 font-bold block">Or use a custom image URL:</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Paste image URL here (https://...)"
+              value={customWpUrl}
+              onChange={(e) => setCustomWpUrl(e.target.value)}
+              className="flex-1 bg-white/[0.03] border border-white/[0.08] focus:border-indigo-500 rounded-xl px-3 py-1.5 text-[10px] outline-none text-white font-semibold"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (!customWpUrl.trim()) return;
+                const updated = { ...chatWallpapers, [roomId]: customWpUrl.trim() };
+                setChatWallpapers(updated);
+                localStorage.setItem('noteweb-chat-wallpapers', JSON.stringify(updated));
+                toastSuccess("Custom wallpaper applied! 🖼️");
+                setCustomWpUrl('');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-[10px] cursor-pointer active:scale-95 transition-all"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const getMyBubbleTheme = () => {
@@ -2801,6 +2957,9 @@ export const Chat: React.FC = () => {
                   <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><Paintbrush className="w-4 h-4" /> Chat Theme</h3>
                   <button onClick={() => setIsThemeModalOpen(false)} className="p-1.5 rounded-xl cursor-pointer active:scale-90 text-slate-400"><X className="w-4 h-4" /></button>
                 </div>
+
+                {renderWallpaperSelection('global')}
+
                 <div className="grid grid-cols-3 gap-3 overflow-y-auto">
                   {CHAT_THEMES.map(themeItem => {
                     const currentRoomId = 'global';
@@ -2976,6 +3135,9 @@ export const Chat: React.FC = () => {
                 <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><Paintbrush className="w-4 h-4" /> Chat Theme</h3>
                 <button onClick={() => setIsThemeModalOpen(false)} className="p-1.5 rounded-xl cursor-pointer active:scale-90 text-slate-400"><X className="w-4 h-4" /></button>
               </div>
+
+              {renderWallpaperSelection(selectedDmUser ? selectedDmUser.id : 'global')}
+
               <div className="grid grid-cols-3 gap-3 overflow-y-auto">
                 {CHAT_THEMES.map(themeItem => {
                   const currentRoomId = selectedDmUser ? selectedDmUser.id : 'global';
@@ -4663,7 +4825,9 @@ export const Chat: React.FC = () => {
             </p>
 
             {/* Grid of themes */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 max-h-[350px] overflow-y-auto pr-1">
+            {renderWallpaperSelection(activeTab === 'dm' && selectedDmUser ? selectedDmUser.id : 'global')}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 max-h-[250px] overflow-y-auto pr-1 mt-3">
               {CHAT_THEMES.map((themeItem) => {
                 const currentRoomId = activeTab === 'dm' && selectedDmUser ? selectedDmUser.id : 'global';
                 const currentTheme = chatThemes[currentRoomId] || 'Default';
