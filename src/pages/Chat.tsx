@@ -2592,6 +2592,17 @@ export const Chat: React.FC = () => {
             const senderBranch = activeTab === 'global' ? msg.sender_branch : (isMe ? userProfile?.branch : selectedDmUser?.branch);
             const messageContent = activeTab === 'global' ? msg.content : msg.message;
             const imageUrl = activeTab === 'global' ? msg.image_url : msg.photo_url;
+            let lastTap = 0;
+            const handleMobileBubbleTap = () => {
+              const now = Date.now();
+              if (now - lastTap < 300) {
+                if (activeTab === 'dm') {
+                  handleAddReaction(msg.id, '❤️');
+                  playTapSound();
+                }
+              }
+              lastTap = now;
+            };
 
             return (
               <motion.div
@@ -2599,19 +2610,44 @@ export const Chat: React.FC = () => {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.18 }}
-                onDoubleClick={() => activeTab === 'dm' && handleAddReaction(msg.id, '❤️')}
-                className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : ''}`}
+                className={`flex items-end gap-2 relative group/item ${isMe ? 'flex-row-reverse' : ''}`}
               >
+                {/* Swipe-to-reply background indicator */}
+                {activeTab === 'dm' && !isMe && (
+                  <div className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-hover/item:opacity-40 transition-opacity flex items-center justify-center bg-indigo-500/10 p-1.5 rounded-full border border-indigo-500/20">
+                    <Quote className="w-3.5 h-3.5 text-indigo-400" />
+                  </div>
+                )}
+                {activeTab === 'dm' && isMe && (
+                  <div className="absolute right-10 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-hover/item:opacity-40 transition-opacity flex items-center justify-center bg-indigo-500/10 p-1.5 rounded-full border border-indigo-500/20">
+                    <Quote className="w-3.5 h-3.5 text-indigo-400" />
+                  </div>
+                )}
+
                 {/* Avatar - small on mobile */}
                 <div
                   onClick={() => senderUid && navigate(`/profile/${senderUid}`)}
-                  className="flex-shrink-0 cursor-pointer active:scale-90 transition-transform"
+                  className="flex-shrink-0 cursor-pointer active:scale-90 transition-transform z-10"
                 >
                   {renderAvatar(senderAvatar || '', 'w-7 h-7 text-sm')}
                 </div>
 
-                {/* Bubble */}
-                <div className={`max-w-[75%] flex flex-col gap-0.5 ${isMe ? 'items-end' : 'items-start'}`}>
+                {/* Bubble container - draggable */}
+                <motion.div 
+                  className={`max-w-[75%] flex flex-col gap-0.5 z-10 ${isMe ? 'items-end' : 'items-start'}`}
+                  drag={activeTab === 'dm' ? "x" : false}
+                  dragConstraints={{ left: 0, right: 65 }}
+                  dragElastic={{ left: 0, right: 0.35 }}
+                  onDragEnd={(event, info) => {
+                    if (info.offset.x > 45) {
+                      setReplyingTo(msg);
+                      playTapSound();
+                      toastSuccess("Replying to message");
+                    }
+                  }}
+                  onClick={handleMobileBubbleTap}
+                  whileDrag={{ scale: 1.015 }}
+                >
                   {/* Sender name (only in global) */}
                   {activeTab === 'global' && (
                     <span
@@ -2714,13 +2750,21 @@ export const Chat: React.FC = () => {
                             <div className="space-y-1">
                               {msg.poll_data.options.map((opt: string, optIdx: number) => {
                                 const votesList = msg.poll_data.votes[String(optIdx)] || [];
-                                const totalVotes = Object.values(msg.poll_data.votes).reduce((acc: number, list: any) => acc + (list || []).length, 0);
-                                const pct = totalVotes > 0 ? Math.round((votesList.length / totalVotes) * 100) : 0;
+                                const totalVotes = Object.values(msg.poll_data.votes).reduce((sum: number, list: any) => sum + list.length, 0);
                                 const hasVoted = votesList.includes(user?.uid || '');
+                                const pct = totalVotes > 0 ? Math.round((votesList.length / totalVotes) * 100) : 0;
+
                                 return (
-                                  <button key={optIdx} onClick={() => handleCastPollVote(msg.id, optIdx)}
-                                    className={`w-full text-left p-1.5 rounded-lg border text-[10px] relative overflow-hidden cursor-pointer ${hasVoted ? (isCurrentThemeDark() ? 'border-indigo-500 bg-indigo-600/20 text-indigo-300 font-bold' : 'border-indigo-500 bg-indigo-100 text-indigo-700 font-bold') : isCurrentThemeDark() ? 'border-white/5 bg-white/[0.02] text-slate-400' : 'border-slate-200 bg-white text-slate-700'}`}>
-                                    <div className="absolute left-0 top-0 bottom-0 bg-indigo-500/10" style={{ width: `${pct}%` }} />
+                                  <button
+                                    key={optIdx}
+                                    onClick={() => handleCastPollVote(msg.id, optIdx)}
+                                    className={`w-full p-2 rounded-xl text-left text-[11px] font-bold relative overflow-hidden transition-all border active:scale-[0.98] cursor-pointer ${
+                                      hasVoted 
+                                        ? 'bg-indigo-600/25 border-indigo-500 text-indigo-200' 
+                                        : isCurrentThemeDark() ? 'bg-white/[0.02] border-white/5 text-slate-350 hover:bg-white/5' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                                    }`}
+                                  >
+                                    <div className="absolute inset-y-0 left-0 bg-indigo-500/10 transition-all duration-500" style={{ width: `${pct}%` }} />
                                     <div className="flex justify-between relative z-10"><span>{opt}</span><span className="text-[9px] text-slate-400">{pct}%</span></div>
                                   </button>
                                 );
