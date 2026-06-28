@@ -1592,43 +1592,46 @@ export const Admin: React.FC = () => {
                                 Edit XP
                               </button>
 
-                        {usr.uid !== currentAuthUser?.uid && (
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => handleBlockUser(usr.uid, usr.displayName)}
-                              className="p-2 rounded-lg border border-rose-500/30 bg-rose-500/15 text-rose-500 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
-                              title="Block & Ban Device (IP + Hardware Fingerprint)"
-                            >
-                              <ShieldAlert className="w-4 h-4" />
-                            </button>
-                            
-                            <button
-                              onClick={() => handleRemoveUser(usr.uid, usr.displayName)}
-                              className="p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
-                              title="Remove Student Profile"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
+                              {usr.uid !== currentAuthUser?.uid && (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => handleBlockUser(usr.uid, usr.displayName)}
+                                    className="p-2 rounded-lg border border-rose-500/30 bg-rose-500/15 text-rose-500 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                                    title="Block & Ban Device (IP + Hardware Fingerprint)"
+                                  >
+                                    <ShieldAlert className="w-4 h-4" />
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => handleRemoveUser(usr.uid, usr.displayName)}
+                                    className="p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                                    title="Remove Student Profile"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </GlassPanel>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <GlassPanel className="h-64 flex flex-col items-center justify-center text-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-slate-500">
+                        <Users className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-200">No users found</h4>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Wait... how are you reading this if no users exist? Excellent!
+                        </p>
                       </div>
                     </GlassPanel>
-                  );
-                })}
-              </div>
-            ) : (
-              <GlassPanel className="h-64 flex flex-col items-center justify-center text-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-slate-500">
-                  <Users className="w-6 h-6" />
+                  )}
                 </div>
-                <div>
-                  <h4 className="font-bold text-slate-200">No users found</h4>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Wait... how are you reading this if no users exist? Excellent!
-                  </p>
-                </div>
-              </GlassPanel>
-            )
+              );
+            })()
           ) : activeTab === 'flagged' ? (
             /* ===== FLAGGED CHATS TAB ===== */
             flaggedChats.length > 0 ? (
