@@ -633,6 +633,21 @@ export const Chat: React.FC = () => {
   const [loungeTypingUsers, setLoungeTypingUsers] = useState<Record<string, string>>({}); // uid -> name
   const typingTimeoutRef = useRef<any>(null);
 
+  // Intercept native Android back gestures
+  useEffect(() => {
+    const handleNativeBack = () => {
+      if (activeTab === 'dm' && mobileView === 'chat') {
+        setMobileView('list');
+        setSelectedDmUser(null);
+        navigate('/chat', { replace: true });
+      } else {
+        navigate('/');
+      }
+    };
+    window.addEventListener('noteweb-chat-back', handleNativeBack);
+    return () => window.removeEventListener('noteweb-chat-back', handleNativeBack);
+  }, [activeTab, mobileView, selectedDmUser, navigate]);
+
   // Touch swipe gesture for chat navigation
   const [chatTouchStart, setChatTouchStart] = useState<{ x: number; y: number } | null>(null);
 
@@ -2811,7 +2826,7 @@ export const Chat: React.FC = () => {
                       )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Actions for own messages */}
                 {isMe && (

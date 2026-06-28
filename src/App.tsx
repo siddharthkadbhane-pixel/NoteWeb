@@ -10,6 +10,7 @@ import { ShieldAlert, Send, RefreshCw, UploadCloud } from 'lucide-react';
 import { leavePresence } from './services/presence';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { App as CapApp } from '@capacitor/app';
 
 const isNativePlatform = typeof window !== 'undefined' && (
   typeof (window as any).Capacitor !== 'undefined' && 
@@ -767,6 +768,43 @@ export const GlobalDesktopControls: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
+export const CapacitorBackButtonListener: React.FC = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let active = true;
+
+    const setupBackButton = async () => {
+      try {
+        await CapApp.addListener('backButton', () => {
+          if (!active) return;
+          
+          const path = window.location.hash || window.location.pathname;
+          const normalizedPath = path.startsWith('#') ? path.substring(1) : path;
+          
+          if (normalizedPath.startsWith('/chat')) {
+            window.dispatchEvent(new CustomEvent('noteweb-chat-back'));
+          } else if (normalizedPath !== '/' && normalizedPath !== '') {
+            navigate(-1);
+          } else {
+            CapApp.minimizeApp();
+          }
+        });
+      } catch (err) {
+        console.warn('Capacitor App backButton listener not active on web:', err);
+      }
+    };
+
+    setupBackButton();
+
+    return () => {
+      active = false;
+    };
+  }, [navigate]);
+
+  return null;
+};
+
 function App() {
   const [isLargeScreen, setIsLargeScreen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [activePdfUrl, setActivePdfUrl] = useState<string | null>(null);
@@ -810,6 +848,7 @@ function App() {
                 <GestureManager>
                   <GlobalDesktopControls>
                     <ChatNotificationListener />
+                    <CapacitorBackButtonListener />
                   {/* Particle Network Background */}
                   <InteractiveBackground />
                   <div className="min-h-screen min-h-[100dvh] transition-colors duration-300 flex relative z-10 overflow-x-hidden bg-transparent text-[#0F172A] dark:text-[#E2E8F0]">
