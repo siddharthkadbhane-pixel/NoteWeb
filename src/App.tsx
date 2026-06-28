@@ -304,8 +304,10 @@ export const ChatNotificationListener: React.FC = () => {
                 console.log('[NoteWeb Global Call] Received call:offer in background/other page!');
                 (window as any)._incomingSdpOffer = sdp;
                 (window as any)._incomingCallType = callType || 'voice';
-                (window as any)._incomingCallerProfile = { id: sender_id, displayName: callerName, photoURL: callerAvatar };
-                
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                  try { navigator.vibrate([300, 100, 300, 100, 300]); } catch {}
+                }
+
                 info(
                   `📞 Incoming ${callType || 'voice'} call from ${callerName}! Tap to answer.`,
                   15000,

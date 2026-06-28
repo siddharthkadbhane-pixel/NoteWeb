@@ -942,6 +942,98 @@ export const Chat: React.FC = () => {
     fetchDmMessages(profile.id);
   };
 
+  // Dynamic Wallpaper Animation Particles
+  const renderWallpaperParticles = (wpKey: string) => {
+    if (!wpKey) return null;
+    
+    const isMatrix = wpKey.includes('matrix');
+    const isFloating = wpKey.includes('cosmic') || wpKey.includes('autumn') || wpKey.includes('bubblegum') || wpKey.includes('lofi');
+    const isSynth = wpKey.includes('synthwave') || wpKey.includes('gradient') || wpKey.includes('neon');
+
+    return (
+      <>
+        <style>{`
+          @keyframes matrixCascade {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+          }
+          @keyframes floatAmbient {
+            0% { transform: translateY(0px) translateX(0px); opacity: 0.1; }
+            50% { transform: translateY(-30px) translateX(15px); opacity: 0.55; }
+            100% { transform: translateY(-60px) translateX(-5px); opacity: 0.1; }
+          }
+          @keyframes pingSlow {
+            0% { transform: scale(0.95); opacity: 0.85; }
+            50% { transform: scale(1.15); opacity: 0.45; }
+            100% { transform: scale(1.3); opacity: 0; }
+          }
+          .animate-matrix-cascade {
+            animation: matrixCascade 4.5s linear infinite;
+          }
+          .animate-float-ambient {
+            animation: floatAmbient 9s ease-in-out infinite;
+          }
+          .animate-ping-slow {
+            animation: pingSlow 3.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+          }
+        `}</style>
+        {isMatrix && (
+          <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-15">
+            <div className="flex justify-around w-full h-full text-[10px] text-green-500 font-mono select-none">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((col) => (
+                <div 
+                  key={col} 
+                  className="flex flex-col animate-matrix-cascade"
+                  style={{
+                    animationDuration: `${3.5 + col % 3}s`,
+                    animationDelay: `${col * 0.5}s`
+                  }}
+                >
+                  {"101010101010101010101010".split("").map((char, idx) => (
+                    <span key={idx} style={{ opacity: 1 - (idx * 0.04) }} className="my-0.5">{char}</span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {isFloating && (
+          <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((particle) => {
+              const color = wpKey.includes('cosmic') ? 'bg-amber-400/35 dark:bg-amber-400/45' : wpKey.includes('autumn') ? 'bg-orange-400/35 dark:bg-orange-400/45' : 'bg-pink-400/35 dark:bg-pink-400/45';
+              return (
+                <div
+                  key={particle}
+                  className={`absolute w-1.5 h-1.5 rounded-full blur-[0.5px] animate-float-ambient ${color}`}
+                  style={{
+                    top: `${15 + particle * 7}%`,
+                    left: `${10 + (particle * 13) % 80}%`,
+                    animationDuration: `${6 + particle * 2}s`,
+                    animationDelay: `${particle * 0.6}s`
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
+        {isSynth && (
+          <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-20">
+            <div className="absolute bottom-0 left-0 right-0 h-44 bg-gradient-to-t from-indigo-500/10 to-transparent" />
+            <div 
+              className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:30px_30px]" 
+              style={{
+                perspective: '150px',
+                transform: 'rotateX(55deg)',
+                transformOrigin: 'bottom',
+                bottom: '-50px'
+              }}
+            />
+          </div>
+        )}
+      </>
+    );
+  };
+
   // Initialize selected profile from URL search query (?dm=uid)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -1404,6 +1496,9 @@ export const Chat: React.FC = () => {
   // WebRTC Initiator
   const startWebRtcCall = async (type: 'voice' | 'video') => {
     if (!selectedDmUser || !user) return;
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(50); } catch {}
+    }
 
     // Check secure context
     if (typeof window !== 'undefined' && !window.isSecureContext) {
@@ -1485,6 +1580,9 @@ export const Chat: React.FC = () => {
   // WebRTC Answer
   const acceptIncomingCall = async () => {
     if (!callerProfile || !user) return;
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate([150, 50, 150]); } catch {}
+    }
 
     // Check secure context
     if (typeof window !== 'undefined' && !window.isSecureContext) {
@@ -1558,6 +1656,9 @@ export const Chat: React.FC = () => {
   };
 
   const declineIncomingCall = () => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(30); } catch {}
+    }
     if (callerProfile && channelDmRef.current) {
       channelDmRef.current.send({
         type: 'broadcast',
@@ -2986,39 +3087,83 @@ export const Chat: React.FC = () => {
               <div className="py-1">
                 {dmContacts.map(contact => {
                   const isPinned = pinnedUids.includes(contact.uid);
+                  const isMuted = mutedUids.includes(contact.uid);
                   const isOnline = onlineUsers.some(u => u.uid === contact.uid);
                   return (
-                    <button key={contact.uid} onClick={() => selectContact({ id: contact.uid, displayName: contact.displayName, photoURL: contact.photoURL, username: contact.username, branch: contact.branch, year: '1', role: 'student' })}
-                      className={`w-full flex items-center gap-3 px-4 py-3 border-b cursor-pointer active:scale-[0.98] text-left transition-colors ${isDark ? 'border-white/[0.04] bg-[#0D0D14]/45 active:bg-white/[0.04]' : 'border-slate-100 bg-white active:bg-slate-100'}`}>
-                      {/* Avatar with online dot */}
-                      <div className="relative flex-shrink-0">
-                        {renderAvatar(contact.photoURL, 'w-12 h-12 text-xl')}
-                        {isOnline
-                          ? <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 ${isDark ? 'border-[#0A0A10]' : 'border-white'}`} />
-                          : <span className="absolute -bottom-0.5 -right-0.5 text-sm">{getBranchIcon(contact.branch)}</span>
-                        }
-                        {isPinned && <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-indigo-600 border border-indigo-500 flex items-center justify-center"><Pin className="w-2 h-2 text-white" /></span>}
+                    <div key={contact.uid} className="relative overflow-hidden w-full h-[76px] bg-[#0D0D14]/10 dark:bg-[#07070F]/20">
+                      {/* Hidden Slide Actions background */}
+                      <div className="absolute inset-0 flex justify-between items-center px-4 z-0">
+                        {/* Pin Button */}
+                        <button
+                          onClick={() => {
+                            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(40);
+                            handleTogglePin(contact.uid);
+                          }}
+                          className={`h-[52px] px-3.5 rounded-2xl flex flex-col items-center justify-center gap-1 text-[9px] font-black text-white transition-all active:scale-95 shadow-md ${
+                            isPinned ? 'bg-indigo-600' : 'bg-slate-800'
+                          }`}
+                        >
+                          <Pin className="w-3.5 h-3.5" />
+                          <span>{isPinned ? 'Unpin' : 'Pin'}</span>
+                        </button>
+                        {/* Mute Button */}
+                        <button
+                          onClick={() => {
+                            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(40);
+                            handleToggleMute(contact.uid);
+                          }}
+                          className={`h-[52px] px-3.5 rounded-2xl flex flex-col items-center justify-center gap-1 text-[9px] font-black text-white transition-all active:scale-95 shadow-md ${
+                            isMuted ? 'bg-rose-600' : 'bg-slate-800'
+                          }`}
+                        >
+                          {isMuted ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                          <span>{isMuted ? 'Unmute' : 'Mute'}</span>
+                        </button>
                       </div>
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{contact.displayName}</span>
-                          <span className="text-[10px] text-slate-500 flex-shrink-0 ml-2">{formatTime(contact.lastMessageTime)}</span>
-                        </div>
-                        <p className="text-xs text-slate-500 truncate flex items-center gap-1">
-                          {contact.lastMessageSenderId === user?.uid && (
-                            <span className={contact.lastMessageIsRead ? 'text-[#00F2FE] font-black' : 'text-slate-500'}>
-                              {contact.lastMessageIsRead ? '✓✓' : '✓'}
-                            </span>
+
+                      {/* Foreground Swipe Card */}
+                      <motion.div
+                        drag="x"
+                        dragConstraints={{ left: -75, right: 75 }}
+                        dragElastic={0.18}
+                        className="w-full h-full relative z-10"
+                      >
+                        <button onClick={() => selectContact({ id: contact.uid, displayName: contact.displayName, photoURL: contact.photoURL, username: contact.username, branch: contact.branch, year: '1', role: 'student' })}
+                          className={`w-full h-full flex items-center gap-3 px-4 py-3 border-b cursor-pointer text-left transition-colors ${
+                            isDark ? 'border-white/[0.04] bg-[#0D0D14] active:bg-white/[0.06] text-white' : 'border-slate-100 bg-white active:bg-slate-50 text-slate-800'
+                          }`}
+                        >
+                          {/* Avatar with online dot */}
+                          <div className="relative flex-shrink-0">
+                            {renderAvatar(contact.photoURL, 'w-12 h-12 text-xl')}
+                            {isOnline
+                              ? <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 ${isDark ? 'border-[#0A0A10]' : 'border-white'}`} />
+                              : <span className="absolute -bottom-0.5 -right-0.5 text-sm">{getBranchIcon(contact.branch)}</span>
+                            }
+                            {isPinned && <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-indigo-600 border border-indigo-500 flex items-center justify-center"><Pin className="w-2 h-2 text-white" /></span>}
+                          </div>
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{contact.displayName}</span>
+                              <span className="text-[10px] text-slate-500 flex-shrink-0 ml-2">{formatTime(contact.lastMessageTime)}</span>
+                            </div>
+                            <p className="text-xs text-slate-500 truncate flex items-center gap-1">
+                              {contact.lastMessageSenderId === user?.uid && (
+                                <span className={contact.lastMessageIsRead ? 'text-[#00F2FE] font-black' : 'text-slate-500'}>
+                                  {contact.lastMessageIsRead ? '✓✓' : '✓'}
+                                </span>
+                              )}
+                              <span>{contact.lastMessage}</span>
+                            </p>
+                          </div>
+                          {/* Unread badge */}
+                          {contact.unreadCount > 0 && (
+                            <span className="flex-shrink-0 min-w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black flex items-center justify-center px-1 animate-pulse">{contact.unreadCount}</span>
                           )}
-                          <span>{contact.lastMessage}</span>
-                        </p>
-                      </div>
-                      {/* Unread badge */}
-                      {contact.unreadCount > 0 && (
-                        <span className="flex-shrink-0 min-w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black flex items-center justify-center px-1 animate-pulse">{contact.unreadCount}</span>
-                      )}
-                    </button>
+                        </button>
+                      </motion.div>
+                    </div>
                   );
                 })}
               </div>
@@ -3032,7 +3177,7 @@ export const Chat: React.FC = () => {
     if (activeTab === 'global') {
       const isLoungeDark = isCurrentThemeDark();
       return (
-        <div className={`fixed inset-0 flex flex-col ${isLoungeDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`}>
+        <div className={`fixed inset-0 flex flex-col ${isLoungeDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`} style={{ ...getThemeStyle(), backgroundSize: 'cover', backgroundPosition: 'center' }}>
 
           {/* Header */}
           <div className={`flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b ${isLoungeDark ? 'border-white/[0.06] bg-[#0D0D14]/80 text-white' : 'border-slate-200 bg-white/90 text-slate-800'}`}
@@ -3069,10 +3214,25 @@ export const Chat: React.FC = () => {
 
           {/* Messages area */}
           <div 
-            className={`flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3 transition-all ${getThemeClasses()}`} 
-            style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', ...getThemeStyle() }}
+            className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3 transition-all bg-transparent relative" 
+            style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
           >
-            {renderMobileMessages(messages)}
+            {/* Wallpaper Animation Particles */}
+            {renderWallpaperParticles(chatThemes['global'] || 'Default')}
+
+            {isLoading ? (
+              <div className="h-full flex flex-col justify-end gap-4 p-4 animate-pulse">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className={`flex gap-3 max-w-[70%] ${n % 2 === 0 ? 'self-end flex-row-reverse' : 'self-start'}`}>
+                    <div className="w-9 h-9 rounded-full bg-white/10 dark:bg-slate-800" />
+                    <div className="space-y-2 flex-1">
+                      <div className="h-2.5 w-16 bg-white/15 dark:bg-slate-700 rounded" />
+                      <div className="h-9 w-44 bg-white/10 dark:bg-slate-800 rounded-2xl" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : renderMobileMessages(messages)}
           </div>
 
           <MobileInputBar
@@ -3141,7 +3301,7 @@ export const Chat: React.FC = () => {
     // ── MOBILE: DM Chat Screen ──
     const isDmChatDark = isCurrentThemeDark();
     return (
-      <div className={`fixed inset-0 flex flex-col ${isDmChatDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`}>
+      <div className={`fixed inset-0 flex flex-col ${isDmChatDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`} style={{ ...getThemeStyle(), backgroundSize: 'cover', backgroundPosition: 'center' }}>
 
         {/* DM Chat Header */}
         <div className={`flex-shrink-0 flex items-center gap-2 px-3 pb-3 border-b ${isDmChatDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`}
@@ -3211,12 +3371,27 @@ export const Chat: React.FC = () => {
 
         {/* Messages area */}
         <div 
-          className={`flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3 transition-all ${getThemeClasses()}`} 
-          style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', ...getThemeStyle() }}
+          className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3 transition-all bg-transparent relative" 
+          style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
           onTouchStart={handleChatTouchStart}
           onTouchEnd={handleChatTouchEnd}
         >
-          {renderMobileMessages(dmMessages)}
+          {/* Wallpaper Animation Particles */}
+          {renderWallpaperParticles(selectedDmUser ? (chatThemes[selectedDmUser.id] || 'Default') : 'Default')}
+
+          {isLoading ? (
+            <div className="h-full flex flex-col justify-end gap-4 p-4 animate-pulse">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className={`flex gap-3 max-w-[70%] ${n % 2 === 0 ? 'self-end flex-row-reverse' : 'self-start'}`}>
+                  <div className="w-9 h-9 rounded-full bg-white/10 dark:bg-slate-800" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-2.5 w-16 bg-white/15 dark:bg-slate-700 rounded" />
+                    <div className="h-9 w-44 bg-white/10 dark:bg-slate-800 rounded-2xl" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : renderMobileMessages(dmMessages)}
         </div>
 
         <MobileInputBar
@@ -3650,9 +3825,12 @@ export const Chat: React.FC = () => {
           )}
 
           {/* CHAT AREA (Main Display) */}
-          <GlassPanel className={`flex-1 min-w-0 flex-col p-3 md:p-6 rounded-2xl md:rounded-3xl border ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
-            activeTab === 'dm' && (!selectedDmUser || mobileView === 'list') ? 'hidden md:flex' : 'flex'
-          }`}>
+          <GlassPanel 
+            className={`flex-1 min-w-0 flex-col p-3 md:p-6 rounded-2xl md:rounded-3xl border transition-all ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
+              activeTab === 'dm' && (!selectedDmUser || mobileView === 'list') ? 'hidden md:flex' : 'flex'
+            }`}
+            style={(activeTab === 'global' || (activeTab === 'dm' && selectedDmUser)) ? { ...getThemeStyle(), backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative', overflow: 'hidden' } : undefined}
+          >
             
             {activeTab === 'global' && (
               <div className={`flex flex-row items-center justify-between gap-2 pb-2.5 border-b mb-2.5 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
@@ -3875,14 +4053,22 @@ export const Chat: React.FC = () => {
             ) : (
               /* Scrollable Message Timeline area */
               <div 
-                className={`flex-1 min-h-0 overflow-y-auto space-y-3 pr-0.5 p-2 transition-all rounded-xl ${
-                  (activeTab === 'global' || (activeTab === 'dm' && selectedDmUser)) ? getThemeClasses() : ''
-                }`}
-                style={(activeTab === 'global' || (activeTab === 'dm' && selectedDmUser)) ? getThemeStyle() : undefined}
+                className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-0.5 p-2 transition-all rounded-xl bg-transparent relative"
               >
+                {/* Wallpaper Animation Particles */}
+                {renderWallpaperParticles(activeTab === 'dm' && selectedDmUser ? (chatThemes[selectedDmUser.id] || 'Default') : (chatThemes['global'] || 'Default'))}
+
                 {isLoading ? (
-                  <div className="h-full flex items-center justify-center text-slate-500 text-xs font-bold">
-                    🔐 Accessing secure keys...
+                  <div className="h-full flex flex-col justify-end gap-4 p-4 animate-pulse">
+                    {[1, 2, 3].map((n) => (
+                      <div key={n} className={`flex gap-3 max-w-[70%] ${n % 2 === 0 ? 'self-end flex-row-reverse' : 'self-start'}`}>
+                        <div className="w-9 h-9 rounded-full bg-white/10 dark:bg-slate-800" />
+                        <div className="space-y-2 flex-1">
+                          <div className="h-2.5 w-16 bg-white/15 dark:bg-slate-700 rounded" />
+                          <div className="h-9 w-44 bg-white/10 dark:bg-slate-800 rounded-2xl" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (activeTab === 'global' ? messages.length === 0 : dmMessages.length === 0) ? (
                   <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-slate-500 py-16">
@@ -4821,9 +5007,14 @@ export const Chat: React.FC = () => {
               ) : (
                 /* Avatar display for incoming, calling or voice call */
                 <div className="flex flex-col items-center gap-3">
-                  <div className="relative">
-                    {renderAvatar(callerProfile?.photoURL || '', "w-28 h-28 text-4xl border-4 border-indigo-500/30 animate-pulse")}
-                    <span className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-indigo-600 border-2 border-slate-950 flex items-center justify-center text-[10px]">
+                  <div className="relative flex items-center justify-center">
+                    {/* Concentric Pulsing Audio Circles */}
+                    <div className="absolute w-36 h-36 rounded-full border-2 border-indigo-500/30 animate-ping-slow pointer-events-none" />
+                    <div className="absolute w-44 h-44 rounded-full border border-purple-500/20 animate-ping-slow pointer-events-none" style={{ animationDelay: '1.2s' }} />
+                    <div className="absolute w-52 h-52 rounded-full border border-indigo-500/10 animate-ping-slow pointer-events-none" style={{ animationDelay: '2.4s' }} />
+
+                    {renderAvatar(callerProfile?.photoURL || '', "w-28 h-28 text-4xl border-4 border-indigo-500/40 relative z-10 animate-pulse")}
+                    <span className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-indigo-600 border-2 border-slate-950 flex items-center justify-center text-[10px] z-20">
                       {callType === 'video' ? '📽️' : '📞'}
                     </span>
                   </div>
