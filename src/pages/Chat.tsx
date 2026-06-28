@@ -929,6 +929,14 @@ export const Chat: React.FC = () => {
     }
   };
 
+  // Helper to cleanly select a contact and clear their unread badge instantly
+  const selectContact = (profile: UserProfile) => {
+    setSelectedDmUser(profile);
+    setMobileView('chat');
+    setDmContacts(prev => prev.map(c => c.uid === profile.id ? { ...c, unreadCount: 0 } : c));
+    fetchDmMessages(profile.id);
+  };
+
   // Initialize selected profile from URL search query (?dm=uid)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -957,24 +965,39 @@ export const Chat: React.FC = () => {
               year: data.year || '1',
               role: data.role || 'student'
             };
-            setSelectedDmUser(profile);
-            fetchDmMessages(profile.id);
+            selectContact(profile);
           }
         } catch (e) {
           console.warn("Failed to load url target profile:", e);
           // Fallback
-          setSelectedDmUser({
+          const fallbackProfile: UserProfile = {
             id: dmUid,
             username: 'student_' + dmUid.substring(0, 5),
             displayName: 'Classmate',
-            branch: 'cse'
-          });
+            branch: 'cse',
+            year: '1',
+            role: 'student'
+          };
+          selectContact(fallbackProfile);
         }
       };
       
       loadTargetUserProfile();
     }
   }, [location.search, user]);
+
+  // WebRTC Video stream attachment effects
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, callState, isCameraOff]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream, callState]);
 
   // Subscribe to channels and poll fallback
   useEffect(() => {
@@ -2891,7 +2914,7 @@ export const Chat: React.FC = () => {
           {onlineUsers.length > 0 && (
             <div className={`flex-shrink-0 flex items-center gap-4 px-4 py-3 border-b overflow-x-auto scrollbar-none ${isDark ? 'border-white/[0.04] bg-[#0D0D14]/60' : 'border-slate-100 bg-white/80'}`}>
               {onlineUsers.map(online => (
-                <button key={online.uid} onClick={() => { setSelectedDmUser({ id: online.uid, displayName: online.displayName, photoURL: online.photoURL, username: online.displayName.toLowerCase().replace(/ /g, '_'), branch: 'cse' }); setMobileView('chat'); fetchDmMessages(online.uid); }}
+                <button key={online.uid} onClick={() => selectContact({ id: online.uid, displayName: online.displayName, photoURL: online.photoURL, username: online.displayName.toLowerCase().replace(/ /g, '_'), branch: 'cse', year: '1', role: 'student' })}
                   className="flex flex-col items-center gap-1 flex-shrink-0 cursor-pointer active:scale-90">
                   <div className="relative">
                     {renderAvatar(online.photoURL || '', 'w-12 h-12 text-xl border-2 border-emerald-500')}
@@ -2944,7 +2967,7 @@ export const Chat: React.FC = () => {
                   const isPinned = pinnedUids.includes(contact.uid);
                   const isOnline = onlineUsers.some(u => u.uid === contact.uid);
                   return (
-                    <button key={contact.uid} onClick={() => { setSelectedDmUser({ id: contact.uid, displayName: contact.displayName, photoURL: contact.photoURL, username: contact.username, branch: contact.branch }); setMobileView('chat'); fetchDmMessages(contact.uid); }}
+                    <button key={contact.uid} onClick={() => selectContact({ id: contact.uid, displayName: contact.displayName, photoURL: contact.photoURL, username: contact.username, branch: contact.branch, year: '1', role: 'student' })}
                       className={`w-full flex items-center gap-3 px-4 py-3 border-b cursor-pointer active:scale-[0.98] text-left transition-colors ${isDark ? 'border-white/[0.04] bg-[#0D0D14]/45 active:bg-white/[0.04]' : 'border-slate-100 bg-white active:bg-slate-100'}`}>
                       {/* Avatar with online dot */}
                       <div className="relative flex-shrink-0">
@@ -3494,17 +3517,15 @@ export const Chat: React.FC = () => {
                         {onlineUsers.map((online) => (
                           <button
                             key={online.uid}
-                            onClick={() => {
-                              setSelectedDmUser({
-                                id: online.uid,
-                                displayName: online.displayName,
-                                photoURL: online.photoURL,
-                                username: online.displayName.toLowerCase().replace(/ /g, '_'),
-                                branch: 'cse'
-                              });
-                              setMobileView('chat');
-                              fetchDmMessages(online.uid);
-                            }}
+                            onClick={() => selectContact({
+                              id: online.uid,
+                              displayName: online.displayName,
+                              photoURL: online.photoURL,
+                              username: online.displayName.toLowerCase().replace(/ /g, '_'),
+                              branch: 'cse',
+                              year: '1',
+                              role: 'student'
+                            })}
                             className="flex flex-col items-center gap-1 flex-shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-all group"
                           >
                             <div className="relative">
@@ -3533,17 +3554,15 @@ export const Chat: React.FC = () => {
                       return (
                         <div key={contact.uid} className="relative group/contact">
                           <button
-                            onClick={() => {
-                              setSelectedDmUser({
-                                id: contact.uid,
-                                displayName: contact.displayName,
-                                photoURL: contact.photoURL,
-                                username: contact.username,
-                                branch: contact.branch
-                              });
-                              setMobileView('chat');
-                              fetchDmMessages(contact.uid);
-                            }}
+                            onClick={() => selectContact({
+                              id: contact.uid,
+                              displayName: contact.displayName,
+                              photoURL: contact.photoURL,
+                              username: contact.username,
+                              branch: contact.branch,
+                              year: '1',
+                              role: 'student'
+                            })}
                             className={`w-full p-3 pr-12 rounded-2xl flex items-center gap-3 border text-left transition-all cursor-pointer relative ${
                               isSelected 
                                 ? 'bg-indigo-600 border-indigo-500 text-white' 
