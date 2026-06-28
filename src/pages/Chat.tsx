@@ -643,7 +643,12 @@ export const Chat: React.FC = () => {
         setSelectedDmUser(null);
         navigate('/chat', { replace: true });
       } else {
-        navigate('/');
+        // Natural history navigation if possible, fallback to Home
+        if (window.history.length > 1) {
+          navigate(-1);
+        } else {
+          navigate('/');
+        }
       }
     };
     window.addEventListener('noteweb-chat-back', handleNativeBack);

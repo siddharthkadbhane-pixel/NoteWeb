@@ -820,6 +820,12 @@ export const GlobalDesktopControls: React.FC<{ children: React.ReactNode }> = ({
 
 export const CapacitorBackButtonListener: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const lastNavRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    lastNavRef.current = Date.now();
+  }, [location]);
 
   useEffect(() => {
     let active = true;
@@ -837,6 +843,12 @@ export const CapacitorBackButtonListener: React.FC = () => {
           } else if (normalizedPath !== '/' && normalizedPath !== '') {
             navigate(-1);
           } else {
+            // Cooldown check (800ms) to prevent double-swipe closing the app
+            const timeSinceLastNav = Date.now() - lastNavRef.current;
+            if (timeSinceLastNav < 800) {
+              console.log('[NoteWeb Back] Cooldown active, ignoring back button exit');
+              return;
+            }
             CapApp.minimizeApp();
           }
         });
