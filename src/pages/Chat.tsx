@@ -55,6 +55,8 @@ import {
   MoreVertical
 } from 'lucide-react';
 
+import { playTapSound } from '../utils/sounds';
+
 const BAD_WORDS = [
   'abuse', 'fuck', 'shit', 'asshole', 'bitch', 'crap', 'cunt', 'dick', 'bastard', 'vulgar', 
   'ass', 'dumb', 'idiot', 'stupid', 'slut', 'whore', 'piss'
@@ -2653,7 +2655,7 @@ export const Chat: React.FC = () => {
                   drag={activeTab === 'dm' ? "x" : false}
                   dragConstraints={{ left: 0, right: 65 }}
                   dragElastic={{ left: 0, right: 0.35 }}
-                  onDragEnd={(event, info) => {
+                  onDragEnd={(_, info) => {
                     if (info.offset.x > 45) {
                       setReplyingTo(msg);
                       playTapSound();
