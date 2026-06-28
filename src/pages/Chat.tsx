@@ -1343,6 +1343,17 @@ export const Chat: React.FC = () => {
   // WebRTC Initiator
   const startWebRtcCall = async (type: 'voice' | 'video') => {
     if (!selectedDmUser || !user) return;
+
+    // Check secure context
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      toastError("Calling requires HTTPS or localhost (Secure Context). Please run on local HTTPS server or test on localhost.");
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toastError("Media devices are not accessible over insecure HTTP connections.");
+      return;
+    }
+
     try {
       setCallType(type);
       setCallState('calling');
@@ -1399,7 +1410,13 @@ export const Chat: React.FC = () => {
         });
       }
     } catch (err: any) {
-      toastError("Failed to initiate call: " + err.message);
+      let friendlyMsg = err.message;
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        friendlyMsg = "Camera/Microphone permission was denied. Please allow camera and mic access in your browser settings.";
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        friendlyMsg = "Camera/Microphone hardware not found on this device.";
+      }
+      toastError("Failed to initiate call: " + friendlyMsg);
       handleEndCallLocally();
     }
   };
@@ -1407,6 +1424,17 @@ export const Chat: React.FC = () => {
   // WebRTC Answer
   const acceptIncomingCall = async () => {
     if (!callerProfile || !user) return;
+
+    // Check secure context
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      toastError("Answering calls requires HTTPS or localhost (Secure Context).");
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toastError("Media devices are not accessible over insecure HTTP connections.");
+      return;
+    }
+
     try {
       const incomingOffer = (window as any)._incomingSdpOffer;
       if (!incomingOffer) throw new Error("No incoming call request metadata found.");
@@ -2394,7 +2422,12 @@ export const Chat: React.FC = () => {
       } else if (wallpaperKey === 'instagram-black') {
         themeStyle.backgroundColor = '#000000';
         themeStyle.backgroundImage = 'none';
-      } else if (wallpaperKey.startsWith('http://') || wallpaperKey.startsWith('https://') || wallpaperKey.startsWith('data:')) {
+      } else if (
+        wallpaperKey.startsWith('http://') || 
+        wallpaperKey.startsWith('https://') || 
+        wallpaperKey.startsWith('data:') ||
+        wallpaperKey.startsWith('/wallpapers/')
+      ) {
         themeStyle.backgroundImage = `url("${wallpaperKey}")`;
         themeStyle.backgroundSize = 'cover';
         themeStyle.backgroundPosition = 'center';
@@ -2877,8 +2910,7 @@ export const Chat: React.FC = () => {
     if (activeTab === 'global') {
       const isLoungeDark = isCurrentThemeDark();
       return (
-        <div className={`fixed inset-0 flex flex-col ${isLoungeDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'} ${getThemeClasses()}`}
-          style={{ ...getThemeStyle() }}>
+        <div className={`fixed inset-0 flex flex-col ${isLoungeDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`}>
 
           {/* Header */}
           <div className={`flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b ${isLoungeDark ? 'border-white/[0.06] bg-[#0D0D14]/80 text-white' : 'border-slate-200 bg-white/90 text-slate-800'}`}
@@ -2914,7 +2946,10 @@ export const Chat: React.FC = () => {
           </div>
 
           {/* Messages area */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
+          <div 
+            className={`flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3 transition-all ${getThemeClasses()}`} 
+            style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', ...getThemeStyle() }}
+          >
             {renderMobileMessages(messages)}
           </div>
 
@@ -2984,8 +3019,7 @@ export const Chat: React.FC = () => {
     // ── MOBILE: DM Chat Screen ──
     const isDmChatDark = isCurrentThemeDark();
     return (
-      <div className={`fixed inset-0 flex flex-col ${isDmChatDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'} ${getThemeClasses()}`}
-        style={{ ...getThemeStyle() }}>
+      <div className={`fixed inset-0 flex flex-col ${isDmChatDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`}>
 
         {/* DM Chat Header */}
         <div className={`flex-shrink-0 flex items-center gap-2 px-3 pb-3 border-b ${isDmChatDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`}
@@ -3055,8 +3089,8 @@ export const Chat: React.FC = () => {
 
         {/* Messages area */}
         <div 
-          className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3" 
-          style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
+          className={`flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3 transition-all ${getThemeClasses()}`} 
+          style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', ...getThemeStyle() }}
           onTouchStart={handleChatTouchStart}
           onTouchEnd={handleChatTouchEnd}
         >
