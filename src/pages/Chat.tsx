@@ -999,6 +999,20 @@ export const Chat: React.FC = () => {
     }
   }, [remoteStream, callState]);
 
+  // Check for globally cached incoming call request on mount / page switch
+  useEffect(() => {
+    const cachedOffer = (window as any)._incomingSdpOffer;
+    const cachedCaller = (window as any)._incomingCallerProfile;
+    const cachedCallType = (window as any)._incomingCallType;
+
+    if (cachedOffer && cachedCaller && callState === 'idle') {
+      console.log("[NoteWeb Call] Found global incoming call cache, triggering call popup!");
+      setCallerProfile(cachedCaller);
+      setCallType(cachedCallType || 'voice');
+      setCallState('incoming');
+    }
+  }, [callState]);
+
   // Subscribe to channels and poll fallback
   useEffect(() => {
     setIsLoading(true);
@@ -1378,6 +1392,8 @@ export const Chat: React.FC = () => {
       pcRef.current = null;
     }
     (window as any)._incomingSdpOffer = null;
+    (window as any)._incomingCallType = null;
+    (window as any)._incomingCallerProfile = null;
   };
 
   // WebRTC Initiator

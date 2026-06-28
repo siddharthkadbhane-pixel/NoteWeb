@@ -283,6 +283,47 @@ export const ChatNotificationListener: React.FC = () => {
       console.warn("Global notification channel subscription failed:", err);
     }
 
+    // 2. Setup call subscription globally in App.tsx
+    let channelDmCall: any = null;
+    try {
+      if (typeof supabase.channel === 'function') {
+        channelDmCall = supabase
+          .channel('public:direct_messages_sync')
+          .on(
+            'broadcast',
+            { event: 'call:offer' },
+            async (response: any) => {
+              const { sender_id, recipient_id, sdp, callType, callerName, callerAvatar } = response.payload || {};
+              if (recipient_id === user.uid) {
+                // Avoid duplicating if we are already viewing the chat page
+                const currentPath = locationRef.current.pathname;
+                if (currentPath === '/chat') {
+                  return;
+                }
+                
+                console.log('[NoteWeb Global Call] Received call:offer in background/other page!');
+                (window as any)._incomingSdpOffer = sdp;
+                (window as any)._incomingCallType = callType || 'voice';
+                (window as any)._incomingCallerProfile = { id: sender_id, displayName: callerName, photoURL: callerAvatar };
+                
+                info(
+                  `📞 Incoming ${callType || 'voice'} call from ${callerName}! Tap to answer.`,
+                  15000,
+                  () => {
+                    navigate(`/chat?dm=${sender_id}`);
+                  }
+                );
+                
+                showSystemNotification(`📞 Call from ${callerName}`, `Incoming ${callType || 'voice'} call request...`);
+              }
+            }
+          )
+          .subscribe();
+      }
+    } catch (dmCallErr) {
+      console.warn("Global DM call channel subscription failed:", dmCallErr);
+    }
+
     return () => {
       if (channel) {
         try {
@@ -290,6 +331,15 @@ export const ChatNotificationListener: React.FC = () => {
             supabase.removeChannel(channel);
           } else {
             channel.unsubscribe();
+          }
+        } catch (e) {}
+      }
+      if (channelDmCall) {
+        try {
+          if (typeof supabase.removeChannel === 'function') {
+            supabase.removeChannel(channelDmCall);
+          } else {
+            channelDmCall.unsubscribe();
           }
         } catch (e) {}
       }
