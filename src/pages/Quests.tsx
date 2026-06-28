@@ -20,7 +20,7 @@ import {
   BookOpen,
   Check
 } from 'lucide-react';
-import { getDailyQuests, claimQuestReward, restartQuests, type Quest } from '../utils/quests';
+import { getDailyQuests, claimQuestReward, restartQuests, syncQuestsFromDb, type Quest } from '../utils/quests';
 import { playSuccessSound } from '../utils/sounds';
 
 const getXPLevel = (points: number) => {
@@ -71,6 +71,13 @@ export const Quests: React.FC = () => {
     
     // Load initial quests
     setQuestsList(getDailyQuests(user.uid));
+    
+    // Trigger async sync from database
+    syncQuestsFromDb(user.uid).then((syncedQuests) => {
+      setQuestsList(syncedQuests);
+    }).catch(err => {
+      console.warn('DB Quests sync failed on mount:', err);
+    });
     
     // Handle updates across pages
     const handleUpdate = () => {

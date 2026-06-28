@@ -25,3 +25,9 @@ dist-desktop/
 *.sln
 *.sw?
 .env
+
+# Firebase Config & Secrets
+firebase-service-account.json
+noteweb-a2f31-*.json
+google-services.json
+android - Copy/

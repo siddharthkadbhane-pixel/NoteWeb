@@ -92,6 +92,7 @@ const generateDefaultQuests = (): Quest[] => [
   }
 ];
 
+// Fetch current user details
 export const getDailyQuests = (uid: string): Quest[] => {
   if (!uid) return [];
   
@@ -125,6 +126,75 @@ export const saveQuests = (uid: string, quests: Quest[]): void => {
   localStorage.setItem(`noteweb-quests-${uid}`, JSON.stringify(quests));
 };
 
+import { supabase } from '../supabase/config';
+
+// Sync a single quest row to the Supabase database
+export const syncQuestRowToDb = async (uid: string, quest: Quest): Promise<void> => {
+  const isMockUser = uid.startsWith('mock-') || uid === 'guest-user-noteweb';
+  if (isMockUser) return;
+  
+  try {
+    const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    await supabase.from('user_quests').upsert({
+      user_id: uid,
+      quest_id: quest.id,
+      progress: quest.progress,
+      max_progress: quest.maxProgress,
+      completed_at: quest.completed ? new Date().toISOString() : null,
+      claimed_at: quest.claimed ? new Date().toISOString() : null,
+      reset_date: todayStr
+    }, { onConflict: 'user_id,quest_id,reset_date' });
+  } catch (err) {
+    console.error('Failed to sync quest row to Supabase:', err);
+  }
+};
+
+// Sync all quests from the database for today
+export const syncQuestsFromDb = async (uid: string): Promise<Quest[]> => {
+  const isMockUser = uid.startsWith('mock-') || uid === 'guest-user-noteweb';
+  if (isMockUser) return getDailyQuests(uid);
+
+  try {
+    const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const { data, error } = await supabase
+      .from('user_quests')
+      .select('*')
+      .eq('user_id', uid)
+      .eq('reset_date', todayStr);
+
+    if (error) throw error;
+
+    const quests = getDailyQuests(uid);
+    let updated = false;
+
+    if (data && data.length > 0) {
+      data.forEach((dbQuest: any) => {
+        const localQuest = quests.find(q => q.id === dbQuest.quest_id);
+        if (localQuest) {
+          localQuest.progress = dbQuest.progress;
+          localQuest.completed = !!dbQuest.completed_at || dbQuest.progress >= dbQuest.max_progress;
+          localQuest.claimed = !!dbQuest.claimed_at;
+          updated = true;
+        }
+      });
+    } else {
+      // Sync default quests to DB for the new day
+      for (const q of quests) {
+        await syncQuestRowToDb(uid, q);
+      }
+    }
+
+    if (updated) {
+      saveQuests(uid, quests);
+      window.dispatchEvent(new CustomEvent('noteweb-quests-updated', { detail: { quests } }));
+    }
+    return quests;
+  } catch (err) {
+    console.warn('[Quests Sync] Failed to fetch/sync quests from database:', err);
+    return getDailyQuests(uid);
+  }
+};
+
 export const incrementQuestProgress = (questId: string, amount: number): void => {
   const uid = getActiveUserUid();
   if (!uid) return;
@@ -136,12 +206,16 @@ export const incrementQuestProgress = (questId: string, amount: number): void =>
     quest.progress = Math.min(quest.maxProgress, quest.progress + amount);
     if (quest.progress === quest.maxProgress) {
       quest.completed = true;
-      // Trigger instant success banner or alert inside the app
       window.dispatchEvent(new CustomEvent('noteweb-quest-completed', { detail: { quest } }));
     }
     
     saveQuests(uid, quests);
     window.dispatchEvent(new CustomEvent('noteweb-quests-updated', { detail: { quests } }));
+
+    // Sync to database in the background
+    syncQuestRowToDb(uid, quest).catch(err => {
+      console.warn('[Quests Sync] Failed to sync progress to database:', err);
+    });
   }
 };
 
@@ -167,6 +241,9 @@ export const claimQuestReward = async (
   saveQuests(uid, quests);
   
   window.dispatchEvent(new CustomEvent('noteweb-quests-updated', { detail: { quests } }));
+
+  // Sync to database
+  await syncQuestRowToDb(uid, quest);
 };
 
 export const restartQuests = (uid: string): Quest[] => {
@@ -177,5 +254,20 @@ export const restartQuests = (uid: string): Quest[] => {
   localStorage.setItem(`noteweb-quests-reset-${uid}`, getTodayDateString());
   
   window.dispatchEvent(new CustomEvent('noteweb-quests-updated', { detail: { quests: defaultQuests } }));
+
+  // Reset database state asynchronously
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isMockUser = uid.startsWith('mock-') || uid === 'guest-user-noteweb';
+  if (!isMockUser) {
+    supabase.from('user_quests')
+      .delete()
+      .eq('user_id', uid)
+      .eq('reset_date', todayStr)
+      .then(() => {
+        defaultQuests.forEach(q => syncQuestRowToDb(uid, q));
+      })
+      .catch(err => console.warn('[Quests Sync] Database restart failed:', err));
+  }
+
   return defaultQuests;
 };

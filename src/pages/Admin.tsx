@@ -54,6 +54,7 @@ interface UserProfile {
   displayName: string;
   role: 'student' | 'admin';
   createdAt: any;
+  points: number;
 }
 
 interface FeedbackItem {
@@ -93,6 +94,7 @@ const mapDbProfileToUserProfile = (p: any): UserProfile => {
     displayName: p.display_name || p.displayName || '',
     role: p.role || 'student',
     createdAt: p.created_at || p.createdAt || new Date().toISOString(),
+    points: p.points || 0
   };
 };
 
@@ -140,6 +142,7 @@ export const Admin: React.FC = () => {
   const [flaggedChats, setFlaggedChats] = useState<any[]>([]);
   const [blockedIps, setBlockedIps] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchUserQuery, setSearchUserQuery] = useState('');
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -625,6 +628,29 @@ export const Admin: React.FC = () => {
     } catch (e: any) {
       console.error(e);
       error("Feedback deletion failed: " + e.message);
+    }
+  };
+
+  const handleEditUserPoints = async (userId: string, currentPoints: number, displayName: string) => {
+    const newPointsStr = window.prompt(`Enter new XP points value for "${displayName}":`, String(currentPoints));
+    if (newPointsStr === null) return;
+    const newPoints = Number(newPointsStr);
+    if (isNaN(newPoints) || newPoints < 0) {
+      error("Invalid points value entered.");
+      return;
+    }
+
+    try {
+      const { error: updateErr } = await supabase
+        .from('profiles')
+        .update({ points: newPoints })
+        .eq('id', userId);
+      if (updateErr) throw updateErr;
+
+      success(`Successfully updated points for ${displayName} to ${newPoints}!`);
+      setUsersList(prev => prev.map(u => u.uid === userId ? { ...u, points: newPoints } : u));
+    } catch (err: any) {
+      error("Failed to update points: " + err.message);
     }
   };
 
@@ -1449,91 +1475,122 @@ export const Admin: React.FC = () => {
             )
           ) : activeTab === 'users' ? (
             // Users list tab
-            usersList.length > 0 ? (
-              <div className="flex flex-col gap-4">
-                {usersList.map((usr) => {
-                  const isOnline = onlineUsers.some(o => o.uid === usr.uid);
-                  const userSessions = onlineByUid[usr.uid] || [];
-                  return (
-                    <GlassPanel 
-                      key={usr.uid} 
-                      className={`p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border transition-all duration-300 ${
-                        isOnline
-                          ? 'border-emerald-500/20 bg-emerald-500/[0.02]'
-                          : 'border-white/[0.05] bg-[#16161D]/20'
-                      } hover:border-white/10`}
-                    >
-                      <div className="flex items-start gap-4 min-w-0">
-                        <div className="relative flex-shrink-0">
-                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center border mt-1 ${
-                            isOnline
-                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                              : 'bg-indigo-500/10 border-indigo-500/10 text-indigo-400'
-                          }`}>
-                            <User className="w-5 h-5" />
-                          </div>
-                          {/* Online indicator */}
-                          <span className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#0A0A0C] ${
-                            isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
-                          }`} />
-                        </div>
-                        <div className="min-w-0 text-left">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-bold text-white leading-snug truncate light-mode:text-slate-900">
-                              {usr.displayName}
-                            </h4>
-                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+            (() => {
+              const filteredUsers = usersList.filter(usr => {
+                const q = searchUserQuery.toLowerCase();
+                return (
+                  (usr.displayName || '').toLowerCase().includes(q) ||
+                  (usr.username || '').toLowerCase().includes(q) ||
+                  (usr.email || '').toLowerCase().includes(q)
+                );
+              });
+              return (
+                <div className="flex flex-col gap-4 text-left">
+                  <div className="relative max-w-md w-full">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="Search students by name, username or email..."
+                      value={searchUserQuery}
+                      onChange={(e) => setSearchUserQuery(e.target.value)}
+                      className="w-full bg-white/[0.03] border border-white/[0.08] focus:border-indigo-500 focus:bg-white/[0.05] rounded-xl pl-10 pr-4 py-2.5 text-xs outline-none transition-all placeholder-slate-550 font-semibold text-slate-100"
+                    />
+                  </div>
+
+                  {filteredUsers.length > 0 ? (
+                    <div className="flex flex-col gap-4">
+                      {filteredUsers.map((usr) => {
+                        const isOnline = onlineUsers.some(o => o.uid === usr.uid);
+                        const userSessions = onlineByUid[usr.uid] || [];
+                        return (
+                          <GlassPanel 
+                            key={usr.uid} 
+                            className={`p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border transition-all duration-300 ${
                               isOnline
-                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                : 'bg-slate-500/10 border-white/5 text-slate-400'
-                            }`}>
-                              {isOnline ? 'ONLINE' : 'OFFLINE'}
-                            </span>
-                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-                              usr.role === 'admin' 
-                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
-                                : 'bg-slate-500/10 border-white/5 text-slate-400'
-                            }`}>
-                              {usr.role.toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 text-xs mt-1.5 font-medium">
-                            <span>Email: {usr.email}</span>
-                            <span>•</span>
-                            <span>Registered {getFormatDate(usr.createdAt)}</span>
-                          </div>
-
-                          {/* List of active devices if online */}
-                          {isOnline && userSessions.length > 0 && (
-                            <div className="flex flex-col gap-1 mt-2.5">
-                              {userSessions.map((session) => (
-                                <div key={session.deviceId} className="flex items-center gap-2 text-[10px] text-slate-400 font-medium">
-                                  <span className="flex items-center gap-1 text-indigo-400">
-                                    {getDeviceIcon(session.deviceInfo)}
-                                    {session.deviceInfo}
-                                  </span>
-                                  <span className="text-slate-600">·</span>
-                                  <Clock className="w-3 h-3 text-slate-600" />
-                                  <span>Active {getRelativeTime(session.onlineSince)}</span>
+                                ? 'border-emerald-500/20 bg-emerald-500/[0.02]'
+                                : 'border-white/[0.05] bg-[#16161D]/20'
+                            } hover:border-white/10`}
+                          >
+                            <div className="flex items-start gap-4 min-w-0">
+                              <div className="relative flex-shrink-0">
+                                <div className={`w-11 h-11 rounded-xl flex items-center justify-center border mt-1 ${
+                                  isOnline
+                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                    : 'bg-indigo-500/10 border-indigo-500/10 text-indigo-400'
+                                }`}>
+                                  <User className="w-5 h-5" />
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                                {/* Online indicator */}
+                                <span className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#0A0A0C] ${
+                                  isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+                                }`} />
+                              </div>
+                              <div className="min-w-0 text-left">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="font-bold text-white leading-snug truncate light-mode:text-slate-900">
+                                    {usr.displayName}
+                                  </h4>
+                                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                                    isOnline
+                                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                      : 'bg-slate-500/10 border-white/5 text-slate-400'
+                                  }`}>
+                                    {isOnline ? 'ONLINE' : 'OFFLINE'}
+                                  </span>
+                                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                                    usr.role === 'admin' 
+                                      ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
+                                      : 'bg-slate-500/10 border-white/5 text-slate-400'
+                                  }`}>
+                                    {usr.role.toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 text-xs mt-1.5 font-medium">
+                                  <span>Email: {usr.email}</span>
+                                  <span>•</span>
+                                  <span className="text-amber-450 font-bold">XP: {usr.points || 0}</span>
+                                  <span>•</span>
+                                  <span>Registered {getFormatDate(usr.createdAt)}</span>
+                                </div>
 
-                      <div className="flex items-center gap-3.5 self-start md:self-auto ml-[60px] md:ml-0">
-                        <button
-                          onClick={() => handleRoleToggle(usr.uid, usr.role)}
-                          className={`
-                            px-4 py-2 rounded-lg text-xs font-bold transition-all active:scale-95
-                            ${usr.role === 'admin' 
-                              ? 'border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white' 
-                              : 'border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-white'}
-                          `}
-                        >
-                          {usr.role === 'admin' ? 'Demote' : 'Elevate'}
-                        </button>
+                                {/* List of active devices if online */}
+                                {isOnline && userSessions.length > 0 && (
+                                  <div className="flex flex-col gap-1 mt-2.5">
+                                    {userSessions.map((session) => (
+                                      <div key={session.deviceId} className="flex items-center gap-2 text-[10px] text-slate-400 font-medium">
+                                        <span className="flex items-center gap-1 text-indigo-400">
+                                          {getDeviceIcon(session.deviceInfo)}
+                                          {session.deviceInfo}
+                                        </span>
+                                        <span className="text-slate-600">·</span>
+                                        <Clock className="w-3 h-3 text-slate-600" />
+                                        <span>Active {getRelativeTime(session.onlineSince)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2.5 self-start md:self-auto ml-[60px] md:ml-0 flex-wrap">
+                              <button
+                                onClick={() => handleRoleToggle(usr.uid, usr.role)}
+                                className={`
+                                  px-3.5 py-2 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer
+                                  ${usr.role === 'admin' 
+                                    ? 'border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white' 
+                                    : 'border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-white'}
+                                `}
+                              >
+                                {usr.role === 'admin' ? 'Demote' : 'Elevate'}
+                              </button>
+
+                              <button
+                                onClick={() => handleEditUserPoints(usr.uid, usr.points || 0, usr.displayName)}
+                                className="px-3.5 py-2 rounded-lg text-xs font-bold transition-all active:scale-95 border border-indigo-500/20 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-600 hover:text-white cursor-pointer"
+                              >
+                                Edit XP
+                              </button>
 
                         {usr.uid !== currentAuthUser?.uid && (
                           <div className="flex items-center gap-1.5">

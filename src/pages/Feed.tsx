@@ -43,6 +43,7 @@ import { openPdfDocument, resolvePdfBlob, storeOfflineSummary, getOfflineSummary
 import { incrementQuestProgress } from '../utils/quests';
 import { extractTextFromPdf } from '../services/pdf';
 import { playSuccessSound, playErrorSound } from '../utils/sounds';
+import { renderAvatar } from '../utils/avatar';
 import {
   generateFlashcards,
   generateQuiz,
@@ -137,6 +138,54 @@ export const Feed: React.FC = () => {
   const [filteredNotes, setFilteredNotes] = useState<NoteDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  const [shareNoteModal, setShareNoteModal] = useState<NoteDocument | null>(null);
+  const [classmates, setClassmates] = useState<any[]>([]);
+  const [searchClassmateQuery, setSearchClassmateQuery] = useState('');
+  const [isSharing, setIsSharing] = useState(false);
+
+  const handleShareNoteClick = async (note: NoteDocument) => {
+    if (isGuest) {
+      info('Guest accounts cannot share notes.');
+      return;
+    }
+    setShareNoteModal(note);
+    try {
+      const { data, error: fetchErr } = await supabase
+        .from('profiles')
+        .select('id, display_name, photo_url, username, branch')
+        .neq('id', user?.uid);
+      if (fetchErr) throw fetchErr;
+      setClassmates(data || []);
+    } catch (err) {
+      console.error('Failed to fetch classmates for sharing:', err);
+    }
+  };
+
+  const handleConfirmShare = async (recipientId: string, recipientName: string) => {
+    if (!user || !shareNoteModal) return;
+    setIsSharing(true);
+    try {
+      const sharePayload = {
+        sender_id: user.uid,
+        recipient_id: recipientId,
+        message: `Shared a note: ${shareNoteModal.subject}`,
+        created_at: new Date().toISOString(),
+        is_read: false,
+        shared_note_id: shareNoteModal.id
+      };
+      
+      const { error: shareErr } = await supabase.from('direct_messages').insert([sharePayload]);
+      if (shareErr) throw shareErr;
+
+      success(`Shared note successfully with ${recipientName}! 🚀`);
+      setShareNoteModal(null);
+    } catch (err: any) {
+      error('Failed to share: ' + (err.message || err));
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   // Track optimistically-injected note IDs so we can merge them properly on real fetch
   const optimisticIdsRef = useRef<Set<string>>(new Set());
@@ -1893,6 +1942,7 @@ export const Feed: React.FC = () => {
                                         : 'text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10'}
                                     `}
                                     title="Like Note"
+                                    aria-label="Like study note"
                                   >
                                     <ThumbsUp className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
                                     <span>{note.likesCount || 0}</span>
@@ -1913,6 +1963,7 @@ export const Feed: React.FC = () => {
                                         : 'text-slate-400 hover:text-purple-400 hover:bg-purple-500/10'}
                                     `}
                                     title="Bookmark Note"
+                                    aria-label="Bookmark study note"
                                   >
                                     <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
                                   </button>
@@ -1926,6 +1977,7 @@ export const Feed: React.FC = () => {
                                   }}
                                   className="p-2 rounded-lg flex items-center gap-1 text-xs font-extrabold bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 transition-all duration-200 cursor-pointer active:scale-90 shadow-sm shadow-indigo-600/10"
                                   title="AI Note Companion"
+                                  aria-label="Open AI study helper and quiz generator"
                                 >
                                   <Sparkles className="w-3.5 h-3.5" />
                                   <span className="text-[10px] font-extrabold">AI Study/Quiz</span>
@@ -1941,12 +1993,26 @@ export const Feed: React.FC = () => {
                                   }}
                                   className="inline-flex items-center justify-center p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 light-mode:border-slate-900/10 light-mode:text-slate-600 light-mode:hover:text-slate-900 transition-all duration-200 cursor-pointer active:scale-95"
                                   title={note.pdfPath === 'external-link' ? "Open Cloud Shared Document" : "Open PDF Document"}
+                                  aria-label={note.pdfPath === 'external-link' ? "Open Cloud Shared Document" : "Open PDF Document"}
                                 >
                                   {note.pdfPath === 'external-link' ? (
                                     <ExternalLink className="w-3.5 h-3.5" />
                                   ) : (
                                     <Download className="w-3.5 h-3.5" />
                                   )}
+                                </button>
+
+                                {/* Share Note to Chat */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleShareNoteClick(note);
+                                  }}
+                                  className="inline-flex items-center justify-center p-2 rounded-lg border border-white/[0.08] text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 light-mode:border-slate-900/10 light-mode:text-slate-600 transition-all duration-200 cursor-pointer active:scale-95"
+                                  title="Share Note to Chat"
+                                  aria-label="Share note to chat"
+                                >
+                                  <Send className="w-3.5 h-3.5" />
                                 </button>
 
                                 {/* Delete note button */}
@@ -1958,6 +2024,7 @@ export const Feed: React.FC = () => {
                                     }}
                                     className="inline-flex items-center justify-center p-2 rounded-lg border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-all duration-200 cursor-pointer active:scale-95"
                                     title="Delete Note"
+                                    aria-label="Delete study note"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
@@ -2555,6 +2622,82 @@ export const Feed: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Share Note Modal Overlay */}
+      {shareNoteModal && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <GlassPanel className="p-6 max-w-md w-full border border-white/10 rounded-3xl shadow-2xl relative text-white space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+                  <Send className="w-5 h-5 text-indigo-400" /> Share Study Note
+                </h3>
+                <p className="text-[11px] text-slate-400 font-semibold mt-1 truncate max-w-[280px]">
+                  "{shareNoteModal.subject}"
+                </p>
+              </div>
+              <button
+                onClick={() => setShareNoteModal(null)}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search classmates..."
+                value={searchClassmateQuery}
+                onChange={(e) => setSearchClassmateQuery(e.target.value)}
+                className="w-full bg-white/[0.03] border border-white/[0.08] focus:border-indigo-500 focus:bg-white/[0.05] rounded-xl pl-10 pr-4 py-2.5 text-xs outline-none transition-all placeholder-slate-600 font-semibold text-slate-100"
+              />
+            </div>
+
+            <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              {classmates
+                .filter((c) => {
+                  const query = searchClassmateQuery.toLowerCase();
+                  return (
+                    (c.display_name || '').toLowerCase().includes(query) ||
+                    (c.username || '').toLowerCase().includes(query)
+                  );
+                })
+                .map((c) => (
+                  <div
+                    key={c.id}
+                    className="p-2.5 rounded-xl border border-white/[0.03] bg-white/[0.01] hover:bg-white/[0.03] flex items-center justify-between gap-3 transition-all"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {renderAvatar(c.photo_url || '', 'w-8 h-8 text-sm')}
+                      <div className="min-w-0 text-left">
+                        <span className="block text-xs font-black text-white truncate">
+                          {c.display_name || c.username}
+                        </span>
+                        <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">
+                          {c.branch ? c.branch.toUpperCase() : 'CSE'}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleConfirmShare(c.id, c.display_name || c.username)}
+                      disabled={isSharing}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-[10px] uppercase tracking-wider transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                    >
+                      Share
+                    </button>
+                  </div>
+                ))}
+              {classmates.length === 0 && (
+                <div className="text-center py-6 text-xs text-slate-500 font-semibold">
+                  No other classmates found to share.
+                </div>
+              )}
+            </div>
+          </GlassPanel>
+        </div>
+      )}
     </div>
   );
 };

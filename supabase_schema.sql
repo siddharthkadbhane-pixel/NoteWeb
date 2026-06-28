@@ -380,3 +380,33 @@ CREATE POLICY "Allow users to insert/update their own tokens" ON public.user_dev
 CREATE POLICY "Allow users to delete their own tokens" ON public.user_device_tokens
     FOR DELETE USING (auth.uid()::text = profile_id);
 
+
+-- ════════════════════════════════════════════════════════════
+-- 9. USER DAILY QUESTS SYNC SUPPORT
+-- ════════════════════════════════════════════════════════════
+
+-- Create table for storing user daily quest progress in the cloud
+CREATE TABLE IF NOT EXISTS public.user_quests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id TEXT REFERENCES public.profiles(id) ON DELETE CASCADE,
+    quest_id TEXT NOT NULL,
+    progress INTEGER DEFAULT 0,
+    max_progress INTEGER DEFAULT 1,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    claimed_at TIMESTAMP WITH TIME ZONE,
+    reset_date DATE DEFAULT CURRENT_DATE,
+    CONSTRAINT unique_user_quest_day UNIQUE (user_id, quest_id, reset_date)
+);
+
+-- Enable RLS
+ALTER TABLE public.user_quests ENABLE ROW LEVEL SECURITY;
+
+-- Policies for user_quests
+CREATE POLICY "Allow users to view their own quests" ON public.user_quests
+    FOR SELECT USING (auth.uid()::text = user_id);
+
+CREATE POLICY "Allow users to insert/update their own quests" ON public.user_quests
+    FOR ALL USING (auth.uid()::text = user_id)
+    WITH CHECK (auth.uid()::text = user_id);
+
+

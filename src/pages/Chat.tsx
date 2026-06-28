@@ -2492,9 +2492,12 @@ export const Chat: React.FC = () => {
                             <div className="flex items-center gap-1.5 text-indigo-400 text-[11px] font-bold">
                               <FileText className="w-4 h-4" /> Shared Study Note
                             </div>
-                            <a href={`/notes?noteId=${msg.shared_note_id}`} target="_blank" rel="noopener noreferrer" className="py-1 px-2.5 rounded-lg bg-indigo-600 text-white font-extrabold text-[10px] text-center cursor-pointer">
+                            <button
+                              onClick={() => openPdfDocument('db-base64-fetch', '', msg.shared_note_id, msg.message.replace('Shared a note: ', ''))}
+                              className="py-1 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-[10px] text-center cursor-pointer active:scale-95 transition-all duration-200 w-full"
+                            >
                               View PDF Notes
-                            </a>
+                            </button>
                           </div>
                         )}
 
@@ -3805,14 +3808,12 @@ export const Chat: React.FC = () => {
                                       <div className="text-[10px] text-slate-400 light-mode:text-slate-600">
                                         Open this uploader notes attachment directly in the study player.
                                       </div>
-                                      <a
-                                        href={`/notes?noteId=${msg.shared_note_id}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] text-center transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow shadow-indigo-600/10 cursor-pointer"
+                                      <button
+                                        onClick={() => openPdfDocument('db-base64-fetch', '', msg.shared_note_id, msg.message.replace('Shared a note: ', ''))}
+                                        className="py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-[10px] text-center transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow shadow-indigo-600/10 cursor-pointer w-full"
                                       >
                                         <Download className="w-3.5 h-3.5" /> View PDF Notes
-                                      </a>
+                                      </button>
                                     </div>
                                   )}
 
