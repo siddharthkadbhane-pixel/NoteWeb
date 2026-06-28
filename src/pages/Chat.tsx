@@ -3828,7 +3828,7 @@ export const Chat: React.FC = () => {
           <GlassPanel 
             className={`flex-1 min-w-0 flex-col p-3 md:p-6 rounded-2xl md:rounded-3xl border transition-all ${isDark ? 'bg-[#121218]/45 border-white/[0.08]' : 'bg-white border-slate-200/80 shadow-md'} ${
               activeTab === 'dm' && (!selectedDmUser || mobileView === 'list') ? 'hidden md:flex' : 'flex'
-            }`}
+            } ${(activeTab === 'global' || (activeTab === 'dm' && selectedDmUser)) ? getThemeClasses() : ''}`}
             style={(activeTab === 'global' || (activeTab === 'dm' && selectedDmUser)) ? { ...getThemeStyle(), backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative', overflow: 'hidden' } : undefined}
           >
             
