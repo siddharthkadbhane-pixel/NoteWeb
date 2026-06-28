@@ -7,6 +7,7 @@ import type { OnlineUser } from '../services/presence';
 import { 
   Shield,
   ShieldAlert, 
+  Search,
   Check, 
   X, 
   Trash2, 

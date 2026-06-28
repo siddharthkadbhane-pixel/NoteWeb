@@ -266,7 +266,7 @@ export const restartQuests = (uid: string): Quest[] => {
       .then(() => {
         defaultQuests.forEach(q => syncQuestRowToDb(uid, q));
       })
-      .catch(err => console.warn('[Quests Sync] Database restart failed:', err));
+      .catch((err: any) => console.warn('[Quests Sync] Database restart failed:', err));
   }
 
   return defaultQuests;

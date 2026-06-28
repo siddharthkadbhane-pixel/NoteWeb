@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { renderAvatar } from '../utils/avatar';
 import { incrementQuestProgress } from '../utils/quests';
+import { openPdfDocument } from '../utils/pdfDb';
 import { motion } from 'framer-motion';
 import { moderateChatMessage } from '../services/gemini';
 import { GlassPanel } from '../components/ui/GlassPanel';
