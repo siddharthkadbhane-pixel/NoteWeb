@@ -2432,6 +2432,22 @@ export const Chat: React.FC = () => {
         themeStyle.backgroundSize = 'cover';
         themeStyle.backgroundPosition = 'center';
         themeStyle.backgroundRepeat = 'no-repeat';
+
+        // Add a matching background color fallback based on the preset key
+        if (wallpaperKey.includes('lofi_study')) themeStyle.backgroundColor = '#110c1c';
+        else if (wallpaperKey.includes('gradient_wave')) themeStyle.backgroundColor = '#080c14';
+        else if (wallpaperKey.includes('tech_doodle')) themeStyle.backgroundColor = '#050a12';
+        else if (wallpaperKey.includes('cyberpunk_city')) themeStyle.backgroundColor = '#0b0512';
+        else if (wallpaperKey.includes('pastel_dream')) themeStyle.backgroundColor = '#1c1b24';
+        else if (wallpaperKey.includes('cosmic_forest')) themeStyle.backgroundColor = '#040d12';
+        else if (wallpaperKey.includes('bubblegum')) themeStyle.backgroundColor = '#ffccd5';
+        else if (wallpaperKey.includes('rainbow')) themeStyle.backgroundColor = '#833ab4';
+        else if (wallpaperKey.includes('autumn')) themeStyle.backgroundColor = '#d4a373';
+        else if (wallpaperKey.includes('synthwave')) themeStyle.backgroundColor = '#2b0c36';
+        else if (wallpaperKey.includes('zen_ink')) themeStyle.backgroundColor = '#1c1b19';
+        else if (wallpaperKey.includes('matrix')) themeStyle.backgroundColor = '#020b05';
+        else if (wallpaperKey.includes('lavender')) themeStyle.backgroundColor = '#1c1724';
+        else if (wallpaperKey.includes('abstract_geometric')) themeStyle.backgroundColor = '#080814';
       } else {
         // Solid color hex
         themeStyle.backgroundColor = wallpaperKey;
@@ -2979,8 +2995,8 @@ export const Chat: React.FC = () => {
 
           {/* Shared modals */}
           {zoomedImage && (
-            <div onClick={() => setZoomedImage(null)} className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
-              <button onClick={() => setZoomedImage(null)} className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white z-50 cursor-pointer active:scale-90"><X className="w-5 h-5" /></button>
+            <div onClick={() => setZoomedImage(null)} className="fixed inset-0 bg-black/95 z-[100000] flex items-center justify-center p-4">
+              <button onClick={() => setZoomedImage(null)} className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white z-[100001] cursor-pointer active:scale-90"><X className="w-5 h-5" /></button>
               <img src={zoomedImage} alt="Zoomed" className="max-w-full max-h-[80vh] object-contain rounded-2xl select-none" />
             </div>
           )}
@@ -3123,8 +3139,8 @@ export const Chat: React.FC = () => {
 
         {/* Shared Modals - Lightbox */}
         {zoomedImage && (
-          <div onClick={() => setZoomedImage(null)} className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
-            <button onClick={() => setZoomedImage(null)} className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white z-50 cursor-pointer active:scale-90"><X className="w-5 h-5" /></button>
+          <div onClick={() => setZoomedImage(null)} className="fixed inset-0 bg-black/95 z-[100000] flex items-center justify-center p-4">
+            <button onClick={() => setZoomedImage(null)} className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white z-[100001] cursor-pointer active:scale-90"><X className="w-5 h-5" /></button>
             <img src={zoomedImage} alt="Zoomed" className="max-w-full max-h-[80vh] object-contain rounded-2xl select-none" />
           </div>
         )}
@@ -4374,11 +4390,11 @@ export const Chat: React.FC = () => {
       {zoomedImage && (
         <div 
           onClick={() => setZoomedImage(null)}
-          className="fixed inset-0 bg-[#0A0A0C]/90 backdrop-blur-md z-50 flex items-center justify-center p-4 cursor-zoom-out animate-fade-in text-left"
+          className="fixed inset-0 bg-[#0A0A0C]/90 backdrop-blur-md z-[100000] flex items-center justify-center p-4 cursor-zoom-out animate-fade-in text-left"
         >
           <button 
             onClick={() => setZoomedImage(null)}
-            className="absolute top-4 right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95 z-50 border border-white/10"
+            className="absolute top-4 right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95 z-[100001] border border-white/10"
             title="Close Lightbox"
           >
             <X className="w-6 h-6" />
