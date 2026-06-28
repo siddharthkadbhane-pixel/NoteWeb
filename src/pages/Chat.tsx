@@ -2443,7 +2443,8 @@ export const Chat: React.FC = () => {
         wallpaperKey.startsWith('http://') || 
         wallpaperKey.startsWith('https://') || 
         wallpaperKey.startsWith('data:') ||
-        wallpaperKey.startsWith('/wallpapers/')
+        wallpaperKey.startsWith('/wallpapers/') ||
+        wallpaperKey.startsWith('wallpapers/')
       ) {
         themeStyle.backgroundImage = `url("${wallpaperKey}")`;
         themeStyle.backgroundSize = 'cover';
@@ -2486,20 +2487,20 @@ export const Chat: React.FC = () => {
               { key: 'whatsapp-doodle-dark', name: 'WA Dark', bg: '#0b141a', style: { backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 80 80'%3E%3Cpath d='M10 15h4v4h-4z' fill='%23ffffff' opacity='0.03'/%3E%3C/svg%3E")` } },
               { key: 'whatsapp-doodle-light', name: 'WA Light', bg: '#efeae2', style: { backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 80 80'%3E%3Cpath d='M10 15h4v4h-4z' fill='%23000000' opacity='0.03'/%3E%3C/svg%3E")` } },
               { key: 'instagram-black', name: 'Insta Black', bg: '#000000' },
-              { key: '/wallpapers/chat_lofi_study.png', name: 'Lofi Room', bg: '#110c1c', style: { backgroundImage: `url("/wallpapers/chat_lofi_study.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_gradient_wave.png', name: 'Neon Wave', bg: '#080c14', style: { backgroundImage: `url("/wallpapers/chat_gradient_wave.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_tech_doodle.png', name: 'Tech Line', bg: '#050a12', style: { backgroundImage: `url("/wallpapers/chat_tech_doodle.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_cyberpunk_city.png', name: 'Cyberpunk', bg: '#0b0512', style: { backgroundImage: `url("/wallpapers/chat_cyberpunk_city.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_pastel_dream.png', name: 'Pastel Dream', bg: '#1c1b24', style: { backgroundImage: `url("/wallpapers/chat_pastel_dream.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_cosmic_forest.png', name: 'Cosmic Forest', bg: '#040d12', style: { backgroundImage: `url("/wallpapers/chat_cosmic_forest.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_insta_bubblegum.png', name: 'Insta Candy', bg: '#ffccd5', style: { backgroundImage: `url("/wallpapers/chat_insta_bubblegum.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_insta_rainbow.png', name: 'Insta Pride', bg: '#833ab4', style: { backgroundImage: `url("/wallpapers/chat_insta_rainbow.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_insta_autumn.png', name: 'Insta Autumn', bg: '#d4a373', style: { backgroundImage: `url("/wallpapers/chat_insta_autumn.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_synthwave_sunset.png', name: 'Retro Synth', bg: '#2b0c36', style: { backgroundImage: `url("/wallpapers/chat_synthwave_sunset.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_zen_ink.png', name: 'Zen Ink', bg: '#1c1b19', style: { backgroundImage: `url("/wallpapers/chat_zen_ink.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_matrix_code.png', name: 'Matrix', bg: '#020b05', style: { backgroundImage: `url("/wallpapers/chat_matrix_code.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_lavender_mist.png', name: 'Lavender Mist', bg: '#1c1724', style: { backgroundImage: `url("/wallpapers/chat_lavender_mist.png")`, backgroundSize: 'cover' } },
-              { key: '/wallpapers/chat_abstract_geometric.png', name: 'Neon Geo', bg: '#080814', style: { backgroundImage: `url("/wallpapers/chat_abstract_geometric.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_lofi_study.png', name: 'Lofi Room', bg: '#110c1c', style: { backgroundImage: `url("wallpapers/chat_lofi_study.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_gradient_wave.png', name: 'Neon Wave', bg: '#080c14', style: { backgroundImage: `url("wallpapers/chat_gradient_wave.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_tech_doodle.png', name: 'Tech Line', bg: '#050a12', style: { backgroundImage: `url("wallpapers/chat_tech_doodle.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_cyberpunk_city.png', name: 'Cyberpunk', bg: '#0b0512', style: { backgroundImage: `url("wallpapers/chat_cyberpunk_city.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_pastel_dream.png', name: 'Pastel Dream', bg: '#1c1b24', style: { backgroundImage: `url("wallpapers/chat_pastel_dream.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_cosmic_forest.png', name: 'Cosmic Forest', bg: '#040d12', style: { backgroundImage: `url("wallpapers/chat_cosmic_forest.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_insta_bubblegum.png', name: 'Insta Candy', bg: '#ffccd5', style: { backgroundImage: `url("wallpapers/chat_insta_bubblegum.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_insta_rainbow.png', name: 'Insta Pride', bg: '#833ab4', style: { backgroundImage: `url("wallpapers/chat_insta_rainbow.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_insta_autumn.png', name: 'Insta Autumn', bg: '#d4a373', style: { backgroundImage: `url("wallpapers/chat_insta_autumn.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_synthwave_sunset.png', name: 'Retro Synth', bg: '#2b0c36', style: { backgroundImage: `url("wallpapers/chat_synthwave_sunset.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_zen_ink.png', name: 'Zen Ink', bg: '#1c1b19', style: { backgroundImage: `url("wallpapers/chat_zen_ink.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_matrix_code.png', name: 'Matrix', bg: '#020b05', style: { backgroundImage: `url("wallpapers/chat_matrix_code.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_lavender_mist.png', name: 'Lavender Mist', bg: '#1c1724', style: { backgroundImage: `url("wallpapers/chat_lavender_mist.png")`, backgroundSize: 'cover' } },
+              { key: 'wallpapers/chat_abstract_geometric.png', name: 'Neon Geo', bg: '#080814', style: { backgroundImage: `url("wallpapers/chat_abstract_geometric.png")`, backgroundSize: 'cover' } },
               { key: '#1a202c', name: 'Charcoal', bg: '#1a202c' },
               { key: '#0f172a', name: 'Slate Blue', bg: '#0f172a' },
               { key: '#2d1b4e', name: 'Dark Purple', bg: '#2d1b4e' },
