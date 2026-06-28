@@ -2,9 +2,15 @@ import React from 'react';
 import { Sun, Moon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
+import { useLocation } from 'react-router-dom';
 
 export const FloatingThemeToggle: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
+  const location = useLocation();
+
+  if (location.pathname === '/chat') {
+    return null;
+  }
 
   return (
     <motion.button
