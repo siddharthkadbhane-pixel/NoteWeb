@@ -610,19 +610,7 @@ export const Chat: React.FC = () => {
   const [chatWallpapers, setChatWallpapers] = useState<Record<string, string>>(() => JSON.parse(localStorage.getItem('noteweb-chat-wallpapers') || '{}'));
   const [customWpUrl, setCustomWpUrl] = useState('');
 
-  // WebRTC Calling
-  const [callState, setCallState] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle');
-  const [callerProfile, setCallerProfile] = useState<any>(null);
-  const [callType, setCallType] = useState<'voice' | 'video'>('video');
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const [isMicMuted, setIsMicMuted] = useState(false);
-  const [isCameraOff, setIsCameraOff] = useState(false);
-  
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
-  const iceCandidatesQueue = useRef<any[]>([]);
+
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -656,28 +644,7 @@ export const Chat: React.FC = () => {
     return () => window.removeEventListener('noteweb-chat-back', handleNativeBack);
   }, [activeTab, mobileView, selectedDmUser, navigate]);
 
-  // Stop active media streams and WebRTC connections on page unmount
-  useEffect(() => {
-    return () => {
-      console.log("[WebRTC] Chat component unmounting, cleaning up media streams...");
-      if (pcRef.current) {
-        try { pcRef.current.close(); } catch {}
-        pcRef.current = null;
-      }
-      if (localVideoRef.current && localVideoRef.current.srcObject) {
-        try {
-          const stream = localVideoRef.current.srcObject as MediaStream;
-          stream.getTracks().forEach(t => t.stop());
-        } catch {}
-      }
-      if (remoteVideoRef.current && remoteVideoRef.current.srcObject) {
-        try {
-          const stream = remoteVideoRef.current.srcObject as MediaStream;
-          stream.getTracks().forEach(t => t.stop());
-        } catch {}
-      }
-    };
-  }, []);
+
 
   // Touch swipe gesture for chat navigation
   const [chatTouchStart, setChatTouchStart] = useState<{ x: number; y: number } | null>(null);
@@ -1108,32 +1075,7 @@ export const Chat: React.FC = () => {
     }
   }, [location.search, user]);
 
-  // WebRTC Video stream attachment effects
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
-  }, [localStream, callState, isCameraOff]);
 
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-    }
-  }, [remoteStream, callState]);
-
-  // Check for globally cached incoming call request on mount / page switch
-  useEffect(() => {
-    const cachedOffer = (window as any)._incomingSdpOffer;
-    const cachedCaller = (window as any)._incomingCallerProfile;
-    const cachedCallType = (window as any)._incomingCallType;
-
-    if (cachedOffer && cachedCaller && callState === 'idle') {
-      console.log("[NoteWeb Call] Found global incoming call cache, triggering call popup!");
-      setCallerProfile(cachedCaller);
-      setCallType(cachedCallType || 'voice');
-      setCallState('incoming');
-    }
-  }, [callState]);
 
   // Subscribe to channels and poll fallback
   useEffect(() => {
@@ -1322,99 +1264,9 @@ export const Chat: React.FC = () => {
               }
             }
           )
-          .on(
-            'broadcast',
-            { event: 'call:offer' },
-            async (response: any) => {
-              const { sender_id, recipient_id, sdp, callType: cType, callerName, callerAvatar } = response.payload || {};
-              if (recipient_id === user?.uid) {
-                if (callState !== 'idle') {
-                  // busy signal
-                  channelDm.send({
-                    type: 'broadcast',
-                    event: 'call:hangup',
-                    payload: { sender_id: user?.uid || '', recipient_id: sender_id }
-                  });
-                  return;
-                }
-                setCallerProfile({ id: sender_id, displayName: callerName, photoURL: callerAvatar });
-                setCallType(cType);
-                setCallState('incoming');
-                (window as any)._incomingSdpOffer = sdp;
-              }
-            }
-          )
-          .on(
-            'broadcast',
-            { event: 'call:answer' },
-            async (response: any) => {
-              const { recipient_id, sdp } = response.payload || {};
-              if (recipient_id === user?.uid && pcRef.current) {
-                try {
-                  await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
-                  setCallState('connected');
-                  
-                  // Flush queued candidates
-                  console.log("[WebRTC] Flushing queued ICE candidates on call:answer...");
-                  while (iceCandidatesQueue.current.length > 0) {
-                    const cand = iceCandidatesQueue.current.shift();
-                    if (cand) {
-                      try {
-                        await pcRef.current.addIceCandidate(new RTCIceCandidate(cand));
-                      } catch (e) {
-                        console.warn("Failed to add queued ICE candidate:", e);
-                      }
-                    }
-                  }
-                } catch (err) {
-                  console.error("Failed to set remote call description:", err);
-                }
-              }
-            }
-          )
-          .on(
-            'broadcast',
-            { event: 'call:ice-candidate' },
-            async (response: any) => {
-              const { recipient_id, candidate } = response.payload || {};
-              if (recipient_id === user?.uid) {
-                if (pcRef.current && pcRef.current.remoteDescription) {
-                  try {
-                    await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-                  } catch (err) {
-                    console.warn("Failed to add ICE candidate:", err);
-                  }
-                } else {
-                  console.log("[WebRTC] Queueing incoming ICE candidate...");
-                  iceCandidatesQueue.current.push(candidate);
-                }
-              }
-            }
-          )
-          .on(
-            'broadcast',
-            { event: 'call:hangup' },
-            (response: any) => {
-              const { recipient_id } = response.payload || {};
-              if (recipient_id === user?.uid) {
-                handleEndCallLocally();
-                info("The call has ended.");
-              }
-            }
-          )
           .subscribe();
 
         channelDmRef.current = channelDm;
-
-        // Auto-start WebRTC call if 'call' parameter is present in URL search (?dm=uid&call=video/voice)
-        const params = new URLSearchParams(location.search);
-        const callParam = params.get('call');
-        if (callParam && (callParam === 'video' || callParam === 'voice') && callState === 'idle') {
-          console.log("[NoteWeb Call] Auto-initiating call inside subscription effect:", callParam);
-          setTimeout(() => {
-            startWebRtcCall(callParam as 'video' | 'voice');
-          }, 800);
-        }
       }
     } catch (dmErr) {
       console.warn("Direct Messages Realtime subscription failed:", dmErr);
@@ -1442,7 +1294,7 @@ export const Chat: React.FC = () => {
         } catch {}
       }
     };
-  }, [selectedDmUser?.id, user?.uid, blockedUids, mutedUids, callState, location.search]);
+  }, [selectedDmUser?.id, user?.uid, blockedUids, mutedUids, location.search]);
 
   // Register Realtime Presence listener
   useEffect(() => {
@@ -1521,260 +1373,7 @@ export const Chat: React.FC = () => {
   // ADVANCED MESSAGING IMPLEMENTATION HANDLERS (PHASES 2, 3, & 4)
   // ════════════════════════════════════════════════════════════
 
-  // WebRTC End Call Cleanup Helper
-  const handleEndCallLocally = () => {
-    setCallState('idle');
-    setCallerProfile(null);
-    setIsMicMuted(false);
-    setIsCameraOff(false);
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
-      setLocalStream(null);
-    }
-    if (remoteStream) {
-      remoteStream.getTracks().forEach((track) => track.stop());
-      setRemoteStream(null);
-    }
-    if (pcRef.current) {
-      pcRef.current.close();
-      pcRef.current = null;
-    }
-    (window as any)._incomingSdpOffer = null;
-    (window as any)._incomingCallType = null;
-    (window as any)._incomingCallerProfile = null;
-    iceCandidatesQueue.current = []; // Clear candidate queue
-  };
 
-  // WebRTC Initiator
-  const startWebRtcCall = async (type: 'voice' | 'video') => {
-    if (!selectedDmUser || !user) return;
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try { navigator.vibrate(50); } catch {}
-    }
-
-    // Check secure context
-    if (typeof window !== 'undefined' && !window.isSecureContext) {
-      toastError("Calling requires HTTPS or localhost (Secure Context). Please run on local HTTPS server or test on localhost.");
-      return;
-    }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      toastError("Media devices are not accessible over insecure HTTP connections.");
-      return;
-    }
-
-    try {
-      setCallType(type);
-      setCallState('calling');
-      setCallerProfile(selectedDmUser);
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: type === 'video',
-        audio: true
-      });
-      setLocalStream(stream);
-
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' },
-          { urls: 'stun:stun4.l.google.com:19302' }
-        ]
-      });
-      pcRef.current = pc;
-
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate && channelDmRef.current) {
-          channelDmRef.current.send({
-            type: 'broadcast',
-            event: 'call:ice-candidate',
-            payload: {
-              sender_id: user.uid,
-              recipient_id: selectedDmUser.id,
-              candidate: event.candidate
-            }
-          });
-        }
-      };
-
-      pc.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          setRemoteStream(event.streams[0]);
-        }
-      };
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      if (channelDmRef.current) {
-        channelDmRef.current.send({
-          type: 'broadcast',
-          event: 'call:offer',
-          payload: {
-            sender_id: user.uid,
-            recipient_id: selectedDmUser.id,
-            sdp: offer,
-            callType: type,
-            callerName: userProfile?.displayName || 'Classmate',
-            callerAvatar: userProfile?.photoURL || ''
-          }
-        });
-      }
-    } catch (err: any) {
-      let friendlyMsg = err.message;
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        friendlyMsg = "Camera/Microphone permission was denied. Please allow camera and mic access in your browser settings.";
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        friendlyMsg = "Camera/Microphone hardware not found on this device.";
-      }
-      toastError("Failed to initiate call: " + friendlyMsg);
-      handleEndCallLocally();
-    }
-  };
-
-  // WebRTC Answer
-  const acceptIncomingCall = async () => {
-    if (!callerProfile || !user) return;
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try { navigator.vibrate([150, 50, 150]); } catch {}
-    }
-
-    // Check secure context
-    if (typeof window !== 'undefined' && !window.isSecureContext) {
-      toastError("Answering calls requires HTTPS or localhost (Secure Context).");
-      return;
-    }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      toastError("Media devices are not accessible over insecure HTTP connections.");
-      return;
-    }
-
-    try {
-      const incomingOffer = (window as any)._incomingSdpOffer;
-      if (!incomingOffer) throw new Error("No incoming call request metadata found.");
-
-      setCallState('connected');
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: callType === 'video',
-        audio: true
-      });
-      setLocalStream(stream);
-
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' },
-          { urls: 'stun:stun4.l.google.com:19302' }
-        ]
-      });
-      pcRef.current = pc;
-
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate && channelDmRef.current) {
-          channelDmRef.current.send({
-            type: 'broadcast',
-            event: 'call:ice-candidate',
-            payload: {
-              sender_id: user.uid,
-              recipient_id: callerProfile.id,
-              candidate: event.candidate
-            }
-          });
-        }
-      };
-
-      pc.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          setRemoteStream(event.streams[0]);
-        }
-      };
-
-      await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));
-
-      // Flush queued candidates
-      console.log("[WebRTC] Flushing queued ICE candidates in acceptIncomingCall...");
-      while (iceCandidatesQueue.current.length > 0) {
-        const cand = iceCandidatesQueue.current.shift();
-        if (cand) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(cand));
-          } catch (e) {
-            console.warn("Failed to add queued ICE candidate:", e);
-          }
-        }
-      }
-
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-
-      if (channelDmRef.current) {
-        channelDmRef.current.send({
-          type: 'broadcast',
-          event: 'call:answer',
-          payload: {
-            sender_id: user.uid,
-            recipient_id: callerProfile.id,
-            sdp: answer
-          }
-        });
-      }
-    } catch (err: any) {
-      toastError("Failed to accept call: " + err.message);
-      handleEndCallLocally();
-    }
-  };
-
-  const declineIncomingCall = () => {
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try { navigator.vibrate(30); } catch {}
-    }
-    if (callerProfile && channelDmRef.current) {
-      channelDmRef.current.send({
-        type: 'broadcast',
-        event: 'call:hangup',
-        payload: {
-          sender_id: user?.uid,
-          recipient_id: callerProfile.id
-        }
-      });
-    }
-    handleEndCallLocally();
-  };
-
-  const endActiveCall = () => {
-    if (callerProfile && channelDmRef.current) {
-      channelDmRef.current.send({
-        type: 'broadcast',
-        event: 'call:hangup',
-        payload: {
-          sender_id: user?.uid,
-          recipient_id: callerProfile.id
-        }
-      });
-    }
-    handleEndCallLocally();
-  };
-
-  // Video Ref Auto-Attachers
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
-  }, [localStream, callState]);
-
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-    }
-  }, [remoteStream, callState]);
 
   // Vanish Mode cleanup effect
   useEffect(() => {
@@ -3257,7 +2856,7 @@ export const Chat: React.FC = () => {
         <div className={`fixed inset-0 flex flex-col ${isLoungeDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`} style={{ ...getThemeStyle(), backgroundSize: 'cover', backgroundPosition: 'center' }}>
 
           {/* Header */}
-          <div className={`flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b ${isLoungeDark ? 'border-white/[0.06] bg-[#0D0D14]/80 text-white' : 'border-slate-200 bg-white/90 text-slate-800'}`}
+          <div className={`relative z-30 flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b ${isLoungeDark ? 'border-white/[0.06] bg-[#0D0D14]/80 text-white' : 'border-slate-200 bg-white/90 text-slate-800'}`}
             style={{ backdropFilter: 'blur(12px)', paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
             <div className="flex items-center gap-2">
               <button onClick={() => navigate('/')}
@@ -3387,7 +2986,7 @@ export const Chat: React.FC = () => {
       <div className={`fixed inset-0 flex flex-col ${isDmChatDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`} style={{ ...getThemeStyle(), backgroundSize: 'cover', backgroundPosition: 'center' }}>
 
         {/* DM Chat Header */}
-        <div className={`flex-shrink-0 flex items-center gap-2 px-3 pb-3 border-b ${isDmChatDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`}
+        <div className={`relative z-30 flex-shrink-0 flex items-center gap-2 px-3 pb-3 border-b ${isDmChatDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`}
           style={{ backdropFilter: 'blur(12px)', paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
           {/* Back button */}
           <button onClick={() => { setMobileView('list'); setSelectedDmUser(null); navigate('/chat', { replace: true }); }}
@@ -3420,8 +3019,6 @@ export const Chat: React.FC = () => {
 
           {/* Action buttons */}
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={() => startWebRtcCall('voice')} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDmChatDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><Phone className="w-4 h-4" /></button>
-            <button onClick={() => startWebRtcCall('video')} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDmChatDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><Video className="w-4 h-4" /></button>
 
             {/* Three-dot menu */}
             <div className="relative">
@@ -3628,47 +3225,6 @@ export const Chat: React.FC = () => {
               <button type="button" onClick={handleCreatePollMessage} className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm cursor-pointer active:scale-95 shadow-lg flex items-center justify-center gap-2">
                 <Plus className="w-4 h-4" /> Send Poll
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* WebRTC Call overlay */}
-        {callState !== 'idle' && (
-          <div className="fixed inset-0 z-50 bg-[#07070A]/95 flex flex-col items-center justify-center p-6 text-white text-center">
-            <div className="absolute w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
-            <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-xs">
-              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{callType === 'video' ? '📽️ Video Call' : '📞 Voice Call'}</span>
-              <h2 className="text-xl font-black">{callState === 'incoming' ? 'Incoming...' : callState === 'calling' ? 'Calling...' : 'Connected'}</h2>
-              <div className="relative w-52 h-52 rounded-3xl overflow-hidden border border-white/10 bg-slate-900/60 flex items-center justify-center">
-                {callState === 'connected' && callType === 'video' && remoteStream && !isCameraOff
-                  ? <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                  : <div className="flex flex-col items-center gap-2">
-                      {renderAvatar(callerProfile?.photoURL || '', 'w-24 h-24 text-3xl border-4 border-indigo-500/30 animate-pulse')}
-                      <span className="font-bold text-sm">{callerProfile?.displayName || 'Classmate'}</span>
-                    </div>
-                }
-                {callState === 'connected' && callType === 'video' && localStream && (
-                  <div className="absolute bottom-2 right-2 w-16 h-24 rounded-xl overflow-hidden border border-white/20 bg-black/60">
-                    {!isCameraOff ? <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-500">Cam Off</div>}
-                  </div>
-                )}
-              </div>
-              {callState === 'incoming' ? (
-                <div className="flex items-center gap-8">
-                  <button onClick={declineIncomingCall} className="w-14 h-14 rounded-full bg-rose-600 text-white flex items-center justify-center cursor-pointer active:scale-90 shadow-lg shadow-rose-600/30"><PhoneOff className="w-6 h-6" /></button>
-                  <button onClick={acceptIncomingCall} className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center cursor-pointer active:scale-95 shadow-lg shadow-emerald-600/30 animate-bounce"><Phone className="w-6 h-6" /></button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-4">
-                  {callState === 'connected' && (
-                    <>
-                      <button onClick={() => { if (localStream) { localStream.getAudioTracks().forEach(t => { t.enabled = !t.enabled; }); setIsMicMuted(!isMicMuted); } }} className={`w-12 h-12 rounded-full border flex items-center justify-center cursor-pointer active:scale-90 ${isMicMuted ? 'bg-rose-600/20 border-rose-500 text-rose-400' : 'bg-white/10 border-white/10 text-white'}`}>{isMicMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}</button>
-                      {callType === 'video' && <button onClick={() => { if (localStream) { localStream.getVideoTracks().forEach(t => { t.enabled = !t.enabled; }); setIsCameraOff(!isCameraOff); } }} className={`w-12 h-12 rounded-full border flex items-center justify-center cursor-pointer active:scale-90 ${isCameraOff ? 'bg-rose-600/20 border-rose-500 text-rose-400' : 'bg-white/10 border-white/10 text-white'}`}>{isCameraOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}</button>}
-                    </>
-                  )}
-                  <button onClick={endActiveCall} className="w-14 h-14 rounded-full bg-rose-600 text-white flex items-center justify-center cursor-pointer active:scale-90 shadow-lg shadow-rose-600/30"><PhoneOff className="w-6 h-6" /></button>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -3921,7 +3477,7 @@ export const Chat: React.FC = () => {
           >
             
             {activeTab === 'global' && (
-              <div className={`flex flex-row items-center justify-between gap-2 pb-2.5 border-b mb-2.5 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+              <div className="relative z-30 flex flex-row items-center justify-between gap-2 pb-2.5 border-b mb-2.5 border-white/[0.06] light-mode:border-slate-100">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 flex-shrink-0 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-base">
                     💬
@@ -3953,7 +3509,7 @@ export const Chat: React.FC = () => {
             )}
 
             {activeTab === 'dm' && selectedDmUser && (
-              <div className={`flex flex-row items-center justify-between gap-2 pb-2.5 border-b mb-2.5 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+              <div className={`relative z-30 flex flex-row items-center justify-between gap-2 pb-2.5 border-b mb-2.5 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <button
                     onClick={() => {
@@ -3993,25 +3549,6 @@ export const Chat: React.FC = () => {
 
                 {/* Advanced Action Bar */}
                 <div className="flex items-center gap-1.5 justify-end relative">
-                  {/* Call Actions */}
-                  <button
-                    onClick={() => startWebRtcCall('voice')}
-                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
-                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
-                    }`}
-                    title="Start voice call"
-                  >
-                    <Phone className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => startWebRtcCall('video')}
-                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
-                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
-                    }`}
-                    title="Start video call"
-                  >
-                    <Video className="w-4 h-4" />
-                  </button>
 
                   {/* Dropdown Menu Toggle for other settings */}
                   <div className="relative flex items-center">
@@ -5061,178 +4598,7 @@ export const Chat: React.FC = () => {
         </div>
       )}
 
-      {/* WebRTC Video/Voice calling overlay */}
-      {callState !== 'idle' && (
-        <div className="fixed inset-0 z-50 bg-[#07070A]/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-white text-center">
-          {/* Animated Glowing Ring Backdrop */}
-          <div className="absolute w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-75" />
 
-          {/* Caller/Recipient Profile Section */}
-          <div className="relative z-10 max-w-sm w-full flex flex-col items-center gap-6 flex-1 justify-center">
-            
-            {/* Call State Title */}
-            <div className="space-y-1">
-              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
-                {callType === 'video' ? '📽️ Secure Video Call' : '📞 Secure Audio Call'}
-              </span>
-              <h2 className="text-xl font-black text-white">
-                {callState === 'incoming' ? 'Incoming request...' : callState === 'calling' ? 'Calling classmate...' : 'Connected'}
-              </h2>
-            </div>
-
-            {/* Avatar & Video Elements */}
-            <div className="relative w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-slate-900/60 flex items-center justify-center">
-              
-              {/* Remote Video Stream (Main screen when connected and type is video) */}
-              {callState === 'connected' && callType === 'video' && remoteStream ? (
-                <video 
-                  ref={remoteVideoRef} 
-                  autoPlay 
-                  playsInline 
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                /* Avatar display for incoming, calling or voice call */
-                <div className="flex flex-col items-center gap-3">
-                  {/* Hidden audio tag for voice call audio playback */}
-                  {callState === 'connected' && callType === 'voice' && remoteStream && (
-                    <audio
-                      ref={(el) => {
-                        if (el) el.srcObject = remoteStream;
-                      }}
-                      autoPlay
-                      playsInline
-                      style={{ display: 'none' }}
-                    />
-                  )}
-                  <div className="relative flex items-center justify-center">
-                    {/* Concentric Pulsing Audio Circles */}
-                    <div className="absolute w-36 h-36 rounded-full border-2 border-indigo-500/30 animate-ping-slow pointer-events-none" />
-                    <div className="absolute w-44 h-44 rounded-full border border-purple-500/20 animate-ping-slow pointer-events-none" style={{ animationDelay: '1.2s' }} />
-                    <div className="absolute w-52 h-52 rounded-full border border-indigo-500/10 animate-ping-slow pointer-events-none" style={{ animationDelay: '2.4s' }} />
-
-                    {renderAvatar(callerProfile?.photoURL || '', "w-28 h-28 text-4xl border-4 border-indigo-500/40 relative z-10 animate-pulse")}
-                    <span className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-indigo-600 border-2 border-slate-950 flex items-center justify-center text-[10px] z-20">
-                      {callType === 'video' ? '📽️' : '📞'}
-                    </span>
-                  </div>
-                  <div className="text-center mt-2">
-                    <h3 className="font-extrabold text-sm">{callerProfile?.displayName || 'Classmate'}</h3>
-                    <p className="text-[10px] text-slate-400">P2P Encrypted Signal</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Local Video Preview (Mini window in bottom-right corner when connected and type is video) */}
-              {callState === 'connected' && callType === 'video' && localStream && (
-                <div className="absolute bottom-3 right-3 w-20 h-28 sm:w-24 sm:h-36 rounded-2xl overflow-hidden border border-white/20 shadow-lg bg-black/60">
-                  {!isCameraOff ? (
-                    <video 
-                      ref={localVideoRef} 
-                      autoPlay 
-                      playsInline 
-                      muted 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-slate-900 text-[10px] text-slate-505 font-bold">Cam Off</div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Subtext info */}
-            {callState === 'calling' && (
-              <p className="text-[10px] font-bold text-slate-500 italic animate-pulse">Waiting for peer to accept...</p>
-            )}
-
-            {/* Interaction Buttons Container */}
-            <div className="flex flex-col gap-4 w-full mt-4 items-center">
-              
-              {/* Incoming call buttons */}
-              {callState === 'incoming' ? (
-                <div className="flex items-center gap-6 justify-center w-full">
-                  <button
-                    onClick={declineIncomingCall}
-                    className="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-lg shadow-rose-600/30"
-                    title="Decline Call"
-                  >
-                    <PhoneOff className="w-6 h-6" />
-                  </button>
-                  <button
-                    onClick={acceptIncomingCall}
-                    className="w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 shadow-lg shadow-emerald-600/30 animate-bounce"
-                    title="Accept Call"
-                  >
-                    <Phone className="w-6 h-6" />
-                  </button>
-                </div>
-              ) : (
-                /* Outgoing or Connected Call buttons */
-                <div className="flex items-center gap-4 justify-center">
-                  {callState === 'connected' && (
-                    <>
-                      {/* Mic Mute Toggle */}
-                      <button
-                        onClick={() => {
-                          if (localStream) {
-                            localStream.getAudioTracks().forEach(track => {
-                              track.enabled = !track.enabled;
-                            });
-                            setIsMicMuted(!isMicMuted);
-                            info(!isMicMuted ? "Microphone muted" : "Microphone unmuted");
-                          }
-                        }}
-                        className={`w-12 h-12 rounded-full border flex items-center justify-center cursor-pointer transition-all active:scale-90 ${
-                          isMicMuted 
-                            ? 'bg-rose-600/20 border-rose-500 text-rose-400' 
-                            : 'bg-white/10 border-white/10 hover:bg-white/20 text-white'
-                        }`}
-                        title={isMicMuted ? "Unmute Mic" : "Mute Mic"}
-                      >
-                        {isMicMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                      </button>
-
-                      {/* Video Camera Toggle */}
-                      {callType === 'video' && (
-                        <button
-                          onClick={() => {
-                            if (localStream) {
-                              localStream.getVideoTracks().forEach(track => {
-                                track.enabled = !track.enabled;
-                              });
-                              setIsCameraOff(!isCameraOff);
-                              info(!isCameraOff ? "Camera turned off" : "Camera turned on");
-                            }
-                          }}
-                          className={`w-12 h-12 rounded-full border flex items-center justify-center cursor-pointer transition-all active:scale-90 ${
-                            isCameraOff 
-                              ? 'bg-rose-600/20 border-rose-500 text-rose-400' 
-                              : 'bg-white/10 border-white/10 hover:bg-white/20 text-white'
-                        }`}
-                        title={isCameraOff ? "Turn Video On" : "Turn Video Off"}
-                      >
-                        {isCameraOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-                      </button>
-                    )}
-                  </>
-                )}
-
-                  {/* Hang Up Button */}
-                  <button
-                    onClick={endActiveCall}
-                    className="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-lg shadow-rose-600/30"
-                    title="End Call"
-                  >
-                    <PhoneOff className="w-6 h-6" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Visual Theme Picker Modal */}
       {isThemeModalOpen && (
