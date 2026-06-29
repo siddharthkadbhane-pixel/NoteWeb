@@ -622,6 +622,7 @@ export const Chat: React.FC = () => {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const iceCandidatesQueue = useRef<any[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -654,6 +655,29 @@ export const Chat: React.FC = () => {
     window.addEventListener('noteweb-chat-back', handleNativeBack);
     return () => window.removeEventListener('noteweb-chat-back', handleNativeBack);
   }, [activeTab, mobileView, selectedDmUser, navigate]);
+
+  // Stop active media streams and WebRTC connections on page unmount
+  useEffect(() => {
+    return () => {
+      console.log("[WebRTC] Chat component unmounting, cleaning up media streams...");
+      if (pcRef.current) {
+        try { pcRef.current.close(); } catch {}
+        pcRef.current = null;
+      }
+      if (localVideoRef.current && localVideoRef.current.srcObject) {
+        try {
+          const stream = localVideoRef.current.srcObject as MediaStream;
+          stream.getTracks().forEach(t => t.stop());
+        } catch {}
+      }
+      if (remoteVideoRef.current && remoteVideoRef.current.srcObject) {
+        try {
+          const stream = remoteVideoRef.current.srcObject as MediaStream;
+          stream.getTracks().forEach(t => t.stop());
+        } catch {}
+      }
+    };
+  }, []);
 
   // Touch swipe gesture for chat navigation
   const [chatTouchStart, setChatTouchStart] = useState<{ x: number; y: number } | null>(null);
@@ -905,12 +929,13 @@ export const Chat: React.FC = () => {
 
       setDmMessages(messagesList);
 
-      // Mark unread messages as read
+      // Mark unread messages as read only if we are actively viewing this DM chat
+      const isViewingChat = activeTab === 'dm' && (!showMobileUI || mobileView === 'chat');
       const unreadIds = messagesList
         .filter((m: DirectMessage) => m.sender_id === partnerId && !m.is_read)
         .map((m: DirectMessage) => m.id);
 
-      if (unreadIds.length > 0) {
+      if (unreadIds.length > 0 && isViewingChat) {
         // Perform non-blocking database update
         const numIds = unreadIds.map((id: string) => {
           const num = parseInt(id, 10);
@@ -1256,8 +1281,9 @@ export const Chat: React.FC = () => {
                 }
               }
 
-              fetchDmContacts();
-              
+              const isViewingChat = activeTab === 'dm' && (!showMobileUI || mobileView === 'chat');
+              let shouldSkipFetchContacts = false;
+
               if (selectedDmUser) {
                 const partnerId = selectedDmUser.id;
                 if (newRow && (
@@ -1265,7 +1291,14 @@ export const Chat: React.FC = () => {
                   (newRow.sender_id === partnerId && newRow.recipient_id === user?.uid)
                 )) {
                   fetchDmMessages(partnerId);
+                  if (isViewingChat && newRow.sender_id === partnerId) {
+                    shouldSkipFetchContacts = true;
+                  }
                 }
+              }
+
+              if (!shouldSkipFetchContacts) {
+                fetchDmContacts();
               }
             }
           )
@@ -1320,6 +1353,19 @@ export const Chat: React.FC = () => {
                 try {
                   await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
                   setCallState('connected');
+                  
+                  // Flush queued candidates
+                  console.log("[WebRTC] Flushing queued ICE candidates on call:answer...");
+                  while (iceCandidatesQueue.current.length > 0) {
+                    const cand = iceCandidatesQueue.current.shift();
+                    if (cand) {
+                      try {
+                        await pcRef.current.addIceCandidate(new RTCIceCandidate(cand));
+                      } catch (e) {
+                        console.warn("Failed to add queued ICE candidate:", e);
+                      }
+                    }
+                  }
                 } catch (err) {
                   console.error("Failed to set remote call description:", err);
                 }
@@ -1331,11 +1377,16 @@ export const Chat: React.FC = () => {
             { event: 'call:ice-candidate' },
             async (response: any) => {
               const { recipient_id, candidate } = response.payload || {};
-              if (recipient_id === user?.uid && pcRef.current) {
-                try {
-                  await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-                } catch (err) {
-                  console.warn("Failed to add ICE candidate:", err);
+              if (recipient_id === user?.uid) {
+                if (pcRef.current && pcRef.current.remoteDescription) {
+                  try {
+                    await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+                  } catch (err) {
+                    console.warn("Failed to add ICE candidate:", err);
+                  }
+                } else {
+                  console.log("[WebRTC] Queueing incoming ICE candidate...");
+                  iceCandidatesQueue.current.push(candidate);
                 }
               }
             }
@@ -1491,6 +1542,7 @@ export const Chat: React.FC = () => {
     (window as any)._incomingSdpOffer = null;
     (window as any)._incomingCallType = null;
     (window as any)._incomingCallerProfile = null;
+    iceCandidatesQueue.current = []; // Clear candidate queue
   };
 
   // WebRTC Initiator
@@ -1522,7 +1574,13 @@ export const Chat: React.FC = () => {
       setLocalStream(stream);
 
       const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' }
+        ]
       });
       pcRef.current = pc;
 
@@ -1607,7 +1665,13 @@ export const Chat: React.FC = () => {
       setLocalStream(stream);
 
       const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' }
+        ]
       });
       pcRef.current = pc;
 
@@ -1634,6 +1698,19 @@ export const Chat: React.FC = () => {
       };
 
       await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+
+      // Flush queued candidates
+      console.log("[WebRTC] Flushing queued ICE candidates in acceptIncomingCall...");
+      while (iceCandidatesQueue.current.length > 0) {
+        const cand = iceCandidatesQueue.current.shift();
+        if (cand) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(cand));
+          } catch (e) {
+            console.warn("Failed to add queued ICE candidate:", e);
+          }
+        }
+      }
 
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -3197,7 +3274,13 @@ export const Chat: React.FC = () => {
               <button onClick={() => setIsThemeModalOpen(true)} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isLoungeDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
                 <Paintbrush className="w-4 h-4" />
               </button>
-              <button onClick={() => { setActiveTab('dm'); setMobileView('list'); }}
+              <button onClick={() => {
+                setActiveTab('dm');
+                setMobileView('list');
+                if (selectedDmUser) {
+                  fetchDmMessages(selectedDmUser.id);
+                }
+              }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black border cursor-pointer active:scale-95 ${isLoungeDark ? 'border-white/[0.08] text-slate-300 bg-white/[0.03]' : 'border-slate-200 text-slate-600 bg-slate-50'}`}>
                 <MessageCircle className="w-3.5 h-3.5" />
                 DMs
@@ -3623,7 +3706,12 @@ export const Chat: React.FC = () => {
               <span className="truncate">Campus Lounge</span>
             </button>
             <button
-              onClick={() => setActiveTab('dm')}
+              onClick={() => {
+                setActiveTab('dm');
+                if (selectedDmUser) {
+                  fetchDmMessages(selectedDmUser.id);
+                }
+              }}
               className={`flex-1 py-2 px-3 sm:px-6 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
                 activeTab === 'dm' ? 'bg-indigo-600 text-white shadow shadow-indigo-600/10' : 'text-slate-400 hover:text-slate-200'
               }`}
@@ -4997,7 +5085,7 @@ export const Chat: React.FC = () => {
             <div className="relative w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-slate-900/60 flex items-center justify-center">
               
               {/* Remote Video Stream (Main screen when connected and type is video) */}
-              {callState === 'connected' && callType === 'video' && remoteStream && !isCameraOff ? (
+              {callState === 'connected' && callType === 'video' && remoteStream ? (
                 <video 
                   ref={remoteVideoRef} 
                   autoPlay 
@@ -5007,6 +5095,17 @@ export const Chat: React.FC = () => {
               ) : (
                 /* Avatar display for incoming, calling or voice call */
                 <div className="flex flex-col items-center gap-3">
+                  {/* Hidden audio tag for voice call audio playback */}
+                  {callState === 'connected' && callType === 'voice' && remoteStream && (
+                    <audio
+                      ref={(el) => {
+                        if (el) el.srcObject = remoteStream;
+                      }}
+                      autoPlay
+                      playsInline
+                      style={{ display: 'none' }}
+                    />
+                  )}
                   <div className="relative flex items-center justify-center">
                     {/* Concentric Pulsing Audio Circles */}
                     <div className="absolute w-36 h-36 rounded-full border-2 border-indigo-500/30 animate-ping-slow pointer-events-none" />
