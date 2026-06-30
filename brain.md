@@ -197,10 +197,12 @@ Uses **HashRouter** (required for GitHub Pages + Electron compatibility).
 - Caches loaded branches, categories, and notes locally in `localStorage` as a fallback.
 - Renders a prominent **vibrant red glassmorphic banner** when offline: *"Offline Mode Active — Browsing Cached Library"*.
 
-### 6. Real-time Chat & Typing Indicators (`pages/Chat.tsx`)
+### 6. Real-time Chat, Typing Indicators & E2EE Security (`pages/Chat.tsx`)
 - Supabase Realtime subscriptions for Campus Lounge chat and private messages.
 - User presence tracked via `services/presence.ts`.
 - **Typing Indicators**: Emits and listens to `typing` events on channels, displaying an animated bouncing dots indicator (*"Classmate is typing..."*) for a dynamic feel.
+- **Client-Side End-to-End Encryption (E2EE)**: Secure zero-trust message encryption using standard browser Web Crypto Subtle API (AES-GCM-256 with 256-bit PBKDF2 keys derived client-side). Encrypted payloads are stored as hexadecimal ciphertext blocks. Decryption keys are stored in tab-only `sessionStorage` and never leak to servers.
+- **Adaptive Wallpaper Contrast System**: Automatically classifies solid hex background colors (using standard HSP equation with threshold 180), preset assets (e.g. bubblegum, autumn, pastel), and custom URLs to dynamically adjust text styles, glow, borders, logo overlays (`NoteWebLogo`), and mobile input templates (`MobileInputBar`) for high legibility on any light, dark, or textured background.
 - Notifications: native (`@capacitor/local-notifications`) on Android; Web Notifications API on browser.
 
 ### 7. Navigation (`components/Navigation/Sidebar.tsx`)
@@ -329,4 +331,4 @@ Key tables:
 
 ---
 
-*Last updated: 2026-06-26*
+*Last updated: 2026-06-30*

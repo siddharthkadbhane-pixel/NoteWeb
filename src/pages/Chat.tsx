@@ -11,7 +11,9 @@ import { motion } from 'framer-motion';
 import { moderateChatMessage } from '../services/gemini';
 import { GlassPanel } from '../components/ui/GlassPanel';
 import { subscribeToPresenceChanges } from '../services/presence';
+import { NoteWebLogo } from '../components/Navigation/Sidebar';
 import type { OnlineUser } from '../services/presence';
+import { encryptMessage, decryptMessage, isMessageEncrypted } from '../utils/crypto';
 
 import { 
   Send, 
@@ -483,6 +485,38 @@ const MobileInputBar: React.FC<MobileInputBarProps> = ({
   );
 };
 
+const isLightWallpaper = (wallpaperKey: string | undefined): boolean => {
+  if (!wallpaperKey) return false;
+  const key = wallpaperKey.toLowerCase();
+  
+  // Check known light wallpapers
+  if (key === 'whatsapp-doodle-light') return true;
+  if (key.includes('bubblegum')) return true;
+  if (key.includes('pastel_dream')) return true;
+  if (key.includes('autumn')) return true;
+  
+  // Check solid hex colors
+  if (key.startsWith('#')) {
+    const hex = key.replace('#', '');
+    if (hex.length === 3 || hex.length === 6) {
+      const r = parseInt(hex.length === 3 ? hex[0] + hex[0] : hex.substring(0, 2), 16);
+      const g = parseInt(hex.length === 3 ? hex[1] + hex[1] : hex.substring(2, 4), 16);
+      const b = parseInt(hex.length === 3 ? hex[2] + hex[2] : hex.substring(4, 6), 16);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return brightness > 150;
+    }
+  }
+  
+  // Custom URLs: check for light keywords
+  if (key.startsWith('http') || key.startsWith('data:')) {
+    if (key.includes('light') || key.includes('white') || key.includes('bright') || key.includes('pastel') || key.includes('bubblegum')) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 export const Chat: React.FC = () => {
   const { user, userProfile, isGuest, updatePoints } = useAuth();
   const { isDark } = useTheme();
@@ -603,6 +637,139 @@ export const Chat: React.FC = () => {
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [chatWallpapers, setChatWallpapers] = useState<Record<string, string>>(() => JSON.parse(localStorage.getItem('noteweb-chat-wallpapers') || '{}'));
   const [customWpUrl, setCustomWpUrl] = useState('');
+
+  // End-to-End Encryption (E2EE) States
+  const [isE2eeModalOpen, setIsE2eeModalOpen] = useState(false);
+  const [roomKeys, setRoomKeys] = useState<Record<string, string>>(() => {
+    try {
+      const saved = sessionStorage.getItem('noteweb-e2ee-keys');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [e2eeEnabledRooms, setE2eeEnabledRooms] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = sessionStorage.getItem('noteweb-e2ee-enabled');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [decryptedCache, setDecryptedCache] = useState<Record<string, string>>({});
+
+  const currentRoomId = activeTab === 'dm' && selectedDmUser ? selectedDmUser.id : 'global';
+
+  const setRoomE2eeKey = (roomId: string, key: string) => {
+    const updated = { ...roomKeys, [roomId]: key };
+    setRoomKeys(updated);
+    try { sessionStorage.setItem('noteweb-e2ee-keys', JSON.stringify(updated)); } catch {}
+  };
+
+  const toggleRoomE2ee = (roomId: string, enabled: boolean) => {
+    const updated = { ...e2eeEnabledRooms, [roomId]: enabled };
+    setE2eeEnabledRooms(updated);
+    try { sessionStorage.setItem('noteweb-e2ee-enabled', JSON.stringify(updated)); } catch {}
+  };
+
+  // E2EE Decryption effect
+  useEffect(() => {
+    let active = true;
+    const decryptAll = async () => {
+      const activeKey = roomKeys[currentRoomId];
+      const isEnabled = e2eeEnabledRooms[currentRoomId];
+      const newCache: Record<string, string> = {};
+
+      const msgsToDecrypt = activeTab === 'global' ? messages : dmMessages;
+
+      for (const msg of msgsToDecrypt) {
+        const msgId = msg.id;
+        const rawContent = activeTab === 'global' ? msg.content : msg.message;
+
+        if (isMessageEncrypted(rawContent)) {
+          if (isEnabled && activeKey) {
+            try {
+              const decrypted = await decryptMessage(rawContent, activeKey);
+              newCache[msgId] = decrypted;
+            } catch (err) {
+              newCache[msgId] = '[DECRYPTION_FAILED]';
+            }
+          } else {
+            newCache[msgId] = '[DECRYPTION_FAILED]';
+          }
+        }
+      }
+
+      if (active) {
+        setDecryptedCache(prev => ({ ...prev, ...newCache }));
+      }
+    };
+
+    decryptAll();
+    return () => {
+      active = false;
+    };
+  }, [messages, dmMessages, roomKeys[currentRoomId], e2eeEnabledRooms[currentRoomId], currentRoomId, activeTab]);
+
+  const renderMessageContent = (msgId: string, rawContent: string) => {
+    if (!isMessageEncrypted(rawContent)) {
+      return <span>{rawContent}</span>;
+    }
+    
+    const decrypted = decryptedCache[msgId];
+    if (decrypted && decrypted !== '[DECRYPTION_FAILED]') {
+      return (
+        <span className="relative">
+          <span>{decrypted}</span>
+          <span className="inline-flex items-center gap-0.5 text-[8px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1 py-0.2 rounded-md ml-1.5 align-middle select-none">
+            🔒 Decrypted
+          </span>
+        </span>
+      );
+    }
+    
+    return (
+      <div className="flex flex-col gap-1.5 p-2 rounded-xl bg-black/35 border border-white/5 text-slate-400 text-left my-0.5 max-w-xs">
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-300">
+          <Lock className="w-3 h-3 text-indigo-400" />
+          <span>Encrypted Message</span>
+        </div>
+        <p className="text-[9px] text-slate-500 leading-tight">Secure client-side lock. Enter the passphrase to read.</p>
+        <button 
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsE2eeModalOpen(true);
+          }}
+          className="w-full py-1 text-center bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 font-extrabold text-[9px] rounded-lg transition-all active:scale-95 border border-indigo-500/30 cursor-pointer"
+        >
+          Decrypt Chat
+        </button>
+      </div>
+    );
+  };
+
+  // Dynamic Wallpaper Properties & Helpers
+  const getWallpaperProperties = () => {
+    const roomId = activeTab === 'dm' && selectedDmUser ? selectedDmUser.id : 'global';
+    const wpKey = chatWallpapers[roomId];
+    
+    if (!wpKey || wpKey === 'default') {
+      return {
+        isLight: !isDark,
+        isTextured: false,
+        wpKey: 'default'
+      };
+    }
+    
+    return {
+      isLight: isLightWallpaper(wpKey),
+      isTextured: wpKey.includes('doodle') || wpKey.includes('tech') || wpKey.includes('matrix') || wpKey.includes('zen') || wpKey.includes('geometric') || wpKey.includes('mist'),
+      wpKey
+    };
+  };
+
+  const wpProps = getWallpaperProperties();
+
+  const getWpTextClass = (lightClass: string, darkClass: string) => {
+    return wpProps.isLight ? lightClass : darkClass;
+  };
 
 
 
@@ -861,7 +1028,7 @@ export const Chat: React.FC = () => {
   };
 
   // Fetch DM messages for the selected user
-  const fetchDmMessages = async (partnerId: string) => {
+  const fetchDmMessages = async (partnerId: string, forceMarkAsRead = false) => {
     if (!user) return;
     try {
       const { data, error } = await supabase
@@ -891,7 +1058,7 @@ export const Chat: React.FC = () => {
       setDmMessages(messagesList);
 
       // Mark unread messages as read only if we are actively viewing this DM chat
-      const isViewingChat = activeTab === 'dm' && (!showMobileUI || mobileView === 'chat');
+      const isViewingChat = forceMarkAsRead || (activeTab === 'dm' && (!showMobileUI || mobileView === 'chat'));
       const unreadIds = messagesList
         .filter((m: DirectMessage) => m.sender_id === partnerId && !m.is_read)
         .map((m: DirectMessage) => m.id);
@@ -903,13 +1070,23 @@ export const Chat: React.FC = () => {
           return isNaN(num) ? id : num;
         });
 
-        const query = supabase.from('direct_messages').update({ is_read: true });
+        const query = supabase
+          .from('direct_messages')
+          .update({ is_read: true })
+          .eq('recipient_id', user.uid);
         
+        let result;
         // Handle both UUID/bigint support
         if (typeof numIds[0] === 'number') {
-          await query.in('id', numIds);
+          result = await query.in('id', numIds);
         } else {
-          await query.in('id', unreadIds);
+          result = await query.in('id', unreadIds);
+        }
+
+        if (result?.error) {
+          console.error("[NoteWeb ReadMark] Error marking messages as read in DB:", result.error);
+        } else {
+          console.log("[NoteWeb ReadMark] Successfully marked messages as read in DB");
         }
 
         // Refresh contacts list to reflect zero unread badge
@@ -925,7 +1102,7 @@ export const Chat: React.FC = () => {
     setSelectedDmUser(profile);
     setMobileView('chat');
     setDmContacts(prev => prev.map(c => c.uid === profile.id ? { ...c, unreadCount: 0 } : c));
-    fetchDmMessages(profile.id);
+    fetchDmMessages(profile.id, true);
   };
 
   // Dynamic Wallpaper Animation Particles
@@ -1218,7 +1395,6 @@ export const Chat: React.FC = () => {
               }
 
               const isViewingChat = activeTab === 'dm' && (!showMobileUI || mobileView === 'chat');
-              let shouldSkipFetchContacts = false;
 
               if (selectedDmUser) {
                 const partnerId = selectedDmUser.id;
@@ -1226,16 +1402,12 @@ export const Chat: React.FC = () => {
                   (newRow.sender_id === user?.uid && newRow.recipient_id === partnerId) ||
                   (newRow.sender_id === partnerId && newRow.recipient_id === user?.uid)
                 )) {
-                  fetchDmMessages(partnerId);
-                  if (isViewingChat && newRow.sender_id === partnerId) {
-                    shouldSkipFetchContacts = true;
-                  }
+                  fetchDmMessages(partnerId, isViewingChat);
                 }
               }
 
-              if (!shouldSkipFetchContacts) {
-                fetchDmContacts();
-              }
+              // Always fetch contacts to ensure latest unread counts and message previews are synced
+              fetchDmContacts();
             }
           )
           .on(
@@ -1271,7 +1443,8 @@ export const Chat: React.FC = () => {
       fetchMessages();
       fetchDmContacts();
       if (selectedDmUser) {
-        fetchDmMessages(selectedDmUser.id);
+        const isViewingChat = activeTab === 'dm' && (!showMobileUI || mobileView === 'chat');
+        fetchDmMessages(selectedDmUser.id, isViewingChat);
       }
     }, 6000);
 
@@ -1767,6 +1940,14 @@ export const Chat: React.FC = () => {
     const inputContent = inputText.trim();
 
     try {
+      // E2EE Encryption
+      const activeKey = roomKeys[currentRoomId];
+      const isEnabled = e2eeEnabledRooms[currentRoomId];
+      let finalContent = inputContent;
+      if (isEnabled && activeKey) {
+        finalContent = await encryptMessage(inputContent, activeKey);
+      }
+
       if (activeTab === 'global') {
         // Global message flow
         const tempMsgId = `broadcast-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
@@ -1776,7 +1957,7 @@ export const Chat: React.FC = () => {
           sender_name: userProfile.displayName || 'Student',
           sender_avatar: userProfile.photoURL || '',
           sender_branch: userProfile.branch || 'cse',
-          content: inputContent,
+          content: finalContent,
           image_url: selectedImage || undefined,
           created_at: new Date().toISOString(),
         };
@@ -1832,18 +2013,18 @@ export const Chat: React.FC = () => {
               sender_name: userProfile.displayName || 'Student',
               sender_avatar: userProfile.photoURL || '',
               sender_branch: userProfile.branch || 'cse',
-              message: inputContent,
+              message: finalContent,
               photo_url: selectedImage || null,
               created_at: msgPayload.created_at,
             };
-
+ 
             const { data } = await supabase.from('chats').insert([dbPayload]).select();
             
             if (data && data[0]) {
               const realId = String(data[0].id);
               setMessages((prev) => prev.map((m) => m.id === tempMsgId ? { ...m, id: realId } : m));
               runAiModeration(realId, inputContent, 'chats', 'message');
-
+ 
               // Dispatch Push Notification to all other users
               try {
                 const apiBase = import.meta.env.VITE_AI_API_URL || 'http://localhost:5000/api/summarize';
@@ -1855,7 +2036,7 @@ export const Chat: React.FC = () => {
                   body: JSON.stringify({
                     sender_id: user.uid,
                     sender_name: userProfile.displayName || 'Classmate',
-                    message: inputContent,
+                    message: finalContent,
                     is_global: true
                   })
                 }).catch(e => console.warn('[Push Dispatch] Error calling notification service:', e));
@@ -1879,7 +2060,7 @@ export const Chat: React.FC = () => {
           id: tempDmId,
           sender_id: user.uid,
           recipient_id: targetId,
-          message: inputContent,
+          message: finalContent,
           photo_url: selectedImage || undefined,
           created_at: new Date().toISOString(),
           is_read: false,
@@ -1911,7 +2092,7 @@ export const Chat: React.FC = () => {
         const dbPayload = {
           sender_id: user.uid,
           recipient_id: targetId,
-          message: inputContent,
+          message: finalContent,
           photo_url: dmPayload.photo_url || null,
           created_at: dmPayload.created_at,
           is_read: false,
@@ -1943,7 +2124,7 @@ export const Chat: React.FC = () => {
               body: JSON.stringify({
                 sender_id: user.uid,
                 sender_name: userProfile.displayName || 'Classmate',
-                message: inputContent,
+                message: finalContent,
                 recipient_id: targetId,
                 is_global: false
               })
@@ -1977,7 +2158,8 @@ export const Chat: React.FC = () => {
             };
             
             await supabase.from('direct_messages').insert([replyPayload]);
-            fetchDmMessages(targetId);
+            const isViewingChat = activeTab === 'dm' && (!showMobileUI || mobileView === 'chat');
+            fetchDmMessages(targetId, isViewingChat);
             fetchDmContacts();
             
             info(`💬 Message received from ${selectedDmUser.displayName}!`);
@@ -2086,14 +2268,22 @@ export const Chat: React.FC = () => {
       const table = activeTab === 'global' ? 'chats' : 'direct_messages';
       const updateField = activeTab === 'global' ? 'message' : 'message';
 
+      const activeKey = roomKeys[currentRoomId];
+      const isEnabled = e2eeEnabledRooms[currentRoomId];
+      let finalContent = newContent.trim();
+
+      if (isEnabled && activeKey) {
+        finalContent = await encryptMessage(finalContent, activeKey);
+      }
+
       await supabase
         .from(table)
-        .update({ [updateField]: newContent.trim() })
+        .update({ [updateField]: finalContent })
         .eq('id', msgId);
 
       if (activeTab === 'global') {
         setMessages((prev) =>
-          prev.map((m) => m.id === msgId ? { ...m, content: newContent.trim() } : m)
+          prev.map((m) => m.id === msgId ? { ...m, content: finalContent } : m)
         );
         // Broadcast edits
         if (channelRef.current) {
@@ -2101,13 +2291,13 @@ export const Chat: React.FC = () => {
             await channelRef.current.send({
               type: 'broadcast',
               event: 'edit-message',
-              payload: { id: msgId, content: newContent.trim() }
+              payload: { id: msgId, content: finalContent }
             });
           } catch {}
         }
       } else {
         setDmMessages((prev) =>
-          prev.map((m) => m.id === msgId ? { ...m, message: newContent.trim() } : m)
+          prev.map((m) => m.id === msgId ? { ...m, message: finalContent } : m)
         );
         fetchDmContacts();
       }
@@ -2181,7 +2371,7 @@ export const Chat: React.FC = () => {
     setSearchQuery('');
     setSearchResults([]);
     setMobileView('chat');
-    fetchDmMessages(peerProfile.id);
+    fetchDmMessages(peerProfile.id, true);
   };
 
   // View once countdown trigger
@@ -2485,7 +2675,7 @@ export const Chat: React.FC = () => {
                   {activeTab === 'global' && (
                     <span
                       onClick={() => senderUid && navigate(`/profile/${senderUid}`)}
-                      className={`text-[10px] font-extrabold px-1 cursor-pointer ${isCurrentThemeDark() ? 'text-slate-300' : 'text-slate-600'}`}
+                      className={`text-[10px] font-extrabold px-1 cursor-pointer ${getWpTextClass('text-slate-700 font-extrabold drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]', 'text-slate-300')}`}
                     >
                       {senderName} {getBranchIcon(senderBranch || 'cse')}
                     </span>
@@ -2530,7 +2720,7 @@ export const Chat: React.FC = () => {
                       </div>
                     ) : (
                       <>
-                        {messageContent}
+                        {renderMessageContent(msg.id, messageContent)}
 
                         {/* View Once */}
                         {msg.is_view_once && imageUrl && (
@@ -2627,7 +2817,7 @@ export const Chat: React.FC = () => {
 
                   {/* Message time + actions row */}
                   <div className={`flex items-center gap-2 px-1 mt-0.5 ${isMe ? 'flex-row-reverse' : ''}`}>
-                    <span className="text-[9px] text-slate-500 font-bold flex items-center">
+                    <span className={`text-[9px] font-bold flex items-center ${getWpTextClass('text-slate-700', 'text-slate-500')}`}>
                       <span>{formatTime(msg.created_at)}</span>
                       {activeTab === 'dm' && isMe && (
                         <span className={`ml-1 font-bold ${msg.is_read ? 'text-[#00F2FE] drop-shadow-[0_0_4px_rgba(0,242,254,0.6)]' : 'text-slate-500'}`}>
@@ -2649,7 +2839,11 @@ export const Chat: React.FC = () => {
                 {/* Actions for own messages */}
                 {isMe && (
                   <div className="flex flex-col gap-1.5 flex-shrink-0 self-end mb-1 opacity-60">
-                    <button onClick={() => { setEditingMsgId(msg.id); setEditingText(messageContent); }} className="p-1 rounded-lg bg-white/10 text-slate-400 cursor-pointer active:bg-indigo-600 active:text-white">
+                    <button onClick={() => { 
+                      setEditingMsgId(msg.id); 
+                      const decrypted = decryptedCache[msg.id];
+                      setEditingText((isMessageEncrypted(messageContent) && decrypted && decrypted !== '[DECRYPTION_FAILED]') ? decrypted : messageContent); 
+                    }} className="p-1 rounded-lg bg-white/10 text-slate-400 cursor-pointer active:bg-indigo-600 active:text-white">
                       <Edit className="w-3.5 h-3.5" />
                     </button>
                     <button onClick={() => handleDeleteChat(msg.id)} className="p-1 rounded-lg bg-rose-500/10 text-rose-400 cursor-pointer active:bg-rose-500 active:text-white">
@@ -2850,21 +3044,54 @@ export const Chat: React.FC = () => {
         <div className={`fixed inset-0 flex flex-col ${isLoungeDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`} style={{ ...getThemeStyle(), backgroundSize: 'cover', backgroundPosition: 'center' }}>
 
           {/* Header */}
-          <div className={`relative z-30 flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b ${isLoungeDark ? 'border-white/[0.06] bg-[#0D0D14]/80 text-white' : 'border-slate-200 bg-white/90 text-slate-800'}`}
+          <div className={`relative z-30 flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b transition-all ${
+            wpProps.wpKey && wpProps.wpKey !== 'default'
+              ? wpProps.isLight ? 'border-black/5 bg-white/50 text-slate-800 shadow-sm' : 'border-white/5 bg-black/25 text-white'
+              : isLoungeDark ? 'border-white/[0.06] bg-[#0D0D14]/80 text-white' : 'border-slate-200 bg-white/90 text-slate-800'
+          }`}
             style={{ backdropFilter: 'blur(12px)', paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
             <div className="flex items-center gap-2">
               <button onClick={() => navigate('/')}
-                className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isLoungeDark ? 'border-white/10 bg-white/[0.04] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${
+                  getWpTextClass(
+                    'border-black/10 bg-white/40 text-slate-700 hover:text-black',
+                    'border-white/10 bg-white/[0.04] text-slate-300 hover:text-white'
+                  )
+                }`}>
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <div className="w-8 h-8 rounded-full bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-base flex-shrink-0">💬</div>
+              {/* NoteWeb logo in Lounge Header */}
+              <NoteWebLogo sizeClass="w-8 h-8" isLight={wpProps.isLight} />
               <div>
-                <h1 className={`text-xs font-black leading-none ${isLoungeDark ? 'text-white' : 'text-slate-800'}`}>Campus Lounge</h1>
-                <span className="text-[9px] text-slate-500 font-bold block mt-0.5">{onlineUsers.length} online</span>
+                <h1 className={`text-xs font-black leading-none ${getWpTextClass('text-slate-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]', 'text-white')}`}>Campus Lounge</h1>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className={`text-[9px] font-bold block leading-none ${getWpTextClass('text-slate-600', 'text-slate-400')}`}>{onlineUsers.length} online</span>
+                  {e2eeEnabledRooms[currentRoomId] && roomKeys[currentRoomId] && (
+                    <span className="inline-flex items-center text-[7px] font-black text-emerald-450 bg-emerald-500/10 border border-emerald-500/25 px-0.5 py-0.2 rounded leading-none select-none">
+                      🔒 E2EE
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => setIsThemeModalOpen(true)} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isLoungeDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+              {/* E2EE Lock Settings trigger */}
+              <button onClick={() => setIsE2eeModalOpen(true)} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${
+                e2eeEnabledRooms[currentRoomId] && roomKeys[currentRoomId]
+                  ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
+                  : getWpTextClass(
+                      'border-black/10 bg-white/40 text-slate-600 hover:text-slate-900',
+                      'border-white/10 text-slate-400'
+                    )
+              }`}>
+                <Lock className="w-4 h-4" />
+              </button>
+              <button onClick={() => setIsThemeModalOpen(true)} className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${
+                getWpTextClass(
+                  'border-black/10 bg-white/40 text-slate-600 hover:text-slate-900',
+                  'border-white/10 text-slate-400'
+                )
+              }`}>
                 <Paintbrush className="w-4 h-4" />
               </button>
               <button onClick={() => {
@@ -2874,7 +3101,12 @@ export const Chat: React.FC = () => {
                   fetchDmMessages(selectedDmUser.id);
                 }
               }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black border cursor-pointer active:scale-95 ${isLoungeDark ? 'border-white/[0.08] text-slate-300 bg-white/[0.03]' : 'border-slate-200 text-slate-600 bg-slate-50'}`}>
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black border cursor-pointer active:scale-95 ${
+                  getWpTextClass(
+                    'border-black/10 text-slate-700 bg-white/40',
+                    'border-white/[0.08] text-slate-300 bg-white/[0.03]'
+                  )
+                }`}>
                 <MessageCircle className="w-3.5 h-3.5" />
                 DMs
                 {dmContacts.reduce((a, c) => a + c.unreadCount, 0) > 0 && <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
@@ -2883,7 +3115,11 @@ export const Chat: React.FC = () => {
           </div>
 
           {/* Lounge notice */}
-          <div className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 border-b text-[10px] ${isLoungeDark ? 'border-white/[0.04] text-rose-400/70 bg-rose-500/5' : 'border-rose-100 text-rose-600 bg-rose-50'}`}>
+          <div className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 border-b text-[10px] transition-all ${
+            wpProps.wpKey && wpProps.wpKey !== 'default'
+              ? wpProps.isLight ? 'border-black/5 text-rose-800 bg-rose-500/10' : 'border-white/5 text-rose-300 bg-rose-950/20'
+              : isLoungeDark ? 'border-white/[0.04] text-rose-400/70 bg-rose-500/5' : 'border-rose-100 text-rose-600 bg-rose-50'
+          }`}>
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
             <span>Messages expire in 7 days · No PDFs · Be respectful</span>
           </div>
@@ -2894,7 +3130,7 @@ export const Chat: React.FC = () => {
             style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
           >
             {/* Wallpaper Animation Particles */}
-            {renderWallpaperParticles(chatThemes['global'] || 'Default')}
+            {renderWallpaperParticles((wpProps.wpKey && wpProps.wpKey !== 'default') ? wpProps.wpKey : (chatThemes['global'] || 'Default'))}
 
             {isLoading ? (
               <div className="h-full flex flex-col justify-end gap-4 p-4 animate-pulse">
@@ -2931,7 +3167,7 @@ export const Chat: React.FC = () => {
             isGuest={isGuest}
             setIsNoteShareModalOpen={setIsNoteShareModalOpen}
             setIsPollModalOpen={setIsPollModalOpen}
-            isDarkTheme={isLoungeDark}
+            isDarkTheme={wpProps.wpKey && wpProps.wpKey !== 'default' ? !wpProps.isLight : isLoungeDark}
             user={user}
           />
 
@@ -2980,11 +3216,20 @@ export const Chat: React.FC = () => {
       <div className={`fixed inset-0 flex flex-col ${isDmChatDark ? 'bg-[#0A0A10] text-[#E2E8F0]' : 'bg-[#F3F5FA] text-slate-800'}`} style={{ ...getThemeStyle(), backgroundSize: 'cover', backgroundPosition: 'center' }}>
 
         {/* DM Chat Header */}
-        <div className={`relative z-30 flex-shrink-0 flex items-center gap-2 px-3 pb-3 border-b ${isDmChatDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'}`}
+        <div className={`relative z-30 flex-shrink-0 flex items-center gap-2 px-3 pb-3 border-b transition-all ${
+          wpProps.wpKey && wpProps.wpKey !== 'default'
+            ? wpProps.isLight ? 'border-black/5 bg-white/50 text-slate-800 shadow-sm' : 'border-white/5 bg-black/25 text-white'
+            : isDmChatDark ? 'border-white/[0.06] bg-[#0D0D14]/80' : 'border-slate-200 bg-white/90'
+        }`}
           style={{ backdropFilter: 'blur(12px)', paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
           {/* Back button */}
           <button onClick={() => { setMobileView('list'); setSelectedDmUser(null); navigate('/chat', { replace: true }); }}
-            className={`w-9 h-9 flex-shrink-0 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${isDmChatDark ? 'border-white/10 bg-white/[0.04] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+            className={`w-9 h-9 flex-shrink-0 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${
+              getWpTextClass(
+                'border-black/10 bg-white/40 text-slate-700 hover:text-black',
+                'border-white/10 bg-white/[0.04] text-slate-300 hover:text-white'
+              )
+            }`}>
             <ChevronLeft className="w-5 h-5" />
           </button>
 
@@ -2993,19 +3238,23 @@ export const Chat: React.FC = () => {
             <div className="relative flex-shrink-0">
               {renderAvatar(selectedDmUser?.photoURL || '', 'w-9 h-9 text-lg')}
               {onlineUsers.some(u => u.uid === selectedDmUser?.id) && (
-                <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 ${isDmChatDark ? 'border-[#0D0D14]' : 'border-white'}`} />
+                <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 ${
+                  wpProps.wpKey && wpProps.wpKey !== 'default'
+                    ? wpProps.isLight ? 'border-white' : 'border-[#0D0D14]'
+                    : isDmChatDark ? 'border-[#0D0D14]' : 'border-white'
+                }`} />
               )}
             </div>
             <div className="min-w-0">
-              <h2 className={`text-sm font-black leading-none truncate ${isDmChatDark ? 'text-white' : 'text-slate-800'}`}>
+              <h2 className={`text-sm font-black leading-none truncate ${getWpTextClass('text-slate-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]', 'text-white')}`}>
                 {selectedDmUser?.displayName} <span className="text-sm">{getBranchIcon(selectedDmUser?.branch || 'cse')}</span>
               </h2>
-              <span className="text-[10px] mt-0.5 block">
+              <span className={`text-[10px] mt-0.5 block ${getWpTextClass('text-slate-600', 'text-slate-400')}`}>
                 {partnerIsTyping
-                  ? <span className="text-indigo-400 font-bold italic animate-pulse">typing...</span>
+                  ? <span className="text-indigo-600 dark:text-indigo-400 font-bold italic animate-pulse">typing...</span>
                   : onlineUsers.some(u => u.uid === selectedDmUser?.id)
-                    ? <span className={`${isDmChatDark ? 'text-emerald-400' : 'text-emerald-600'} font-bold`}>● Active now</span>
-                    : <span className="text-slate-500">@{selectedDmUser?.username}</span>
+                    ? <span className={`${getWpTextClass('text-emerald-600', 'text-emerald-400')} font-bold`}>● Active now</span>
+                    : <span className={getWpTextClass('text-slate-700', 'text-slate-400')}>@{selectedDmUser?.username}</span>
                 }
               </span>
             </div>
@@ -3017,7 +3266,14 @@ export const Chat: React.FC = () => {
             {/* Three-dot menu */}
             <div className="relative">
               <button type="button" onClick={() => setShowHeaderMenu(!showHeaderMenu)}
-                className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${showHeaderMenu ? 'border-indigo-500 bg-indigo-600/20 text-indigo-400' : isDmChatDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+                className={`w-8 h-8 rounded-xl border flex items-center justify-center cursor-pointer active:scale-90 ${
+                  showHeaderMenu 
+                    ? 'border-indigo-500 bg-indigo-600/20 text-indigo-400' 
+                    : getWpTextClass(
+                        'border-black/10 text-slate-700 hover:bg-black/5',
+                        'border-white/10 text-slate-400 hover:bg-white/5'
+                      )
+                }`}>
                 <MoreVertical className="w-4 h-4" />
               </button>
               {showHeaderMenu && (
@@ -3026,6 +3282,7 @@ export const Chat: React.FC = () => {
                   <div className={`absolute right-0 top-10 rounded-2xl border p-2 flex flex-col gap-1 z-30 shadow-2xl min-w-[190px] ${isDmChatDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
                     {[
                       { icon: <Paintbrush className="w-4 h-4 text-indigo-400" />, label: 'Personalize Theme', action: () => { setShowHeaderMenu(false); setIsThemeModalOpen(true); } },
+                      { icon: <Lock className="w-4 h-4 text-emerald-400" />, label: e2eeEnabledRooms[currentRoomId] && roomKeys[currentRoomId] ? 'E2EE (Active)' : 'Enable E2EE', action: () => { setShowHeaderMenu(false); setIsE2eeModalOpen(true); } },
                       { icon: <Star className="w-4 h-4 text-amber-400" />, label: 'Starred Messages', action: () => { setShowHeaderMenu(false); setIsStarDrawerOpen(true); } },
                       { icon: <ShieldAlert className="w-4 h-4 text-rose-400" />, label: vanishMode ? 'Disable Vanish' : 'Vanish Mode', action: () => { setShowHeaderMenu(false); setVanishMode(!vanishMode); toastSuccess(!vanishMode ? 'Vanish Mode on' : 'Vanish Mode off'); } },
                       { icon: mutedUids.includes(selectedDmUser?.id || '') ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-rose-400" />, label: mutedUids.includes(selectedDmUser?.id || '') ? 'Unmute' : 'Mute', action: () => { setShowHeaderMenu(false); handleToggleMute(selectedDmUser?.id || ''); } },
@@ -3051,7 +3308,7 @@ export const Chat: React.FC = () => {
           onTouchEnd={handleChatTouchEnd}
         >
           {/* Wallpaper Animation Particles */}
-          {renderWallpaperParticles(selectedDmUser ? (chatThemes[selectedDmUser.id] || 'Default') : 'Default')}
+          {renderWallpaperParticles((wpProps.wpKey && wpProps.wpKey !== 'default') ? wpProps.wpKey : (selectedDmUser ? (chatThemes[selectedDmUser.id] || 'Default') : 'Default'))}
 
           {isLoading ? (
             <div className="h-full flex flex-col justify-end gap-4 p-4 animate-pulse">
@@ -3088,7 +3345,7 @@ export const Chat: React.FC = () => {
           isGuest={isGuest}
           setIsNoteShareModalOpen={setIsNoteShareModalOpen}
           setIsPollModalOpen={setIsPollModalOpen}
-          isDarkTheme={isDmChatDark}
+          isDarkTheme={wpProps.wpKey && wpProps.wpKey !== 'default' ? !wpProps.isLight : isDmChatDark}
           user={user}
         />
 
@@ -3259,7 +3516,7 @@ export const Chat: React.FC = () => {
               onClick={() => {
                 setActiveTab('dm');
                 if (selectedDmUser) {
-                  fetchDmMessages(selectedDmUser.id);
+                  fetchDmMessages(selectedDmUser.id, !showMobileUI);
                 }
               }}
               className={`flex-1 py-2 px-3 sm:px-6 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
@@ -3471,28 +3728,56 @@ export const Chat: React.FC = () => {
           >
             
             {activeTab === 'global' && (
-              <div className="relative z-30 flex flex-row items-center justify-between gap-2 pb-2.5 border-b mb-2.5 border-white/[0.06] light-mode:border-slate-100">
+              <div className={`relative z-30 flex flex-row items-center justify-between gap-2 pb-2.5 border-b mb-2.5 px-3 py-2 -mx-3 -mt-3 rounded-t-2xl transition-all ${
+                wpProps.wpKey && wpProps.wpKey !== 'default' 
+                  ? wpProps.isLight ? 'bg-white/50 border-black/5 backdrop-blur-md shadow-sm' : 'bg-black/25 border-white/5 backdrop-blur-md'
+                  : isDark ? 'border-white/[0.06] bg-transparent' : 'border-slate-100 bg-transparent'
+              }`}>
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 flex-shrink-0 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-base">
-                    💬
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className={`text-xs font-black leading-none truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                  {/* NoteWeb Logo replaces emoji */}
+                  <NoteWebLogo sizeClass="w-7 h-7" isLight={wpProps.isLight} />
+                  <div className="min-w-0 text-left">
+                    <h4 className={`text-xs font-black leading-none truncate ${getWpTextClass('text-slate-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]', 'text-white')}`}>
                       Campus Lounge
                     </h4>
-                    <span className="text-[9px] text-slate-500 mt-0.5 block leading-none">
-                      {onlineUsers.length} online
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className={`text-[9px] leading-none font-bold ${getWpTextClass('text-slate-600', 'text-slate-400')}`}>
+                        {onlineUsers.length} online
+                      </span>
+                      {e2eeEnabledRooms[currentRoomId] && roomKeys[currentRoomId] && (
+                        <span className="inline-flex items-center gap-0.5 text-[8px] font-black text-emerald-450 bg-emerald-500/10 border border-emerald-500/25 px-1 py-0.2 rounded select-none">
+                          🔒 E2EE Active
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
                 {/* Advanced Action Bar for Global Chat */}
                 <div className="flex items-center gap-1.5 justify-end flex-shrink-0">
+                  {/* E2EE Lock Settings trigger */}
+                  <button
+                    onClick={() => setIsE2eeModalOpen(true)}
+                    className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
+                      e2eeEnabledRooms[currentRoomId] && roomKeys[currentRoomId]
+                        ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
+                        : getWpTextClass(
+                            'border-black/10 hover:bg-black/5 text-slate-700 hover:text-black',
+                            'border-white/10 hover:bg-white/5 text-slate-300 hover:text-white'
+                          )
+                    }`}
+                    title="End-to-End Encryption Settings"
+                  >
+                    <Lock className="w-4 h-4" />
+                  </button>
                   {/* Wallpaper Theme Picker */}
                   <button
                     onClick={() => setIsThemeModalOpen(true)}
                     className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
-                      isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
+                      getWpTextClass(
+                        'border-black/10 hover:bg-black/5 text-slate-700 hover:text-black',
+                        'border-white/10 hover:bg-white/5 text-slate-300 hover:text-white'
+                      )
                     }`}
                     title="Select lounge theme"
                   >
@@ -3503,7 +3788,11 @@ export const Chat: React.FC = () => {
             )}
 
             {activeTab === 'dm' && selectedDmUser && (
-              <div className={`relative z-30 flex flex-row items-center justify-between gap-2 pb-2.5 border-b mb-2.5 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+              <div className={`relative z-30 flex flex-row items-center justify-between gap-2 pb-2.5 border-b mb-2.5 px-3 py-2 -mx-3 -mt-3 rounded-t-2xl transition-all ${
+                wpProps.wpKey && wpProps.wpKey !== 'default' 
+                  ? wpProps.isLight ? 'bg-white/50 border-black/5 backdrop-blur-md shadow-sm' : 'bg-black/25 border-white/5 backdrop-blur-md'
+                  : isDark ? 'border-white/[0.06] bg-transparent' : 'border-slate-100 bg-transparent'
+              }`}>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <button
                     onClick={() => {
@@ -3512,7 +3801,12 @@ export const Chat: React.FC = () => {
                       // Clear the URL parameter cleanly
                       navigate('/chat', { replace: true });
                     }}
-                    className={`p-1.5 rounded-xl border md:hidden flex-shrink-0 active:scale-95 cursor-pointer ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                    className={`p-1.5 rounded-xl border md:hidden flex-shrink-0 active:scale-95 cursor-pointer ${
+                      getWpTextClass(
+                        'border-black/10 bg-white/40 text-slate-700 hover:text-black',
+                        'border-white/10 bg-white/5 text-slate-300 hover:text-white'
+                      )
+                    }`}
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -3522,22 +3816,28 @@ export const Chat: React.FC = () => {
                   >
                     {renderAvatar(selectedDmUser.photoURL || '', "w-8 h-8 text-base flex-shrink-0")}
                     <div className="min-w-0">
-                      <h4 className={`text-xs font-black flex items-center gap-1 leading-none truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                      <h4 className={`text-xs font-black flex items-center gap-1 leading-none truncate ${getWpTextClass('text-slate-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]', 'text-white')}`}>
                         <span className="truncate">{selectedDmUser.displayName}</span>
                         <span className="text-[10px] flex-shrink-0">{getBranchIcon(selectedDmUser.branch)}</span>
                       </h4>
-                      <span className="text-[9px] text-slate-500 mt-0.5 block">
-                        {partnerIsTyping ? (
-                          <span className="text-indigo-400 font-extrabold italic animate-pulse">typing...</span>
-                        ) : onlineUsers.some(u => u.uid === selectedDmUser.id) ? (
-                          <span className="text-emerald-400 font-extrabold flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" /> Active
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`text-[9px] block font-bold leading-none ${getWpTextClass('text-slate-600', 'text-slate-400')}`}>
+                          {partnerIsTyping ? (
+                            <span className="text-indigo-655 dark:text-indigo-455 font-extrabold italic animate-pulse">typing...</span>
+                          ) : onlineUsers.some(u => u.uid === selectedDmUser.id) ? (
+                            <span className={`${getWpTextClass('text-emerald-700', 'text-emerald-450')} font-extrabold flex items-center gap-1 leading-none`}>
+                              <span className={`w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0 ${getWpTextClass('bg-emerald-600', 'bg-emerald-500')}`} /> Active
+                            </span>
+                          ) : (
+                            `@${selectedDmUser.username}`
+                          )}
+                        </span>
+                        {e2eeEnabledRooms[currentRoomId] && roomKeys[currentRoomId] && (
+                          <span className="inline-flex items-center text-[7px] font-black text-emerald-450 bg-emerald-500/10 border border-emerald-500/25 px-0.5 py-0.2 rounded leading-none select-none">
+                            🔒 E2EE
                           </span>
-                        ) : (
-                          `@${selectedDmUser.username}`
                         )}
-                      </span>
-                    </div>
+                      </div>
                   </div>
                 </div>
 
@@ -3552,7 +3852,10 @@ export const Chat: React.FC = () => {
                       className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 border ${
                         showHeaderMenu
                           ? 'border-indigo-500 bg-indigo-600/20 text-indigo-400'
-                          : isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                          : getWpTextClass(
+                              'border-black/10 hover:bg-black/5 text-slate-700 hover:text-black',
+                              'border-white/10 hover:bg-white/5 text-slate-300 hover:text-white'
+                            )
                       }`}
                       title="More chat settings"
                     >
@@ -3583,6 +3886,23 @@ export const Chat: React.FC = () => {
                           >
                             <Paintbrush className="w-4 h-4 text-indigo-500" />
                             <span>Personalize Theme</span>
+                          </button>
+
+                          {/* E2EE Security Settings */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowHeaderMenu(false);
+                              setIsE2eeModalOpen(true);
+                            }}
+                            className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all text-left ${
+                              e2eeEnabledRooms[currentRoomId] && roomKeys[currentRoomId]
+                                ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                                : isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            <Lock className={`w-4 h-4 ${e2eeEnabledRooms[currentRoomId] && roomKeys[currentRoomId] ? 'text-emerald-400 animate-pulse' : 'text-slate-400'}`} />
+                            <span>E2EE Security Settings</span>
                           </button>
 
                           {/* Starred Drawer Folder */}
@@ -3675,26 +3995,27 @@ export const Chat: React.FC = () => {
                 className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-0.5 p-2 transition-all rounded-xl bg-transparent relative"
               >
                 {/* Wallpaper Animation Particles */}
-                {renderWallpaperParticles(activeTab === 'dm' && selectedDmUser ? (chatThemes[selectedDmUser.id] || 'Default') : (chatThemes['global'] || 'Default'))}
+                {renderWallpaperParticles((wpProps.wpKey && wpProps.wpKey !== 'default') ? wpProps.wpKey : (activeTab === 'dm' && selectedDmUser ? (chatThemes[selectedDmUser.id] || 'Default') : (chatThemes['global'] || 'Default')))}
 
                 {isLoading ? (
                   <div className="h-full flex flex-col justify-end gap-4 p-4 animate-pulse">
                     {[1, 2, 3].map((n) => (
                       <div key={n} className={`flex gap-3 max-w-[70%] ${n % 2 === 0 ? 'self-end flex-row-reverse' : 'self-start'}`}>
-                        <div className="w-9 h-9 rounded-full bg-white/10 dark:bg-slate-800" />
+                        <div className={`w-9 h-9 rounded-full ${getWpTextClass('bg-black/10', 'bg-white/10 dark:bg-slate-800')}`} />
                         <div className="space-y-2 flex-1">
-                          <div className="h-2.5 w-16 bg-white/15 dark:bg-slate-700 rounded" />
-                          <div className="h-9 w-44 bg-white/10 dark:bg-slate-800 rounded-2xl" />
+                          <div className={`h-2.5 w-16 rounded ${getWpTextClass('bg-black/15', 'bg-white/15 dark:bg-slate-700')}`} />
+                          <div className={`h-9 w-44 rounded-2xl ${getWpTextClass('bg-black/10', 'bg-white/10 dark:bg-slate-800')}`} />
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (activeTab === 'global' ? messages.length === 0 : dmMessages.length === 0) ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-slate-500 py-16">
-                    <div className="w-12 h-12 rounded-full bg-slate-900 border border-white/5 flex items-center justify-center text-indigo-400 text-xl">💬</div>
+                  <div className="h-full flex flex-col items-center justify-center text-center gap-3 py-16">
+                    {/* NoteWeb Logo in empty room */}
+                    <NoteWebLogo sizeClass="w-12 h-12 mb-2" isLight={wpProps.isLight} />
                     <div>
-                      <h4 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>Empty Room...</h4>
-                      <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Send a message or a photo to start the chat vibe!</p>
+                      <h4 className={`font-bold text-sm ${getWpTextClass('text-slate-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]', 'text-white')}`}>Empty Room...</h4>
+                      <p className={`text-xs mt-1 max-w-xs mx-auto ${getWpTextClass('text-slate-600', 'text-slate-400')}`}>Send a message or a photo to start the chat vibe!</p>
                     </div>
                   </div>
                 ) : (
@@ -3734,7 +4055,7 @@ export const Chat: React.FC = () => {
                         {/* Chat Bubble */}
                          <div className="max-w-[80%] sm:max-w-[70%] space-y-1 min-w-0">
                           {/* Name Header */}
-                          <div className={`flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'} ${isMe ? 'justify-end' : ''}`}>
+                          <div className={`flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider ${getWpTextClass('text-slate-700 font-extrabold drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]', 'text-slate-400')} ${isMe ? 'justify-end' : ''}`}>
                             <span 
                               onClick={() => senderUid && navigate(`/profile/${senderUid}`)} 
                               className="hover:text-indigo-500 transition-colors cursor-pointer"
@@ -3796,7 +4117,8 @@ export const Chat: React.FC = () => {
                                   <button
                                     onClick={() => {
                                       setEditingMsgId(msg.id);
-                                      setEditingText(messageContent);
+                                      const decrypted = decryptedCache[msg.id];
+                                      setEditingText((isMessageEncrypted(messageContent) && decrypted && decrypted !== '[DECRYPTION_FAILED]') ? decrypted : messageContent);
                                     }}
                                     className="p-1 rounded-lg bg-white/10 hover:bg-indigo-600 text-slate-355 hover:text-white transition-all cursor-pointer active:scale-90"
                                     title="Edit message"
@@ -3866,7 +4188,7 @@ export const Chat: React.FC = () => {
                                 </div>
                               ) : (
                                 <>
-                                  {messageContent}
+                                  {renderMessageContent(msg.id, messageContent)}
                                   
                                   {/* View Once Media card */}
                                   {msg.is_view_once && imageUrl && (
@@ -4018,7 +4340,7 @@ export const Chat: React.FC = () => {
                           )}
 
                           {/* Time footer */}
-                          <span className="block text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">
+                          <span className={`block text-[8px] font-bold uppercase tracking-widest px-1 ${getWpTextClass('text-slate-700', 'text-slate-500')}`}>
                             {formatTime(msg.created_at)}
                             {activeTab === 'dm' && isMe && (
                               <span className={`ml-1.5 font-bold ${msg.is_read ? 'text-[#00F2FE] drop-shadow-[0_0_4px_rgba(0,242,254,0.6)]' : 'text-slate-500'}`}>
@@ -4150,10 +4472,18 @@ export const Chat: React.FC = () => {
             {(activeTab === 'global' || selectedDmUser) && (
               <form 
                 onSubmit={handleSendMessage}
-                className={`mt-2 pt-2.5 border-t flex items-center gap-1.5 sm:gap-2 relative ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}
+                className={`mt-2 pt-2.5 border-t flex items-center gap-1.5 sm:gap-2 relative px-3 py-2 -mx-3 -mb-3 rounded-b-2xl transition-all ${
+                  wpProps.wpKey && wpProps.wpKey !== 'default' 
+                    ? wpProps.isLight ? 'bg-white/50 border-black/5 backdrop-blur-md shadow-sm' : 'bg-black/25 border-white/5 backdrop-blur-md'
+                    : isDark ? 'border-white/[0.06]' : 'border-slate-200'
+                }`}
               >
                 {isGuest ? (
-                  <div className={`w-full py-3 border rounded-2xl text-xs font-semibold text-slate-500 flex items-center justify-center gap-1.5 ${isDark ? 'bg-slate-950/40 border-white/[0.04]' : 'bg-slate-100 border-slate-200'}`}>
+                  <div className={`w-full py-3 border rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                    wpProps.wpKey && wpProps.wpKey !== 'default'
+                      ? wpProps.isLight ? 'bg-white/80 border-slate-300 text-slate-700' : 'bg-slate-950/60 border-white/[0.04] text-slate-400'
+                      : isDark ? 'bg-slate-950/40 border-white/[0.04] text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-500'
+                  }`}>
                     <Lock className="w-3.5 h-3.5" /> Guest Mode: Access is Read-Only. Register to send messages.
                   </div>
                 ) : (
@@ -4171,7 +4501,12 @@ export const Chat: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                        className={`sm:hidden p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
+                        className={`sm:hidden p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${
+                          getWpTextClass(
+                            'border-slate-300 bg-white/60 text-slate-700 hover:text-black hover:bg-white/90',
+                            'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5'
+                          )
+                        }`}
                         title="Add attachments"
                       >
                         <Plus className={`w-5 h-5 transition-transform duration-200 ${showAttachmentMenu ? 'rotate-45' : ''}`} />
@@ -4182,7 +4517,12 @@ export const Chat: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
+                          className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${
+                            getWpTextClass(
+                              'border-slate-300 bg-white/60 text-slate-700 hover:text-black hover:bg-white/90',
+                              'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5'
+                            )
+                          }`}
                           title="Attach Photo"
                         >
                           <ImageIcon className="w-5 h-5" />
@@ -4193,7 +4533,12 @@ export const Chat: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setIsNoteShareModalOpen(true)}
-                              className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
+                              className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${
+                                getWpTextClass(
+                                  'border-slate-300 bg-white/60 text-slate-700 hover:text-black hover:bg-white/90',
+                                  'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5'
+                                )
+                              }`}
                               title="Share study notes"
                             >
                               <Paperclip className="w-5 h-5" />
@@ -4201,7 +4546,12 @@ export const Chat: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setIsPollModalOpen(true)}
-                              className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${isDark ? 'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5' : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
+                              className={`p-3 rounded-2xl border transition-all active:scale-95 cursor-pointer ${
+                                getWpTextClass(
+                                  'border-slate-300 bg-white/60 text-slate-700 hover:text-black hover:bg-white/90',
+                                  'border-white/[0.08] bg-[#1A1A24]/60 text-slate-400 hover:text-white hover:bg-white/5'
+                                )
+                              }`}
                               title="Create study poll"
                             >
                               <BarChart2 className="w-5 h-5" />
@@ -4275,7 +4625,12 @@ export const Chat: React.FC = () => {
                       placeholder={activeTab === 'global' ? "Share update..." : `Message ${selectedDmUser?.displayName || ''}...`}
                       value={inputText}
                       onChange={(e) => handleInputChange(e.target.value)}
-                      className={`flex-1 min-w-0 border rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold placeholder:text-slate-600 ${isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+                      className={`flex-1 min-w-0 border rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold ${
+                        getWpTextClass(
+                          'bg-white/80 border-slate-300 text-slate-900 placeholder-slate-500',
+                          'bg-[#1A1A24]/60 border-white/[0.08] text-white placeholder-slate-400'
+                        )
+                      }`}
                     />
 
                     <button
@@ -4705,6 +5060,102 @@ export const Chat: React.FC = () => {
                 className="px-4 py-2 text-[10px] font-black rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-all font-semibold text-white cursor-pointer active:scale-95 shadow-md shadow-indigo-600/10"
               >
                 Done
+              </button>
+            </div>
+          </GlassPanel>
+        </div>
+      )}
+
+      {/* Client-Side End-to-End Encryption (E2EE) Modal */}
+      {isE2eeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            onClick={() => setIsE2eeModalOpen(false)}
+            className="absolute inset-0 bg-[#0A0A0C]/70 backdrop-blur-md" 
+          />
+          <GlassPanel className={`w-full max-w-md p-6 border shadow-2xl relative z-10 rounded-3xl text-left ${
+            isDark ? 'bg-[#0E0E12]/98 border-white/[0.08] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-800'
+          }`}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b pb-3.5 mb-4 border-white/10 light-mode:border-slate-100">
+              <h3 className="text-sm font-black flex items-center gap-2 text-emerald-450">
+                <Lock className="w-4 h-4 animate-pulse" />
+                End-to-End Security
+              </h3>
+              <button
+                onClick={() => setIsE2eeModalOpen(false)}
+                className={`p-1.5 rounded-lg border cursor-pointer active:scale-90 ${
+                  isDark ? 'border-white/10 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-500'
+                }`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-[10px] text-slate-500 mb-4 font-semibold leading-relaxed">
+              Enable client-side encryption for this chat room ({
+                activeTab === 'global' ? 'Campus Lounge' : (selectedDmUser?.displayName || 'Classmate')
+              }). Messages are encrypted locally on your device before sending. Decrypted content is never stored on servers.
+            </p>
+
+            <div className="space-y-4">
+              {/* Toggle Enable E2EE */}
+              <div className="flex items-center justify-between p-3 rounded-2xl border border-white/5 bg-white/[0.02] light-mode:bg-slate-50 light-mode:border-slate-100">
+                <div>
+                  <h4 className="text-xs font-bold">Secure Encryption Status</h4>
+                  <p className="text-[9px] text-slate-500 mt-0.5">Encrypt outgoing and decrypt incoming messages</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextVal = !e2eeEnabledRooms[currentRoomId];
+                    toggleRoomE2ee(currentRoomId, nextVal);
+                    if (nextVal) {
+                      toastSuccess("E2EE enabled! Remember to enter your room key.");
+                    } else {
+                      toastSuccess("E2EE disabled!");
+                    }
+                  }}
+                  className={`w-11 h-6 rounded-full transition-all relative flex items-center p-0.5 cursor-pointer ${
+                    e2eeEnabledRooms[currentRoomId] ? 'bg-emerald-600 justify-end' : 'bg-slate-700 justify-start'
+                  }`}
+                >
+                  <motion.div 
+                    layout 
+                    className="w-5 h-5 rounded-full bg-white shadow-md"
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  />
+                </button>
+              </div>
+
+              {/* Encryption Key input */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Secret Passphrase / Room Key</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    placeholder="Enter key (e.g. secret123)..."
+                    value={roomKeys[currentRoomId] || ''}
+                    onChange={(e) => setRoomE2eeKey(currentRoomId, e.target.value)}
+                    className={`w-full border rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-semibold placeholder:text-slate-650 ${
+                      isDark ? 'bg-[#1A1A24]/60 border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
+                    }`}
+                  />
+                </div>
+                <p className="text-[9px] text-slate-500 font-semibold leading-relaxed">
+                  ⚠️ <strong>Important</strong>: Share this exact secret passphrase with your peer (or other students for Lounge) so they can decrypt and read your messages. If the passphrase doesn't match, they will see a locked placeholder.
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-2.5 mt-5 border-t pt-3.5 border-white/10 light-mode:border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsE2eeModalOpen(false)}
+                className="px-4 py-2 text-[10px] font-black rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-all font-semibold text-white cursor-pointer active:scale-95 shadow-md shadow-indigo-600/10"
+              >
+                Apply Security
               </button>
             </div>
           </GlassPanel>

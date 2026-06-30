@@ -26,15 +26,26 @@ import { useToast } from '../../context/ToastContext';
 import { renderAvatar } from '../../utils/avatar';
 import { playTapSound } from '../../utils/sounds';
 
-export const NoteWebLogo: React.FC<{ sizeClass?: string; isMobile?: boolean }> = ({ sizeClass = "w-9 h-9", isMobile = false }) => {
+export const NoteWebLogo: React.FC<{ sizeClass?: string; isMobile?: boolean; isLight?: boolean }> = ({ sizeClass = "w-9 h-9", isMobile = false, isLight }) => {
+  const { isDark } = useTheme();
+  const activeIsLight = isLight !== undefined ? isLight : !isDark;
+
   return (
     <div className={`relative ${sizeClass} flex-shrink-0 flex items-center justify-center group/logo`}>
       {/* Outer pulsing glow */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] opacity-40 blur-[8px] animate-pulse" />
+      <div className={`absolute inset-0 rounded-xl bg-gradient-to-tr from-[#00F2FE] via-[#7F00FF] to-[#FF007F] blur-[8px] animate-pulse ${
+        activeIsLight ? 'opacity-25' : 'opacity-40'
+      }`} />
       
       {/* Inner premium container */}
-      <div className={`absolute inset-0 rounded-xl bg-[#0F0F1A]/90 border border-white/20 backdrop-blur-md flex items-center justify-center shadow-inner group-hover/logo:rotate-6 transition-transform duration-500 ${isMobile ? 'scale-90' : ''}`}>
-        <svg viewBox="0 0 100 100" className="w-5.5 h-5.5 drop-shadow-[0_0_6px_rgba(127,0,255,0.7)]">
+      <div className={`absolute inset-0 rounded-xl border backdrop-blur-md flex items-center justify-center transition-all duration-500 group-hover/logo:rotate-6 ${
+        isMobile ? 'scale-90' : ''
+      } ${
+        activeIsLight 
+          ? 'bg-white/80 border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.05),inset_0_1px_3px_rgba(255,255,255,0.6)]' 
+          : 'bg-[#0F0F1A]/90 border-white/20 shadow-inner'
+      }`}>
+        <svg viewBox="0 0 100 100" className={`w-5.5 h-5.5 ${activeIsLight ? 'drop-shadow-[0_0_4px_rgba(127,0,255,0.4)]' : 'drop-shadow-[0_0_6px_rgba(127,0,255,0.7)]'}`}>
           <defs>
             <linearGradient id="logoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#00F2FE" />
@@ -52,8 +63,8 @@ export const NoteWebLogo: React.FC<{ sizeClass?: string; isMobile?: boolean }> =
             strokeLinejoin="round"
           />
           {/* Centered glowing premium core */}
-          <circle cx="48" cy="28" r="6" fill="#00F2FE" className="animate-ping" />
-          <circle cx="48" cy="28" r="4.5" fill="#FFF" />
+          <circle cx="48" cy="28" r="6" fill={activeIsLight ? "#7F00FF" : "#00F2FE"} className="animate-ping" />
+          <circle cx="48" cy="28" r="4.5" fill={activeIsLight ? "#00F2FE" : "#FFF"} />
         </svg>
       </div>
     </div>
