@@ -22,22 +22,44 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({ children }) => {
     >
       {children}
       <style>{`
-        /* Native Android: NO animations at all - instant rendering for 100% stability and zero freezes */
+        /* Premium, hardware-accelerated page transitions for native mobile app */
         .page-wrapper-native {
-          opacity: 1 !important;
-          transform: none !important;
-          animation: none !important;
-          will-change: auto !important;
+          animation: pageTransitionNative 0.32s cubic-bezier(0.32, 0.94, 0.6, 1) forwards;
+          will-change: transform, opacity;
+          transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
+          perspective: 1000px;
         }
 
-        /* Web browser: gentle fade + slide (safe on desktop/web) */
+        /* Premium, hardware-accelerated page transitions for web browser */
         .page-wrapper-web {
-          animation: pageTransitionWeb 0.22s ease-out forwards;
-          will-change: opacity, transform;
+          animation: pageTransitionWeb 0.28s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+          will-change: transform, opacity;
+          transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
+          perspective: 1000px;
         }
+
+        @keyframes pageTransitionNative {
+          from { 
+            opacity: 0; 
+            transform: translate3d(0, 16px, 0); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translate3d(0, 0, 0); 
+          }
+        }
+
         @keyframes pageTransitionWeb {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0);   }
+          from { 
+            opacity: 0; 
+            transform: translate3d(0, 10px, 0) scale(0.99); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translate3d(0, 0, 0) scale(1); 
+          }
         }
       `}</style>
     </div>

@@ -978,48 +978,62 @@ html.light .liquid-blob-3 {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   Premium Transition & Animation Utilities
+   ───────────────────────────────────────────────────────────── */
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+  will-change: opacity;
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.28s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.96) translate3d(0, 0, 0); }
+  to { opacity: 1; transform: scale(1) translate3d(0, 0, 0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translate3d(0, 16px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* ─────────────────────────────────────────────────────────────
    Native Android & iOS Shader/GPU Safeguards
    ───────────────────────────────────────────────────────────── */
-/* Disable all keyframe animations, transitions, and active slides globally on mobile to guarantee 100% stable, instant renders and zero blank screens */
-body.native-platform *:not(.animate-spin):not([class*="spin"]) {
-  animation: none !important;
-  transition: none !important;
-}
-
-/* Disable all backdrop-filters globally on mobile platforms to prevent shader compilation crashes */
-body.native-platform *,
-body.native-platform *::before,
-body.native-platform *::after {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-/* Disable standard CSS blurs globally on mobile platforms to prevent GPU/Pipeline crashes */
-body.native-platform [class*="blur-"],
-body.native-platform [class*="filter-"] {
-  filter: none !important;
-}
-
+/* Disable ONLY heavy full-screen background animations on mobile to prevent battery drain */
 body.native-platform .liquid-blob-container,
 body.native-platform .liquid-blob {
   display: none !important;
 }
 
 body.native-platform .glass-panel {
-  background: #0D0D15 !important;
+  background: rgba(13, 13, 21, 0.85) !important;
 }
 
 html.light body.native-platform .glass-panel,
 body.native-platform.light-mode .glass-panel {
-  background: #F3F5FA !important;
+  background: rgba(243, 245, 250, 0.85) !important;
 }
 
 body.native-platform .glass-card {
-  background: #12121F !important;
+  background: rgba(18, 18, 31, 0.8) !important;
 }
 
 html.light body.native-platform .glass-card,
 body.native-platform.light-mode .glass-card {
-  background: #FFFFFF !important;
+  background: rgba(255, 255, 255, 0.85) !important;
 }
 

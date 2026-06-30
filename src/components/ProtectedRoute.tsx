@@ -17,14 +17,27 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { error } = useToast();
   const location = useLocation();
 
+  // Initialize transition overlay states on mount based on loading status
+  const [isOverlaying, setIsOverlaying] = React.useState(loading);
+  const [opacityClass, setOpacityClass] = React.useState(loading ? 'opacity-100' : 'opacity-0');
+
   // Track if auth has resolved at least once.
-  // After the first resolution we NEVER show the loading spinner again —
-  // this prevents the blank screen on second/subsequent navigations where
-  // Supabase's onAuthStateChange briefly re-fires and sets loading=true.
+  // After the first resolution we NEVER show the loading spinner again
   const initialDoneRef = useRef(false);
   if (!loading) {
     initialDoneRef.current = true;
   }
+
+  useEffect(() => {
+    if (!loading) {
+      // Begin skeleton fade out
+      setOpacityClass('opacity-0');
+      const timer = setTimeout(() => {
+        setIsOverlaying(false);
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   useEffect(() => {
     if (!loading && isGuest) {
@@ -38,21 +51,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // If still loading but we've seen a valid user before, render children optimistically
-  // (avoids blank screen flash when auth briefly re-checks)
   if (loading && initialDoneRef.current) {
     if (!user || isGuest) {
       return <Navigate to="/login" state={{ from: location }} replace />;
     }
-    // Auth was valid before — show content immediately
     return <>{children}</>;
   }
 
   // Redirect to login if not logged in at all, or if trying to access protected content in guest mode
-  if (!user || isGuest) {
+  if (!loading && (!user || isGuest)) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (adminOnly && !isAdmin) {
+  if (adminOnly && !isAdmin && !loading) {
     console.warn(`[NoteWeb Security Alert] Unauthorized attempt to access admin view!`, {
       authenticated: !!user,
       userEmail: user?.email || 'N/A',
@@ -64,6 +75,20 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     });
     error('Access Denied: Admin privileges required.');
     return <Navigate to="/" replace />;
+  }
+
+  // Render cross-fade loader overlay if active
+  if (isOverlaying) {
+    return (
+      <div className="relative w-full h-full">
+        <div className="animate-fade-in">
+          {children}
+        </div>
+        <div className={`fixed inset-0 z-50 transition-opacity duration-350 ease-out ${opacityClass} pointer-events-none`}>
+          <AppSkeleton />
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

@@ -680,7 +680,7 @@ export const Chat: React.FC = () => {
 
       for (const msg of msgsToDecrypt) {
         const msgId = msg.id;
-        const rawContent = activeTab === 'global' ? msg.content : msg.message;
+        const rawContent = activeTab === 'global' ? (msg as any).content : (msg as any).message;
 
         if (isMessageEncrypted(rawContent)) {
           if (isEnabled && activeKey) {
@@ -3180,8 +3180,8 @@ export const Chat: React.FC = () => {
           )}
           {isThemeModalOpen && (
             <div className="fixed inset-0 z-50 flex items-end">
-              <div onClick={() => setIsThemeModalOpen(false)} className="absolute inset-0 bg-black/60" />
-              <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] ${isLoungeDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+              <div onClick={() => setIsThemeModalOpen(false)} className="absolute inset-0 bg-black/60 animate-fade-in" />
+              <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] animate-slide-up ${isLoungeDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
                 <div className="flex items-center justify-between">
                   <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><Paintbrush className="w-4 h-4" /> Chat Theme</h3>
                   <button onClick={() => setIsThemeModalOpen(false)} className="p-1.5 rounded-xl cursor-pointer active:scale-90 text-slate-400"><X className="w-4 h-4" /></button>
@@ -3391,8 +3391,8 @@ export const Chat: React.FC = () => {
         {/* Theme picker bottom sheet */}
         {isThemeModalOpen && (
           <div className="fixed inset-0 z-50 flex items-end">
-            <div onClick={() => setIsThemeModalOpen(false)} className="absolute inset-0 bg-black/60" />
-            <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] ${isDmChatDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+            <div onClick={() => setIsThemeModalOpen(false)} className="absolute inset-0 bg-black/60 animate-fade-in" />
+            <div className={`w-full rounded-t-3xl border-t p-5 flex flex-col gap-4 relative z-10 max-h-[70vh] animate-slide-up ${isDmChatDark ? 'bg-[#0E0E14] border-white/[0.08]' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-sm text-indigo-400 flex items-center gap-2"><Paintbrush className="w-4 h-4" /> Chat Theme</h3>
                 <button onClick={() => setIsThemeModalOpen(false)} className="p-1.5 rounded-xl cursor-pointer active:scale-90 text-slate-400"><X className="w-4 h-4" /></button>
@@ -3840,6 +3840,7 @@ export const Chat: React.FC = () => {
                       </div>
                   </div>
                 </div>
+              </div>
 
                 {/* Advanced Action Bar */}
                 <div className="flex items-center gap-1.5 justify-end relative">
@@ -4954,9 +4955,9 @@ export const Chat: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div 
             onClick={() => setIsThemeModalOpen(false)}
-            className="absolute inset-0 bg-[#0A0A0C]/70 backdrop-blur-md" 
+            className="absolute inset-0 bg-[#0A0A0C]/70 backdrop-blur-md animate-fade-in" 
           />
-          <GlassPanel className={`w-full max-w-xl p-6 border shadow-2xl relative z-10 rounded-3xl ${
+          <GlassPanel className={`w-full max-w-xl p-6 border shadow-2xl relative z-10 rounded-3xl animate-scale-up ${
             isDark ? 'bg-[#0E0E12]/98 border-white/[0.08] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-800'
           }`}>
             {/* Modal Header */}
@@ -5071,9 +5072,9 @@ export const Chat: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div 
             onClick={() => setIsE2eeModalOpen(false)}
-            className="absolute inset-0 bg-[#0A0A0C]/70 backdrop-blur-md" 
+            className="absolute inset-0 bg-[#0A0A0C]/70 backdrop-blur-md animate-fade-in" 
           />
-          <GlassPanel className={`w-full max-w-md p-6 border shadow-2xl relative z-10 rounded-3xl text-left ${
+          <GlassPanel className={`w-full max-w-md p-6 border shadow-2xl relative z-10 rounded-3xl text-left animate-scale-up ${
             isDark ? 'bg-[#0E0E12]/98 border-white/[0.08] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-800'
           }`}>
             {/* Modal Header */}

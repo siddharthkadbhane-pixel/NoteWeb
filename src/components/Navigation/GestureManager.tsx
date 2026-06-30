@@ -167,8 +167,8 @@ export const GestureManager: React.FC<GestureManagerProps> = ({ children }) => {
     if (isHorizontal && Math.abs(diffX) > 15) {
       setDragOffset(diffX);
 
-      // Edge swipe back (swipe right from left edge)
-      if (diffX > 0 && touchStartX < 50) {
+      // Edge swipe back (swipe right from left edge) - ONLY if NOT on main tabs to prevent history-back hijacking of tab switches
+      if (diffX > 0 && touchStartX < 50 && !isMainTab) {
         setSwipeType('back');
       } 
       // Main tab swiping
