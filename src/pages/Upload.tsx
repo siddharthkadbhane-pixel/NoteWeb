@@ -644,7 +644,8 @@ export const Upload: React.FC = () => {
       if (generateAI && aiExtractedText) {
         try {
           setAiStatus('summarizing');
-          summaryText = await summarizeNotes(aiExtractedText);
+          const storedModel = (localStorage.getItem('noteweb-ai-model') as 'gemini' | 'nemotron') || 'gemini';
+          summaryText = await summarizeNotes(aiExtractedText, storedModel);
           setAiStatus('done');
         } catch (aiErr) {
           console.error("AI summarization failed, continuing upload without summary:", aiErr);

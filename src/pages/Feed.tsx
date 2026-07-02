@@ -1077,6 +1077,9 @@ export const Feed: React.FC = () => {
   // AI Note Companion modal state
   const [activeAiNote, setActiveAiNote] = useState<NoteDocument | null>(null);
   const [aiCompanionTab, setAiCompanionTab] = useState<'podcast' | 'flashcards' | 'quiz' | 'qna'>('podcast');
+  const [selectedModel, setSelectedModel] = useState<'gemini' | 'nemotron'>(() => {
+    return (localStorage.getItem('noteweb-ai-model') as 'gemini' | 'nemotron') || 'gemini';
+  });
   const [extractedPdfText, setExtractedPdfText] = useState<string | null>(null);
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -1104,6 +1107,24 @@ export const Feed: React.FC = () => {
     setIsPaused(false);
     setIsGeneratingSummary(false);
     setActiveAiNote(null);
+  };
+
+  const handleModelChange = (model: 'gemini' | 'nemotron') => {
+    setSelectedModel(model);
+    localStorage.setItem('noteweb-ai-model', model);
+    
+    // Clear existing generated content for clean regeneration
+    setChatHistory([]);
+    setFlashcards([]);
+    setQuizQuestions([]);
+    
+    success(`AI Model switched to ${model === 'nemotron' ? 'NVIDIA Nemotron 3 Ultra' : 'Google Gemini 2.5 Flash'}`);
+    
+    if (aiCompanionTab === 'flashcards') {
+      setTimeout(() => handleTabChange('flashcards', model), 0);
+    } else if (aiCompanionTab === 'quiz') {
+      setTimeout(() => handleTabChange('quiz', model), 0);
+    }
   };
 
   const startSpeech = (textToRead: string) => {
@@ -1199,7 +1220,7 @@ export const Feed: React.FC = () => {
     setIsGeneratingSummary(true);
     setAiLoading(true);
     try {
-      const generated = await summarizeNotes(text);
+      const generated = await summarizeNotes(text, selectedModel);
       
       // Update local active note summary
       setActiveAiNote(prev => {
@@ -1249,7 +1270,7 @@ export const Feed: React.FC = () => {
       setIsGeneratingSummary(true);
       setAiLoading(true);
       try {
-        const generated = await summarizeNotes(extractedPdfText);
+        const generated = await summarizeNotes(extractedPdfText, selectedModel);
         
         const updated = { ...activeAiNote, summary: generated };
         setActiveAiNote(updated);
@@ -1333,11 +1354,12 @@ export const Feed: React.FC = () => {
     extractTextFromActiveNote(noteWithSummary);
   };
 
-  const handleTabChange = async (tab: 'podcast' | 'flashcards' | 'quiz' | 'qna') => {
+  const handleTabChange = async (tab: 'podcast' | 'flashcards' | 'quiz' | 'qna', modelOverride?: 'gemini' | 'nemotron') => {
     setAiCompanionTab(tab);
     setAiError(null);
 
     if (!activeAiNote) return;
+    const currentModel = modelOverride || selectedModel;
 
     if (tab === 'flashcards' && flashcards.length === 0) {
       setAiLoading(true);
@@ -1345,7 +1367,7 @@ export const Feed: React.FC = () => {
         const textForAi = extractedPdfText && !extractedPdfText.startsWith('Could not') && !extractedPdfText.startsWith('Error')
           ? extractedPdfText
           : activeAiNote.summary || activeAiNote.description;
-        const data = await generateFlashcards(activeAiNote.subject, activeAiNote.description, textForAi);
+        const data = await generateFlashcards(activeAiNote.subject, activeAiNote.description, textForAi, currentModel);
         setFlashcards(data);
       } catch (err: any) {
         setAiError(err.message || 'Failed to load study flashcards.');
@@ -1358,7 +1380,7 @@ export const Feed: React.FC = () => {
         const textForAi = extractedPdfText && !extractedPdfText.startsWith('Could not') && !extractedPdfText.startsWith('Error')
           ? extractedPdfText
           : activeAiNote.summary || activeAiNote.description;
-        const data = await generateQuiz(activeAiNote.subject, activeAiNote.description, textForAi);
+        const data = await generateQuiz(activeAiNote.subject, activeAiNote.description, textForAi, currentModel);
         setQuizQuestions(data);
         setSelectedAnswers({});
         setSubmittedQuiz(false);
@@ -1421,7 +1443,8 @@ export const Feed: React.FC = () => {
         activeAiNote.description,
         textForAi,
         userMsg,
-        chatHistory
+        chatHistory,
+        selectedModel
       );
       setChatHistory(prev => [...prev, { role: 'model' as const, text: reply }]);
     } catch (err: any) {
@@ -2165,9 +2188,36 @@ export const Feed: React.FC = () => {
                     <h3 className="text-2xl font-black text-white light-mode:text-slate-900 tracking-tight leading-tight mb-1">
                       {activeAiNote.subject}
                     </h3>
-                    <p className="text-[10px] font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 inline-block uppercase">
-                      Gemini 2.5 Study Companion
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                      <span className="text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 uppercase">
+                        AI Study Companion
+                      </span>
+                      {/* Model Selector Switches */}
+                      <div className="flex items-center gap-1 bg-white/[0.04] border border-white/[0.08] rounded-full p-0.5 light-mode:bg-slate-900/[0.03] light-mode:border-slate-200 shadow-inner">
+                        <button
+                          type="button"
+                          onClick={() => handleModelChange('gemini')}
+                          className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase transition-all active:scale-95 cursor-pointer ${
+                            selectedModel === 'gemini'
+                              ? 'bg-indigo-600 text-white shadow shadow-indigo-600/20'
+                              : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-500 light-mode:hover:text-slate-800'
+                          }`}
+                        >
+                          Gemini 2.5
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleModelChange('nemotron')}
+                          className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase transition-all active:scale-95 cursor-pointer ${
+                            selectedModel === 'nemotron'
+                              ? 'bg-purple-600 text-white shadow shadow-purple-600/20'
+                              : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-500 light-mode:hover:text-slate-800'
+                          }`}
+                        >
+                          Nemotron 3
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -2546,9 +2596,11 @@ export const Feed: React.FC = () => {
                                   <MessageSquare className="w-5 h-5" />
                                 </div>
                                 <div>
-                                  <h5 className="text-xs font-bold text-white light-mode:text-slate-800">Ask anything about this note!</h5>
+                                  <h5 className="text-xs font-bold text-white light-mode:text-slate-800">
+                                    Ask anything about this note!
+                                  </h5>
                                   <p className="text-[10px] text-slate-500 max-w-[280px] mt-1 mx-auto leading-relaxed">
-                                    Gemini 2.5 Flash will analyze the note title, description, and full PDF content to answer any doubts.
+                                    {selectedModel === 'nemotron' ? 'NVIDIA Nemotron 3 Ultra' : 'Gemini 2.5 Flash'} will analyze the note title, description, and full PDF content to answer any doubts.
                                   </p>
                                 </div>
                               </div>
@@ -2576,7 +2628,7 @@ export const Feed: React.FC = () => {
                               type="text"
                               value={chatInput}
                               onChange={(e) => setChatInput(e.target.value)}
-                              placeholder="Ask Gemini a study question..."
+                              placeholder={selectedModel === 'nemotron' ? "Ask Nemotron 3 a study question..." : "Ask Gemini a study question..."}
                               className="flex-grow py-2.5 px-4 glass-input text-xs bg-slate-950/80 text-white rounded-xl focus:border-indigo-500 focus:outline-none transition-colors border border-white/[0.08]"
                             />
                             <button

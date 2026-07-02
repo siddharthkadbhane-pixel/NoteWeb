@@ -16,7 +16,8 @@
 export const callAiChatCompletion = async (
   systemInstruction: string | null,
   userPrompt: string,
-  chatHistory: Array<{ role: 'user' | 'model'; text: string }> = []
+  chatHistory: Array<{ role: 'user' | 'model'; text: string }> = [],
+  model: 'gemini' | 'nemotron' = 'gemini'
 ): Promise<string> => {
   const envOpenRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
   const envGeminiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -53,7 +54,7 @@ export const callAiChatCompletion = async (
           'X-Title': 'NoteWeb Academic Hub'
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: model === 'nemotron' ? 'nvidia/nemotron-3-ultra-550b-a55b' : 'google/gemini-2.5-flash',
           messages: messages
         })
       });
@@ -125,9 +126,9 @@ export const callAiChatCompletion = async (
  * @param notesText Plain text extracted from the PDF note
  * @returns Promise<string> A beautifully formatted academic summary
  */
-export const summarizeNotes = async (notesText: string): Promise<string> => {
+export const summarizeNotes = async (notesText: string, model: 'gemini' | 'nemotron' = 'gemini'): Promise<string> => {
   const customApiUrl = import.meta.env.VITE_AI_API_URL;
-  if (customApiUrl && customApiUrl !== 'mock-api-url') {
+  if (model === 'gemini' && customApiUrl && customApiUrl !== 'mock-api-url') {
     try {
       console.log(`[NoteWeb AI] Routing summarization to backend server API: ${customApiUrl}`);
       const res = await fetch(customApiUrl, {
@@ -172,7 +173,7 @@ Please format your response in clean Markdown exactly as follows:
 Make the tone encouraging, highly academic, and exceptionally clear for university study.`;
 
   try {
-    return await callAiChatCompletion(systemInstruction, prompt);
+    return await callAiChatCompletion(systemInstruction, prompt, [], model);
   } catch (error) {
     console.error("summarizeNotes error, returning high-fidelity client outline:", error);
     // Safe localized default summary if completely offline
@@ -317,7 +318,8 @@ export interface Flashcard {
 export const generateFlashcards = async (
   subject: string,
   description: string,
-  summary?: string
+  summary?: string,
+  model: 'gemini' | 'nemotron' = 'gemini'
 ): Promise<Flashcard[]> => {
   const systemInstruction = `You are NoteWeb's expert AI Study Companion. Generate high-quality flashcards for active recall study.`;
 
@@ -336,7 +338,7 @@ Example raw output format:
 ]`;
 
   try {
-    const jsonText = await callAiChatCompletion(systemInstruction, prompt);
+    const jsonText = await callAiChatCompletion(systemInstruction, prompt, [], model);
     const cleanedJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleanedJson);
     if (Array.isArray(parsed) && parsed.length > 0) {
@@ -379,7 +381,8 @@ export interface QuizQuestion {
 export const generateQuiz = async (
   subject: string,
   description: string,
-  summary?: string
+  summary?: string,
+  model: 'gemini' | 'nemotron' = 'gemini'
 ): Promise<QuizQuestion[]> => {
   const systemInstruction = `You are NoteWeb's expert AI Quiz Master. Generate interactive multiple-choice questions for student testing.`;
 
@@ -403,7 +406,7 @@ Example format:
 ]`;
 
   try {
-    const jsonText = await callAiChatCompletion(systemInstruction, prompt);
+    const jsonText = await callAiChatCompletion(systemInstruction, prompt, [], model);
     const cleanedJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleanedJson);
     if (Array.isArray(parsed) && parsed.length > 0) {
@@ -453,7 +456,8 @@ export const askGeminiQna = async (
   description: string,
   summary: string,
   question: string,
-  chatHistory: Array<{ role: 'user' | 'model'; text: string }>
+  chatHistory: Array<{ role: 'user' | 'model'; text: string }>,
+  model: 'gemini' | 'nemotron' = 'gemini'
 ): Promise<string> => {
   const systemInstruction = `You are NoteWeb's expert AI Academic Assistant. The student is asking questions about notes they are studying:
 - Subject: "${subject}"
@@ -463,7 +467,7 @@ export const askGeminiQna = async (
 Provide a clear, helpful, academically rigorous answer. You can use markdown bullet points, bold text, lists, and code blocks. Make your answer extremely easy to understand, encouraging, and focused on helping them excel in their college exams.`;
 
   try {
-    return await callAiChatCompletion(systemInstruction, question, chatHistory);
+    return await callAiChatCompletion(systemInstruction, question, chatHistory, model);
   } catch (error) {
     console.error("[NoteWeb QnA] QnA fetch failed:", error);
     return `⚠️ Sorry, I encountered an error communicating with the AI host. Please verify your internet connection.`;
